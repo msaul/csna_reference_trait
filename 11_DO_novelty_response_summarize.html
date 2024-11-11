@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Michael C. Saul (michael.saul [at] jax.org)" />
+
+
+<title>DO Novelty Response Summarization</title>
+
+<script src="site_libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/readable.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/master/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+.sourceCode .row {
+  width: 100%;
+}
+.sourceCode {
+  overflow-x: auto;
+}
+.code-folding-btn {
+  margin-right: -30px;
+}
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Diversity Outbred Reference Traits Analysis</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">DO Novelty Response Summarization</h1>
+<h4 class="author">Michael C. Saul (michael.saul [at] jax.org)</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2021-12-08
+</p>
+<p>
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>rta/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+</p>
+<p>
+This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/jdblischak/workflowr">workflowr</a> (version 1.6.2). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200501code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20200501)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200501code" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200501)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongf98cb0c"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> f98cb0c </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrongf98cb0c" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version f98cb0c. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    code/.Rapp.history
+    Ignored:    data/.Rhistory
+    Ignored:    data/RDS/
+    Ignored:    run/
+
+Untracked files:
+    Untracked:  LICENSE
+    Untracked:  Untitled.R
+    Untracked:  analysis/17_mapping_interpretation_old.Rmd
+    Untracked:  analysis/20_predict_acquisition_from_novelty.Rmd
+    Untracked:  analysis/21_DO_elasticnet_correlation.Rmd
+    Untracked:  analysis/temp.txt
+    Untracked:  code/DO_eQTL_perms.R
+    Untracked:  code/DO_eQTL_score_calc.R
+    Untracked:  code/STAR_RSEM_416.sh
+    Untracked:  code/eQTL_plotting_DO_striatum_416.R
+    Untracked:  code/ggplot_pub_themes.R
+    Untracked:  data/20_elastic_mv_results.csv
+    Untracked:  data/20_elasticnet_predictions.RDS
+    Untracked:  data/DO_416_DGEList.RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 3).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 4).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered.RDS
+    Untracked:  data/DO_416_ERCC_DGEList.RDS
+    Untracked:  data/DO_416_ERCC_cpm.RDS
+    Untracked:  data/DO_416_normrt.RDS
+    Untracked:  data/DO_416_pheno.RDS
+    Untracked:  data/DO_416_pheno_allgenes.RDS
+    Untracked:  data/DO_416_voom (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom.RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom_allgenes.RDS
+    Untracked:  data/DO_416_voom_cpresiduals.RDS
+    Untracked:  data/DO_AQ_active_CoV_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_lever_ratio_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_mean_inf_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_rate_toptable_annotated.RDS
+    Untracked:  data/DO_IVSA_acquisition_cancor_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_glm.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df.RDS
+    Untracked:  data/DO_IVSA_data.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_ALL.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_AQ.RDS
+    Untracked:  data/DO_IVSA_novelty_data.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_old.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_a2_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a4_male_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a5_female_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_raw_data.RDS
+    Untracked:  data/DO_IVSA_transformed_data.RDS
+    Untracked:  data/DO_LIMS_data.RDS
+    Untracked:  data/DO_RTG_a1_new.qtl.RData
+    Untracked:  data/DO_RTG_a1_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a1_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a2_new.qtl.RData
+    Untracked:  data/DO_RTG_a2_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a2_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a3_new.qtl.RData
+    Untracked:  data/DO_RTG_a3_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_01.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_02.RData
+    Untracked:  data/DO_RTG_a4_new.qtl.RData
+    Untracked:  data/DO_RTG_a5_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_project_df_for_mapping.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_2020-11-06.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_a2.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_sexspecific.RDS
+    Untracked:  data/DO_demographic_data_df.RDS
+    Untracked:  data/DO_eigengene_significance.RDS
+    Untracked:  data/DO_eigengenes.RDS
+    Untracked:  data/DO_highcor_cpresiduals_datatable.RDS
+    Untracked:  data/DO_holeboard_data_df.RDS
+    Untracked:  data/DO_holeboard_summarized.RDS
+    Untracked:  data/DO_lightdark_data_df.RDS
+    Untracked:  data/DO_mQTL_peaks.RDS
+    Untracked:  data/DO_mQTL_scan1s.RDS
+    Untracked:  data/DO_module_membership.RDS
+    Untracked:  data/DO_novelplace_data_df.RDS
+    Untracked:  data/DO_novelty_data.RDS
+    Untracked:  data/DO_novelty_response_data.RDS
+    Untracked:  data/DO_novelty_response_data_for_RTG.RDS
+    Untracked:  data/DO_novelty_response_data_with_transform.csv
+    Untracked:  data/DO_openfield_data_df.RDS
+    Untracked:  data/DO_paraclique_data.el
+    Untracked:  data/DO_paraclique_eigengenes.RDS
+    Untracked:  data/DO_paracliques.RDS
+    Untracked:  data/DO_paracliques_significance.RDS
+    Untracked:  data/DO_ploidy_calls.RDS
+    Untracked:  data/DO_pmap.RDS
+    Untracked:  data/DO_pvalue_histograms.RData
+    Untracked:  data/DO_rtg_a1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a3_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m3_toptable_annotated.RDS
+    Untracked:  data/DO_str_2016_eQTL.RData
+    Untracked:  data/DO_str_2016_gm4qtl2.zip
+    Untracked:  data/DO_str_2016_gm4qtl2_intensities.fst
+    Untracked:  data/DO_voom_cpresiduals_NArm.RDS
+    Untracked:  data/DO_wgcna.RDS
+    Untracked:  data/IVSA_RTG_a3_blup.pdf
+    Untracked:  data/IVSA_h2_2019-11-18.tsv
+    Untracked:  data/IVSA_metadata_sheet.RDS
+    Untracked:  data/ME16_edges.tsv
+    Untracked:  data/Mus_musculus.GRCm38.94.parsed.RDS
+    Untracked:  data/Paraclique_19_MF_AMIGO.txt
+    Untracked:  data/RTG_QTL_peaks.RDS
+    Untracked:  data/RTG_figure.RDS
+    Untracked:  data/SENS_RTG/
+    Untracked:  data/Tyr2_genotypes.RDS
+    Untracked:  data/Tyr_genotypes.RDS
+    Untracked:  data/blup_chr7_DO_RTG_a3.RDS
+    Untracked:  data/cc_variants/
+    Untracked:  data/chr18_QTL_results.RDS
+    Untracked:  data/chr4_QTL_results.RDS
+    Untracked:  data/cis/
+    Untracked:  data/eQTL_annotated_peaks.RDS
+    Untracked:  data/eQTL_plots.RData
+    Untracked:  data/figures/
+    Untracked:  data/founders_key/
+    Untracked:  data/gigamuga/
+    Untracked:  data/gwas/
+    Untracked:  data/info/
+    Untracked:  data/m2G.a2.RTG.chr4snp.RData
+    Untracked:  data/mapping_from_hao/
+    Untracked:  data/perms/
+    Untracked:  data/qtl2/
+    Untracked:  data/raw/
+    Untracked:  data/resources/
+    Untracked:  data/tads_loops/
+    Untracked:  data/transcripts/
+    Untracked:  data/variants/
+    Untracked:  logs/
+    Untracked:  new_RTG_a3.jpeg
+    Untracked:  output/RTG_out/
+    Untracked:  output/docs_backup_2020-07-30.tar.gz
+    Untracked:  output/elastic_net_out/
+    Untracked:  singularity/
+    Untracked:  tmp/
+    Untracked:  var/
+
+Unstaged changes:
+    Deleted:    .Rprofile
+    Modified:   .gitignore
+    Modified:   README.md
+    Modified:   analysis/17_mapping_interpretation.Rmd
+    Modified:   analysis/_site.yml
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were made to the R Markdown (<code>analysis/11_DO_novelty_response_summarize.Rmd</code>) and HTML (<code>docs/11_DO_novelty_response_summarize.html</code>) files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view the files as they were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+html
+</td>
+<td>
+32fe7e2
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-12-30
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+ed66291
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-12-30
+</td>
+<td>
+Updating novelty response to newest transformation method
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Rolling back to working version.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+98b37fd
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+4fd2837
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Minor tweaks.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+3373855
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+533efe3
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Tweak title to correct error
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+32e5405
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+2c9c688
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Initial commit
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<div id="motivation" class="section level2">
+<h2>Motivation</h2>
+<div id="purpose-of-analysis" class="section level3">
+<h3>Purpose of analysis</h3>
+<p>This script is used to summarize the novelty data upstream of using them for reference trait analysis.</p>
+</div>
+</div>
+</div>
+<div id="analysis" class="section level1">
+<h1>Analysis</h1>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<div id="r-libraries" class="section level3">
+<h3>R libraries</h3>
+<p>Calling R libraries necessary for this analysis.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;MASS&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;readxl&quot;</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;tidyr&quot;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;lubridate&quot;</span>)</span></code></pre></div>
+<pre><code>
+Attaching package: &#39;lubridate&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:base&#39;:
+
+    date, intersect, setdiff, union</code></pre>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;cowplot&quot;</span>)</span></code></pre></div>
+<pre><code>
+Attaching package: &#39;cowplot&#39;</code></pre>
+<pre><code>The following object is masked from &#39;package:lubridate&#39;:
+
+    stamp</code></pre>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;ggplot2&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;grid&quot;</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;gridExtra&quot;</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;ggplotify&quot;</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;DiagrammeR&quot;</span>)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;nlme&quot;</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">&quot;./code/ggplot_pub_themes.R&quot;</span>)</span></code></pre></div>
+<p>Getting <code>norm_rank_transform()</code> function.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>norm_rank_transform <span class="ot">=</span> <span class="cf">function</span>(x, <span class="at">c =</span> (<span class="dv">0</span>)) {</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">is.numeric</span>(x) <span class="sc">&amp;</span> <span class="fu">is.vector</span>(x))</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  x_noNA <span class="ot">=</span> <span class="fu">which</span>(<span class="sc">!</span><span class="fu">is.na</span>(x))</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  N <span class="ot">=</span> <span class="fu">length</span>(x_noNA)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  x[x_noNA] <span class="ot">=</span> <span class="fu">qnorm</span>((<span class="fu">rank</span>(x[x_noNA], <span class="at">ties.method =</span> <span class="st">&quot;average&quot;</span>) <span class="sc">-</span> c) <span class="sc">/</span> (N <span class="sc">-</span> (<span class="dv">2</span> <span class="sc">*</span> c) <span class="sc">+</span> <span class="dv">1</span>))</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(x)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="importing-data" class="section level3">
+<h3>Importing data</h3>
+<div id="importing-novelty-response-data" class="section level4">
+<h4>Importing novelty response data</h4>
+<p>Getting novelty data from raw file.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Novelty</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>novelty_raw_file <span class="ot">=</span> <span class="st">&quot;./data/raw/Novelty_raw_datarelease_JDO_07012020.csv&quot;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>novelty_raw <span class="ot">=</span> <span class="fu">read.table</span>(novelty_raw_file, <span class="at">sep =</span> <span class="st">&quot;,&quot;</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>                         <span class="at">header =</span> <span class="cn">TRUE</span>, <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span>, <span class="at">comment.char =</span> <span class="st">&quot;%&quot;</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>                         <span class="at">na.strings =</span> <span class="fu">c</span>(<span class="st">&quot;NA&quot;</span>,<span class="st">&quot;#N/A&quot;</span>,<span class="st">&quot;&quot;</span>))</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(novelty_raw) <span class="ot">=</span> <span class="fu">gsub</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">.&quot;</span>,<span class="st">&quot;_&quot;</span>,<span class="fu">colnames</span>(novelty_raw))</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(novelty_raw) <span class="ot">=</span> <span class="fu">gsub</span>(<span class="st">&quot;^NoveltyPreference&quot;</span>,<span class="st">&quot;NPP_NoveltyPreference&quot;</span>,<span class="fu">colnames</span>(novelty_raw))</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(novelty_raw) <span class="ot">=</span> novelty_raw<span class="sc">$</span>Mouse_ID</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>DO_novelty <span class="ot">=</span> novelty_raw[,(<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> <span class="fu">grep</span>(<span class="st">&quot;^X&quot;</span>, <span class="fu">colnames</span>(novelty_raw)))]</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(<span class="at">list =</span> <span class="fu">c</span>(<span class="st">&quot;novelty_raw&quot;</span>))</span></code></pre></div>
+<p>Identifying the column IDs for the various paradigms.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Getting column names of novelty response data</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>OFA_cols <span class="ot">=</span> <span class="fu">colnames</span>(DO_novelty)[<span class="fu">grep</span>(<span class="st">&quot;^OFA&quot;</span>, <span class="fu">colnames</span>(DO_novelty))]</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>OFA_data_cols <span class="ot">=</span> OFA_cols[(<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> <span class="fu">which</span>(OFA_cols <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;OFA_date_of_test&quot;</span>,<span class="st">&quot;OFA_tester&quot;</span>)))]</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>LD_cols <span class="ot">=</span> <span class="fu">colnames</span>(DO_novelty)[<span class="fu">grep</span>(<span class="st">&quot;^LD&quot;</span>, <span class="fu">colnames</span>(DO_novelty))]</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>LD_data_cols <span class="ot">=</span> LD_cols[(<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> <span class="fu">which</span>(LD_cols <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;LD_date_of_test&quot;</span>,<span class="st">&quot;LD_tester&quot;</span>)))]</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>HB_cols <span class="ot">=</span> <span class="fu">colnames</span>(DO_novelty)[<span class="fu">grep</span>(<span class="st">&quot;^HB&quot;</span>, <span class="fu">colnames</span>(DO_novelty))]</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>HB_data_cols <span class="ot">=</span> HB_cols[(<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> <span class="fu">which</span>(HB_cols <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;HB_Mouse_ID&quot;</span>,<span class="st">&quot;HB_date_of_test&quot;</span>,<span class="st">&quot;HB_tester&quot;</span>)))]</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>NPP_cols <span class="ot">=</span> <span class="fu">colnames</span>(DO_novelty)[<span class="fu">grep</span>(<span class="st">&quot;^NPP&quot;</span>, <span class="fu">colnames</span>(DO_novelty))]</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>NPP_data_cols <span class="ot">=</span> NPP_cols[(<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> <span class="fu">which</span>(NPP_cols <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;NPP_date_of_test&quot;</span>,<span class="st">&quot;NPP_tester&quot;</span>)))]</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Getting numeric columns</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>DO_novelty_numeric_cols <span class="ot">=</span> <span class="fu">c</span>(OFA_data_cols, LD_data_cols, HB_data_cols, NPP_data_cols)</span></code></pre></div>
+</div>
+</div>
+<div id="preprocessing-data" class="section level3">
+<h3>Preprocessing data</h3>
+<div id="identifying-highly-correlated-novelty-response-data" class="section level4">
+<h4>Identifying highly correlated novelty response data</h4>
+<p>Identifying highly collinear novelty response columns.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>DO_novelty_collinear <span class="ot">=</span> <span class="fu">which</span>(<span class="fu">abs</span>(<span class="fu">cor</span>(DO_novelty[,DO_novelty_numeric_cols], <span class="at">use =</span> <span class="st">&quot;pairwise.complete.obs&quot;</span>)) <span class="sc">&gt;=</span> <span class="fl">0.95</span>, <span class="at">arr.ind =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>DO_novelty_collinear <span class="ot">=</span> DO_novelty_collinear[<span class="fu">which</span>(DO_novelty_collinear[,<span class="dv">1</span>] <span class="sc">&lt;</span> DO_novelty_collinear[,<span class="dv">2</span>]),]</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>DO_novelty_collinear <span class="ot">=</span> <span class="fu">data.frame</span>(<span class="at">ID_1 =</span> DO_novelty_numeric_cols[DO_novelty_collinear[,<span class="dv">1</span>]],</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">ID_2 =</span> DO_novelty_numeric_cols[DO_novelty_collinear[,<span class="dv">2</span>]],</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">cor =</span> <span class="fu">cor</span>(DO_novelty[,DO_novelty_numeric_cols], <span class="at">use =</span> <span class="st">&quot;pairwise.complete.obs&quot;</span>)[DO_novelty_collinear])</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>DO_novelty_collinear</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["ID_1"],"name":[1],"type":["chr"],"align":["left"]},{"label":["ID_2"],"name":[2],"type":["chr"],"align":["left"]},{"label":["cor"],"name":[3],"type":["dbl"],"align":["right"]}],"data":[{"1":"OFA_total_time_in_center","2":"OFA_total_distance_traveled_in_center","3":"0.9564870"},{"1":"OFA_pct_dist_center","2":"OFA_pct_time_center","3":"0.9716792"},{"1":"OFA_pct_dist_perimeter","2":"OFA_pct_time_perimeter","3":"0.9528946"},{"1":"LD_pct_distance_traveled_in_light","2":"LD_pct_ambulatory_time_in_light","3":"0.9653745"},{"1":"LD_pct_resting_time_in_light","2":"LD_pct_time_in_light","3":"0.9772431"},{"1":"LD_pct_distance_traveled_in_light","2":"LD_pct_ambulatory_Counts_in_light","3":"0.9756132"},{"1":"LD_pct_ambulatory_time_in_light","2":"LD_pct_ambulatory_Counts_in_light","3":"0.9677971"},{"1":"HB_Total_Entries","2":"HB_Repeat_Entries","3":"0.9966860"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<p>These highly collinear columns are not perfectly collinear.</p>
+</div>
+<div id="identifying-batch-effect-source" class="section level4">
+<h4>Identifying batch effect source</h4>
+<p>The history of this dataset includes an event that substantially changed the behavioral data collection paradigms. Consequently, there is a known batch effect between the data collected before the start of the CSNA and data collected after the start of the CSNA.</p>
+<p>One remaining question is whether the batch effect is an investigator effect or whether the batch effect is related to factors that changed systematically when the CSNA began. Because Troy (investigator ID: <code>TW</code>) and Tyler (investigator ID: <code>TAR</code>) worked together without differentiating themselves in the pre-center data, we refer to them in the pre-center data as <code>TRTW</code> (sometimes referred to as the portmanteu Troyler).</p>
+<p>There were a number of steps taken to standardize all behavioral procedures at the initiation of the CSNA. Stacey Sukhoff-Rizzo became the Behavioral Phenotyping Core PI. She made some tweaks to novelty response paradigms and initiated rigorous validation protocols for all investigators.</p>
+<p>Consequently, it makes sense to examine the sources of differences between Troy and Tyler before the CSNA began (<code>precenter</code>, examining data collected by <code>TRTW</code>) compared to after the CSNA began (<code>CSNA</code>, examining data collected by either <code>TAR</code> or <code>TW</code>).</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Getting Troyler IDs</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>TROY <span class="ot">=</span> <span class="st">&quot;TW&quot;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>TYLER <span class="ot">=</span> <span class="st">&quot;TAR&quot;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>TROYLER <span class="ot">=</span> <span class="st">&quot;TRTW&quot;</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>DO_novelty<span class="sc">$</span>OFA_troyler_group <span class="ot">=</span> <span class="fu">rep</span>(<span class="st">&quot;&quot;</span>, <span class="at">times =</span> <span class="fu">nrow</span>(DO_novelty))</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>DO_novelty<span class="sc">$</span>LD_troyler_group <span class="ot">=</span> DO_novelty<span class="sc">$</span>OFA_troyler_group</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>DO_novelty<span class="sc">$</span>HB_troyler_group <span class="ot">=</span> DO_novelty<span class="sc">$</span>OFA_troyler_group</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>DO_novelty<span class="sc">$</span>NPP_troyler_group <span class="ot">=</span> DO_novelty<span class="sc">$</span>OFA_troyler_group</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">c</span>(<span class="st">&quot;OFA&quot;</span>, <span class="st">&quot;LD&quot;</span>, <span class="st">&quot;HB&quot;</span>, <span class="st">&quot;NPP&quot;</span>)) {</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>  testers_col_i <span class="ot">=</span> <span class="fu">paste</span>(i, <span class="st">&quot;_tester&quot;</span>, <span class="at">sep=</span><span class="st">&quot;&quot;</span>)</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>  troyler_group_col_i <span class="ot">=</span> <span class="fu">paste</span>(i, <span class="st">&quot;_troyler_group&quot;</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>)</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  DO_novelty[,troyler_group_col_i] <span class="ot">=</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(DO_novelty[,testers_col_i]), <span class="cn">NA</span>, <span class="st">&quot;&quot;</span>)</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  DO_novelty[,troyler_group_col_i] <span class="ot">=</span> <span class="fu">ifelse</span>((DO_novelty[,testers_col_i] <span class="sc">%in%</span> <span class="fu">c</span>(TROY, TYLER, TROYLER)) <span class="sc">&amp;</span> </span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>                                                         (DO_novelty<span class="sc">$</span>Group <span class="sc">==</span> <span class="st">&quot;post_center&quot;</span>),</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>                                                         <span class="st">&quot;Troyler CSNA&quot;</span>, DO_novelty[,troyler_group_col_i])</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>  DO_novelty[,troyler_group_col_i] <span class="ot">=</span> <span class="fu">ifelse</span>((DO_novelty[,testers_col_i] <span class="sc">%in%</span> <span class="fu">c</span>(TROY, TYLER, TROYLER)) <span class="sc">&amp;</span> </span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>                                                         (DO_novelty<span class="sc">$</span>Group <span class="sc">==</span> <span class="st">&quot;pre_center&quot;</span>),</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>                                                         <span class="st">&quot;Troyler Pre-Center&quot;</span>, DO_novelty[,troyler_group_col_i])</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>  DO_novelty[,troyler_group_col_i] <span class="ot">=</span> <span class="fu">ifelse</span>((<span class="sc">!</span>(DO_novelty[,testers_col_i] <span class="sc">%in%</span> <span class="fu">c</span>(TROY, TYLER, TROYLER))) <span class="sc">&amp;</span> </span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>                                                         (DO_novelty<span class="sc">$</span>Group <span class="sc">==</span> <span class="st">&quot;post_center&quot;</span>),</span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>                                                         <span class="st">&quot;Others CSNA&quot;</span>, DO_novelty[,troyler_group_col_i])</span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>plots_order <span class="ot">=</span> <span class="fu">character</span>()</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>plots_groblist <span class="ot">=</span> <span class="fu">gList</span>()</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">c</span>(<span class="st">&quot;OFA&quot;</span>, <span class="st">&quot;LD&quot;</span>, <span class="st">&quot;HB&quot;</span>, <span class="st">&quot;NPP&quot;</span>)) {</span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a>  vars_i <span class="ot">=</span> <span class="fu">eval</span>(<span class="fu">parse</span>(<span class="at">text =</span> <span class="fu">paste0</span>(i, <span class="st">&quot;_data_cols&quot;</span>)))</span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> vars_i) {</span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a>    plots_order <span class="ot">=</span> <span class="fu">c</span>(plots_order, j)</span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a>    df_j <span class="ot">=</span> <span class="fu">data.frame</span>(<span class="at">var_x =</span> DO_novelty[,j],</span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a>                      <span class="at">group_var =</span> DO_novelty[,<span class="fu">paste0</span>(i,<span class="st">&quot;_troyler_group&quot;</span>)],</span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a>                      <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a>    df_j <span class="ot">=</span> df_j[<span class="fu">which</span>(df_j<span class="sc">$</span>group_var <span class="sc">!=</span> <span class="st">&quot;&quot;</span>),]</span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a>    csna_ranges_plot <span class="ot">=</span> <span class="fu">ggplot</span>(<span class="at">data =</span> df_j, <span class="fu">aes</span>(<span class="at">x =</span> var_x,</span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a>                                               <span class="at">fill =</span> group_var,</span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a>                                               <span class="at">color =</span> group_var)) <span class="sc">+</span></span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a>      <span class="fu">geom_density</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true" tabindex="-1"></a>      <span class="fu">geom_histogram</span>(<span class="fu">aes</span>(<span class="at">y =</span> ..density..), <span class="at">position=</span><span class="st">&quot;identity&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">bins =</span> <span class="dv">60</span>)</span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true" tabindex="-1"></a>    max_ranges_plot_constant <span class="ot">=</span> <span class="fu">max</span>(<span class="fu">ggplot_build</span>(csna_ranges_plot)<span class="sc">$</span>layout<span class="sc">$</span>panel_scales_y[[<span class="dv">1</span>]]<span class="sc">$</span>range<span class="sc">$</span>range)</span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true" tabindex="-1"></a>    csna_ranges_plot <span class="ot">=</span> csna_ranges_plot <span class="sc">+</span></span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true" tabindex="-1"></a>      <span class="fu">geom_boxplot</span>(<span class="fu">aes</span>(<span class="at">y =</span> (<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> (max_ranges_plot_constant <span class="sc">/</span> <span class="fl">7.227529</span>))), </span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true" tabindex="-1"></a>                   <span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">width =</span> (max_ranges_plot_constant <span class="sc">/</span> <span class="fl">7.227529</span>)) <span class="sc">+</span></span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#FFCC33&quot;</span>,<span class="st">&quot;#66CC66&quot;</span>,<span class="st">&quot;#3399CC&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#FFCC33&quot;</span>,<span class="st">&quot;#66CC66&quot;</span>,<span class="st">&quot;#3399CC&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb12-49"><a href="#cb12-49" aria-hidden="true" tabindex="-1"></a>      <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb12-50"><a href="#cb12-50" aria-hidden="true" tabindex="-1"></a>      <span class="fu">labs</span>(<span class="at">color =</span> <span class="st">&quot;Group&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;Group&quot;</span>) <span class="sc">+</span></span>
+<span id="cb12-51"><a href="#cb12-51" aria-hidden="true" tabindex="-1"></a>      <span class="fu">ylab</span>(<span class="st">&quot;Density&quot;</span>) <span class="sc">+</span></span>
+<span id="cb12-52"><a href="#cb12-52" aria-hidden="true" tabindex="-1"></a>      <span class="fu">xlab</span>(j) <span class="sc">+</span></span>
+<span id="cb12-53"><a href="#cb12-53" aria-hidden="true" tabindex="-1"></a>      pubtheme_bw <span class="sc">+</span></span>
+<span id="cb12-54"><a href="#cb12-54" aria-hidden="true" tabindex="-1"></a>      <span class="fu">theme</span>(<span class="at">panel.grid =</span> <span class="fu">element_line</span>(<span class="at">color =</span> <span class="st">&quot;#FFFFFF&quot;</span>), </span>
+<span id="cb12-55"><a href="#cb12-55" aria-hidden="true" tabindex="-1"></a>            <span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>)</span>
+<span id="cb12-56"><a href="#cb12-56" aria-hidden="true" tabindex="-1"></a>    plots_groblist[[j]] <span class="ot">=</span> <span class="fu">as.grob</span>(csna_ranges_plot)</span>
+<span id="cb12-57"><a href="#cb12-57" aria-hidden="true" tabindex="-1"></a>    <span class="fu">assign</span>(<span class="fu">paste0</span>(j,<span class="st">&quot;_grob&quot;</span>), <span class="fu">as.grob</span>(csna_ranges_plot))</span>
+<span id="cb12-58"><a href="#cb12-58" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-59"><a href="#cb12-59" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-60"><a href="#cb12-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-61"><a href="#cb12-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-62"><a href="#cb12-62" aria-hidden="true" tabindex="-1"></a>csna_ranges_plot <span class="ot">=</span> <span class="fu">ggplot</span>(<span class="at">data =</span> df_j, <span class="fu">aes</span>(<span class="at">x =</span> var_x,</span>
+<span id="cb12-63"><a href="#cb12-63" aria-hidden="true" tabindex="-1"></a>                                           <span class="at">fill =</span> group_var,</span>
+<span id="cb12-64"><a href="#cb12-64" aria-hidden="true" tabindex="-1"></a>                                           <span class="at">color =</span> group_var)) <span class="sc">+</span></span>
+<span id="cb12-65"><a href="#cb12-65" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb12-66"><a href="#cb12-66" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="fu">aes</span>(<span class="at">y =</span> ..density..), <span class="at">position=</span><span class="st">&quot;identity&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">bins =</span> <span class="dv">60</span>)</span>
+<span id="cb12-67"><a href="#cb12-67" aria-hidden="true" tabindex="-1"></a>max_ranges_plot_constant <span class="ot">=</span> <span class="fu">max</span>(<span class="fu">ggplot_build</span>(csna_ranges_plot)<span class="sc">$</span>layout<span class="sc">$</span>panel_scales_y[[<span class="dv">1</span>]]<span class="sc">$</span>range<span class="sc">$</span>range)</span>
+<span id="cb12-68"><a href="#cb12-68" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-69"><a href="#cb12-69" aria-hidden="true" tabindex="-1"></a>csna_ranges_plot <span class="ot">=</span> csna_ranges_plot <span class="sc">+</span></span>
+<span id="cb12-70"><a href="#cb12-70" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="fu">aes</span>(<span class="at">y =</span> (<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> (max_ranges_plot_constant <span class="sc">/</span> <span class="fl">7.227529</span>))), </span>
+<span id="cb12-71"><a href="#cb12-71" aria-hidden="true" tabindex="-1"></a>               <span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">width =</span> (max_ranges_plot_constant <span class="sc">/</span> <span class="fl">7.227529</span>)) <span class="sc">+</span></span>
+<span id="cb12-72"><a href="#cb12-72" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#FFCC33&quot;</span>,<span class="st">&quot;#66CC66&quot;</span>,<span class="st">&quot;#3399CC&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb12-73"><a href="#cb12-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#FFCC33&quot;</span>,<span class="st">&quot;#66CC66&quot;</span>,<span class="st">&quot;#3399CC&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb12-74"><a href="#cb12-74" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb12-75"><a href="#cb12-75" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">color =</span> <span class="st">&quot;Group&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;Group&quot;</span>) <span class="sc">+</span></span>
+<span id="cb12-76"><a href="#cb12-76" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Density&quot;</span>) <span class="sc">+</span></span>
+<span id="cb12-77"><a href="#cb12-77" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(j) <span class="sc">+</span></span>
+<span id="cb12-78"><a href="#cb12-78" aria-hidden="true" tabindex="-1"></a>  pubtheme_bw <span class="sc">+</span></span>
+<span id="cb12-79"><a href="#cb12-79" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">panel.grid =</span> <span class="fu">element_line</span>(<span class="at">color =</span> <span class="st">&quot;#FFFFFF&quot;</span>))</span>
+<span id="cb12-80"><a href="#cb12-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-81"><a href="#cb12-81" aria-hidden="true" tabindex="-1"></a>legend_grob <span class="ot">=</span> <span class="fu">as.grob</span>(<span class="fu">get_legend</span>(csna_ranges_plot)) </span>
+<span id="cb12-82"><a href="#cb12-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-83"><a href="#cb12-83" aria-hidden="true" tabindex="-1"></a>plots_order <span class="ot">=</span> <span class="fu">paste0</span>(plots_order, <span class="st">&quot;_grob&quot;</span>)</span>
+<span id="cb12-84"><a href="#cb12-84" aria-hidden="true" tabindex="-1"></a>plots_order <span class="ot">=</span> <span class="fu">c</span>(plots_order, <span class="st">&quot;legend_grob&quot;</span>)</span>
+<span id="cb12-85"><a href="#cb12-85" aria-hidden="true" tabindex="-1"></a><span class="co"># plots_order = paste(plots_order, sep = &quot;&quot;, collapse = &quot;, &quot;)</span></span>
+<span id="cb12-86"><a href="#cb12-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-87"><a href="#cb12-87" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(OFA_total_distance_traveled_grob, OFA_distance_traveled_slope_grob, OFA_total_time_in_corner_grob,</span>
+<span id="cb12-88"><a href="#cb12-88" aria-hidden="true" tabindex="-1"></a>             OFA_total_time_in_perimeter_grob, OFA_total_time_in_center_grob, OFA_total_ambulatory_time_grob,</span>
+<span id="cb12-89"><a href="#cb12-89" aria-hidden="true" tabindex="-1"></a>             OFA_total_resting_time_in_corner_grob, OFA_total_resting_time_in_perimeter_grob, OFA_total_resting_time_in_center_grob,</span>
+<span id="cb12-90"><a href="#cb12-90" aria-hidden="true" tabindex="-1"></a>             OFA_total_resting_time_grob, OFA_total_distance_traveled_in_perimeter_grob, OFA_total_distance_traveled_in_center_grob,</span>
+<span id="cb12-91"><a href="#cb12-91" aria-hidden="true" tabindex="-1"></a>             OFA_total_distance_traveled_in_corner_grob, OFA_pct_dist_center_grob, OFA_pct_dist_corner_grob,</span>
+<span id="cb12-92"><a href="#cb12-92" aria-hidden="true" tabindex="-1"></a>             OFA_pct_dist_perimeter_grob, OFA_pct_time_center_grob, OFA_pct_time_corner_grob,</span>
+<span id="cb12-93"><a href="#cb12-93" aria-hidden="true" tabindex="-1"></a>             OFA_pct_time_perimeter_grob, OFA_pct_resting_time_center_grob, OFA_pct_resting_time_corner_grob,</span>
+<span id="cb12-94"><a href="#cb12-94" aria-hidden="true" tabindex="-1"></a>             OFA_pct_resting_time_perimeter_grob, OFA_distance_traveled_first_five_grob, OFA_distance_traveled_last_five_grob,</span>
+<span id="cb12-95"><a href="#cb12-95" aria-hidden="true" tabindex="-1"></a>             LD_pct_distance_traveled_in_light_grob, LD_pct_ambulatory_time_in_light_grob, LD_pct_resting_time_in_light_grob,</span>
+<span id="cb12-96"><a href="#cb12-96" aria-hidden="true" tabindex="-1"></a>             LD_pct_time_in_light_grob, LD_pct_ambulatory_Counts_in_light_grob, LD_total_transitions_grob,</span>
+<span id="cb12-97"><a href="#cb12-97" aria-hidden="true" tabindex="-1"></a>             HB_Total_Entries_grob, HB_Novel_Entries_grob, HB_Repeat_Entries_grob,</span>
+<span id="cb12-98"><a href="#cb12-98" aria-hidden="true" tabindex="-1"></a>             NPP_NoveltyPreference_ZoneTime_WhiteVsBlack_Total_grob, NPP_NoveltyPreference_ZoneTime_GreyWhiteBlack_Total_grob, legend_grob,</span>
+<span id="cb12-99"><a href="#cb12-99" aria-hidden="true" tabindex="-1"></a>             <span class="at">nrow =</span> <span class="dv">6</span>, <span class="at">ncol =</span> <span class="dv">6</span>)</span></code></pre></div>
+<p><img src="figure/11_DO_novelty_response_summarize.Rmd/unnamed-chunk-6-1.png" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-6-1">
+Past versions of unnamed-chunk-6-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-6-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+32fe7e2
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-12-30
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>With the except ion of the NPP dataset, where there are too few <code>TAR</code> or <code>TW</code> observations in CSNA to state the direction of the effect with certainty, the data demonstrate that where differences exist between precenter and CSNA data, they are accounted for not by the investigator (Troyler) but by the center status. We therefore assume that the difference between <code>precenter</code> and <code>CSNA</code> data is a batch and not a tester effect for analysis.</p>
+<p><strong>Note that the variable <code>HB_Novel_Entries</code> appears very different in pre-center vs CSNA datasets. In pre-center data, this is likely due to a 20 minute trial length, which is longer than the 10 minute trial length of CSNA data. This variable should not be used to fit models including both pre-center and CSNA datasets.</strong></p>
+</div>
+<div id="pipeline-for-novelty-response-data-transformation" class="section level4">
+<h4>Pipeline for Novelty Response Data Transformation</h4>
+<p>The data need transformation prior to use in correlational/linear modeling analysis. Transformation will:</p>
+<ol style="list-style-type: decimal">
+<li>Account for the <code>precenter</code> vs <code>CSNA</code> batch effect.</li>
+<li>Coerce any non-normally distributed data into a normal distribution adequate for linear modeling analysis.</li>
+<li>Differentiate <code>HB_Novel_Entries</code> data from the two datasets.</li>
+</ol>
+</div>
+<div id="transforming-data" class="section level4">
+<h4>Transforming Data</h4>
+<p>Applying the rank-normal transformation separately to <code>pre-center</code> and <code>CSNA</code> data for all variables. Adding notations of raw onto the untransformed data. Placing pre-center and CSNA a label to <code>HB_Novel_Entries</code> batch-adjusted variables in separate columns.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>DO_novelty <span class="ot">=</span> DO_novelty[,<span class="fu">grep</span>(<span class="st">&quot;troyler_group$&quot;</span>, <span class="fu">colnames</span>(DO_novelty), <span class="at">invert =</span> <span class="cn">TRUE</span>)]</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>CSNA_rows <span class="ot">=</span> <span class="fu">which</span>(DO_novelty<span class="sc">$</span>Group <span class="sc">==</span> <span class="st">&quot;post_center&quot;</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>precenter_rows <span class="ot">=</span> <span class="fu">which</span>(DO_novelty<span class="sc">$</span>Group <span class="sc">==</span> <span class="st">&quot;pre_center&quot;</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>split_precenter_postcenter <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;HB_Novel_Entries&quot;</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> DO_novelty_numeric_cols) {</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (i <span class="sc">%in%</span> split_precenter_postcenter) {</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    DO_novelty[,<span class="fu">paste0</span>(i,<span class="st">&quot;_precenter_ranknorm&quot;</span>)] <span class="ot">=</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="fu">nrow</span>(DO_novelty))</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    DO_novelty[precenter_rows,<span class="fu">paste0</span>(i,<span class="st">&quot;_precenter_ranknorm&quot;</span>)] <span class="ot">=</span> <span class="fu">norm_rank_transform</span>(DO_novelty[precenter_rows,i])</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    DO_novelty[,<span class="fu">paste0</span>(i,<span class="st">&quot;_CSNA_ranknorm&quot;</span>)] <span class="ot">=</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="fu">nrow</span>(DO_novelty))</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    DO_novelty[CSNA_rows,<span class="fu">paste0</span>(i,<span class="st">&quot;_CSNA_ranknorm&quot;</span>)] <span class="ot">=</span> <span class="fu">norm_rank_transform</span>(DO_novelty[CSNA_rows,i])</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">colnames</span>(DO_novelty)[<span class="fu">which</span>(<span class="fu">colnames</span>(DO_novelty) <span class="sc">==</span> i)] <span class="ot">=</span> <span class="fu">paste0</span>(i,<span class="st">&quot;_raw&quot;</span>)</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    DO_novelty[,<span class="fu">paste0</span>(i,<span class="st">&quot;_batch_ranknorm&quot;</span>)] <span class="ot">=</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="fu">nrow</span>(DO_novelty))</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>    DO_novelty[CSNA_rows,<span class="fu">paste0</span>(i,<span class="st">&quot;_batch_ranknorm&quot;</span>)] <span class="ot">=</span> <span class="fu">norm_rank_transform</span>(DO_novelty[CSNA_rows,i])</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>    DO_novelty[precenter_rows,<span class="fu">paste0</span>(i,<span class="st">&quot;_batch_ranknorm&quot;</span>)] <span class="ot">=</span> <span class="fu">norm_rank_transform</span>(DO_novelty[precenter_rows,i])</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">colnames</span>(DO_novelty)[<span class="fu">which</span>(<span class="fu">colnames</span>(DO_novelty) <span class="sc">==</span> i)] <span class="ot">=</span> <span class="fu">paste0</span>(i,<span class="st">&quot;_raw&quot;</span>)</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+</div>
+<div id="output" class="section level3">
+<h3>Output</h3>
+<p>Saving the DO novelty response data.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(DO_novelty, <span class="at">file =</span> <span class="st">&quot;./data/DO_novelty_response_data.RDS&quot;</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(DO_novelty, <span class="at">file =</span> <span class="st">&quot;./data/DO_novelty_response_data_with_transform.csv&quot;</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>, <span class="at">col.names =</span> <span class="cn">TRUE</span>, <span class="at">quote =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<pre><code>Warning in write.csv(DO_novelty, file = &quot;./data/
+DO_novelty_response_data_with_transform.csv&quot;, : attempt to set &#39;col.names&#39;
+ignored</code></pre>
+<p>The output data are saved in <code>./data/</code>.</p>
+</div>
+<div id="document-control" class="section level3">
+<h3>Document Control</h3>
+<p>This document was prepared using RMarkdown in RStudio.</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
+<pre><code>R version 4.1.2 (2021-11-01)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 20.04.3 LTS
+
+Matrix products: default
+BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.8.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=C             
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] grid      stats     graphics  grDevices utils     datasets  methods  
+[8] base     
+
+other attached packages:
+ [1] nlme_3.1-153       DiagrammeR_1.0.6.1 ggplotify_0.1.0    gridExtra_2.3     
+ [5] ggplot2_3.3.5      cowplot_1.1.1      lubridate_1.8.0    tidyr_1.1.4       
+ [9] readxl_1.3.1       MASS_7.3-54       
+
+loaded via a namespace (and not attached):
+ [1] tidyselect_1.1.1   xfun_0.28          purrr_0.3.4        lattice_0.20-45   
+ [5] colorspace_2.0-2   vctrs_0.3.8        generics_0.1.1     htmltools_0.5.2   
+ [9] yaml_2.2.1         utf8_1.2.2         gridGraphics_0.5-1 rlang_0.4.12      
+[13] jquerylib_0.1.4    later_1.3.0        pillar_1.6.4       glue_1.5.1        
+[17] withr_2.4.3        DBI_1.1.1          RColorBrewer_1.1-2 lifecycle_1.0.1   
+[21] stringr_1.4.0      munsell_0.5.0      gtable_0.3.0       workflowr_1.6.2   
+[25] cellranger_1.1.0   visNetwork_2.1.0   htmlwidgets_1.5.4  evaluate_0.14     
+[29] labeling_0.4.2     knitr_1.36         fastmap_1.1.0      httpuv_1.6.3      
+[33] fansi_0.5.0        highr_0.9          Rcpp_1.0.7         promises_1.2.0.1  
+[37] scales_1.1.1       jsonlite_1.7.2     farver_2.1.0       fs_1.5.1          
+[41] digest_0.6.29      stringi_1.7.6      dplyr_1.0.7        rprojroot_2.0.2   
+[45] tools_4.1.2        yulab.utils_0.0.4  magrittr_2.0.1     tibble_3.1.6      
+[49] crayon_1.4.2       whisker_0.4        pkgconfig_2.0.3    ellipsis_0.3.2    
+[53] assertthat_0.2.1   rmarkdown_2.11     R6_2.5.1           git2r_0.29.0      
+[57] compiler_4.1.2    </code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+http://docs.mathjax.org/en/latest/configuration.html.  This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

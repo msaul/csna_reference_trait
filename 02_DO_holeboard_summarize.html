@@ -1,0 +1,2046 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Michael C. Saul (michael.saul [at] jax.org)" />
+
+
+<title>DO Drug-Naïve Hole Board Behavior Summarization</title>
+
+<script src="site_libs/header-attrs-2.7/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/readable.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/master/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+.sourceCode .row {
+  width: 100%;
+}
+.sourceCode {
+  overflow-x: auto;
+}
+.code-folding-btn {
+  margin-right: -30px;
+}
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-sm-12 col-md-4 col-lg-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-sm-12 col-md-8 col-lg-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Diversity Outbred Reference Traits Analysis</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">DO Drug-Naïve Hole Board Behavior Summarization</h1>
+<h4 class="author">Michael C. Saul (michael.saul [at] jax.org)</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2021-12-06
+</p>
+<p>
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>rta/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+</p>
+<p>
+This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/jdblischak/workflowr">workflowr</a> (version 1.6.2). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200501code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20200501)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200501code" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200501)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongc3515b3"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> c3515b3 </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrongc3515b3" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version c3515b3. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rproj.user/
+    Ignored:    code/.Rapp.history
+    Ignored:    data/.Rhistory
+    Ignored:    data/RDS/
+    Ignored:    run/
+
+Untracked files:
+    Untracked:  LICENSE
+    Untracked:  Untitled.R
+    Untracked:  analysis/17_mapping_interpretation_old.Rmd
+    Untracked:  analysis/20_predict_acquisition_from_novelty.Rmd
+    Untracked:  analysis/21_DO_elasticnet_correlation.Rmd
+    Untracked:  analysis/Gapdh_msa.tex
+    Untracked:  analysis/Pcdha6_msa.tex
+    Untracked:  analysis/temp.txt
+    Untracked:  code/DO_eQTL_perms.R
+    Untracked:  code/DO_eQTL_score_calc.R
+    Untracked:  code/STAR_RSEM_416.sh
+    Untracked:  code/eQTL_plotting_DO_striatum_416.R
+    Untracked:  code/ggplot_pub_themes.R
+    Untracked:  data/20_elastic_mv_results.csv
+    Untracked:  data/20_elasticnet_predictions.RDS
+    Untracked:  data/DO_416_DGEList.RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 3).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 4).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered.RDS
+    Untracked:  data/DO_416_ERCC_DGEList.RDS
+    Untracked:  data/DO_416_ERCC_cpm.RDS
+    Untracked:  data/DO_416_normrt.RDS
+    Untracked:  data/DO_416_pheno.RDS
+    Untracked:  data/DO_416_pheno_allgenes.RDS
+    Untracked:  data/DO_416_voom (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom.RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom_allgenes.RDS
+    Untracked:  data/DO_416_voom_cpresiduals.RDS
+    Untracked:  data/DO_AQ_active_CoV_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_lever_ratio_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_mean_inf_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_rate_toptable_annotated.RDS
+    Untracked:  data/DO_IVSA_acquisition_cancor_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_glm.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df.RDS
+    Untracked:  data/DO_IVSA_data.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_ALL.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_AQ.RDS
+    Untracked:  data/DO_IVSA_novelty_data.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_old.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_a2_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a4_male_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a5_female_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_raw_data.RDS
+    Untracked:  data/DO_IVSA_transformed_data.RDS
+    Untracked:  data/DO_LIMS_data.RDS
+    Untracked:  data/DO_RTG_a1_new.qtl.RData
+    Untracked:  data/DO_RTG_a1_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a1_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a2_new.qtl.RData
+    Untracked:  data/DO_RTG_a2_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a2_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a3_new.qtl.RData
+    Untracked:  data/DO_RTG_a3_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_01.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_02.RData
+    Untracked:  data/DO_RTG_a4_new.qtl.RData
+    Untracked:  data/DO_RTG_a5_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_project_df_for_mapping.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_2020-11-06.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_a2.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_sexspecific.RDS
+    Untracked:  data/DO_demographic_data_df.RDS
+    Untracked:  data/DO_eigengene_significance.RDS
+    Untracked:  data/DO_eigengenes.RDS
+    Untracked:  data/DO_highcor_cpresiduals_datatable.RDS
+    Untracked:  data/DO_holeboard_data_df.RDS
+    Untracked:  data/DO_holeboard_summarized.RDS
+    Untracked:  data/DO_lightdark_data_df.RDS
+    Untracked:  data/DO_mQTL_peaks.RDS
+    Untracked:  data/DO_mQTL_scan1s.RDS
+    Untracked:  data/DO_module_membership.RDS
+    Untracked:  data/DO_novelplace_data_df.RDS
+    Untracked:  data/DO_novelty_data.RDS
+    Untracked:  data/DO_novelty_response_data.RDS
+    Untracked:  data/DO_novelty_response_data_for_RTG.RDS
+    Untracked:  data/DO_novelty_response_data_with_transform.csv
+    Untracked:  data/DO_openfield_data_df.RDS
+    Untracked:  data/DO_paraclique_data.el
+    Untracked:  data/DO_paraclique_eigengenes.RDS
+    Untracked:  data/DO_paracliques.RDS
+    Untracked:  data/DO_paracliques_significance.RDS
+    Untracked:  data/DO_ploidy_calls.RDS
+    Untracked:  data/DO_pmap.RDS
+    Untracked:  data/DO_pvalue_histograms.RData
+    Untracked:  data/DO_rtg_a1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a3_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m3_toptable_annotated.RDS
+    Untracked:  data/DO_str_2016_eQTL.RData
+    Untracked:  data/DO_str_2016_gm4qtl2.zip
+    Untracked:  data/DO_str_2016_gm4qtl2_intensities.fst
+    Untracked:  data/DO_voom_cpresiduals_NArm.RDS
+    Untracked:  data/DO_wgcna.RDS
+    Untracked:  data/IVSA_RTG_a3_blup.pdf
+    Untracked:  data/IVSA_h2_2019-11-18.tsv
+    Untracked:  data/IVSA_metadata_sheet.RDS
+    Untracked:  data/ME16_edges.tsv
+    Untracked:  data/Mus_musculus.GRCm38.94.parsed.RDS
+    Untracked:  data/Paraclique_19_MF_AMIGO.txt
+    Untracked:  data/RTG_QTL_peaks.RDS
+    Untracked:  data/RTG_figure.RDS
+    Untracked:  data/SENS_RTG/
+    Untracked:  data/Tyr2_genotypes.RDS
+    Untracked:  data/Tyr_genotypes.RDS
+    Untracked:  data/blup_chr7_DO_RTG_a3.RDS
+    Untracked:  data/cc_variants/
+    Untracked:  data/chr18_QTL_results.RDS
+    Untracked:  data/chr4_QTL_results.RDS
+    Untracked:  data/cis/
+    Untracked:  data/eQTL_annotated_peaks.RDS
+    Untracked:  data/eQTL_plots.RData
+    Untracked:  data/figures/
+    Untracked:  data/founders_key/
+    Untracked:  data/gigamuga/
+    Untracked:  data/gwas/
+    Untracked:  data/info/
+    Untracked:  data/m2G.a2.RTG.chr4snp.RData
+    Untracked:  data/mapping_from_hao/
+    Untracked:  data/perms/
+    Untracked:  data/qtl2/
+    Untracked:  data/raw/
+    Untracked:  data/resources/
+    Untracked:  data/tads_loops/
+    Untracked:  data/transcripts/
+    Untracked:  data/variants/
+    Untracked:  logs/
+    Untracked:  new_RTG_a3.jpeg
+    Untracked:  output/RTG_out/
+    Untracked:  output/docs_backup_2020-07-30.tar.gz
+    Untracked:  output/elastic_net_out/
+    Untracked:  singularity/
+    Untracked:  tmp/
+    Untracked:  var/
+
+Unstaged changes:
+    Deleted:    .Rprofile
+    Modified:   .gitignore
+    Modified:   README.md
+    Modified:   analysis/17_mapping_interpretation.Rmd
+    Modified:   analysis/_site.yml
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were made to the R Markdown (<code>analysis/02_DO_holeboard_summarize.Rmd</code>) and HTML (<code>docs/02_DO_holeboard_summarize.html</code>) files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view the files as they were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+c3515b3
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+<td>
+Recommitting holeboard data with slightly different documentation
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+ec3b9f5
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+fd62b82
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+<td>
+Recommitting for Sumner
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Rolling back to working version.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+56ca4b6
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+All files commit
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+0e1a910
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+ef41b9a
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Referencing former file name before leading left-justified numbers
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<div id="motivation" class="section level2">
+<h2>Motivation</h2>
+<div id="purpose-of-analysis" class="section level3">
+<h3>Purpose of analysis</h3>
+<p>This analysis is to import raw hole board summary files from early data, filter them, and summarize them as data frame.</p>
+</div>
+</div>
+</div>
+<div id="analysis" class="section level1">
+<h1>Analysis</h1>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<div id="r-libraries" class="section level3">
+<h3>R libraries</h3>
+<p>Calling R libraries necessary for this analysis.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;readxl&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;ggplot2&quot;</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;lubridate&quot;</span>)</span></code></pre></div>
+<pre><code>
+Attaching package: &#39;lubridate&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:base&#39;:
+
+    date, intersect, setdiff, union</code></pre>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;MASS&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="data-import" class="section level1">
+<h1>Data Import</h1>
+<div id="importing-data" class="section level2">
+<h2>Importing data</h2>
+<div id="importing-basic-mouse-demographic-data" class="section level3">
+<h3>Importing basic mouse demographic data</h3>
+<p>Importing basic demographic data.</p>
+<p>The md5 checksum of the input file (<code>DO_demographic_data_df.RDS</code>) is: <code>3dca8fe2a9452557e78d87d839784cfc</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Reading demographic data</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>DO_demodata <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_demographic_data_df.RDS&quot;</span>)</span></code></pre></div>
+<p>These are the measures used, and they are already summarized as a data frame.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Measure Name</th>
+<th>Measure Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Strain</code></td>
+<td>Mouse strain used in in study</td>
+</tr>
+<tr class="even">
+<td><code>DOB</code></td>
+<td>Mouse date of birth</td>
+</tr>
+<tr class="odd">
+<td><code>Sex</code></td>
+<td>Sex of mouse</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="importing-hole-board-data" class="section level3">
+<h3>Importing hole board data</h3>
+<p>Importing and cleaning up DO hole board data.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Hole board data have non-uniquely mappable data. Excluding those data.</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>DO_holeboard_files <span class="ot">=</span> <span class="fu">list.files</span>(<span class="at">path =</span> <span class="st">&quot;./data/raw/HB_DATA&quot;</span>, <span class="at">pattern =</span> <span class="st">&quot;Summary$&quot;</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>lengths <span class="ot">=</span> <span class="fu">c</span>()</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(DO_holeboard_files)) {</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  file_i <span class="ot">=</span> DO_holeboard_files[i]</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  lines_i <span class="ot">=</span> <span class="fu">readLines</span>(<span class="fu">paste</span>(<span class="st">&quot;./data/raw/HB_DATA/&quot;</span>,file_i,<span class="at">sep=</span><span class="st">&quot;&quot;</span>))</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  lengths <span class="ot">=</span> <span class="fu">c</span>(lengths, <span class="fu">length</span>(lines_i))</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(lengths) <span class="ot">=</span> DO_holeboard_files</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(lengths)</span></code></pre></div>
+<pre><code>lengths
+ 66  69  89  91  92  93 104 158 173 195 
+  5   3   1   5 385   7  65  10   6   1 </code></pre>
+<p>There are various lengths of the hole board data. Looking at files of particular lengths to get an idea. 92 seems to be the most frequent length. Looking at a 92 length sample.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">readLines</span>(<span class="fu">paste</span>(<span class="st">&quot;./data/raw/HB_DATA/&quot;</span>,<span class="fu">names</span>(lengths[<span class="fu">which</span>(lengths <span class="sc">==</span> <span class="dv">92</span>)][<span class="dv">1</span>]),<span class="at">sep=</span><span class="st">&quot;&quot;</span>))</span></code></pre></div>
+<pre><code> [1] &quot;&quot;                                                                                                                   
+ [2] &quot;&quot;                                                                                                                   
+ [3] &quot;Printed : 01/27/2016 10:28:45&quot;                                                                                      
+ [4] &quot;&quot;                                                                                                                   
+ [5] &quot;                               Activity Summary, 6.02&quot;                                                              
+ [6] &quot;                               ================&quot;                                                                    
+ [7] &quot;&quot;                                                                                                                   
+ [8] &quot;Experiment Title            : DO holeboard&quot;                                                                         
+ [9] &quot;Experiment Comment          :&quot;                                                                                      
+[10] &quot;Resolution (ms)             : 40&quot;                                                                                   
+[11] &quot;Box Size                    : 3&quot;                                                                                    
+[12] &quot;Resting Delay (ms)          : 1000&quot;                                                                                 
+[13] &quot;Ambulatory Trigger          : 1&quot;                                                                                    
+[14] &quot;Session Type                : C&quot;                                                                                    
+[15] &quot;Session Time (min)          : 20&quot;                                                                                   
+[16] &quot;Actual Run Time             : 000:20:00.00&quot;                                                                         
+[17] &quot;Data Save Interval (sec)    : 300&quot;                                                                                  
+[18] &quot;Start on Animal Entry       : Yes&quot;                                                                                  
+[19] &quot;&quot;                                                                                                                   
+[20] &quot;Raw Filename                : 01272016.B0&quot;                                                                          
+[21] &quot;Chamber Number              : 1&quot;                                                                                    
+[22] &quot;Chamber Type                : ENV-515-16&quot;                                                                           
+[23] &quot;Units                       : Cm&quot;                                                                                   
+[24] &quot;&quot;                                                                                                                   
+[25] &quot;Hole Board Installed        : Yes&quot;                                                                                  
+[26] &quot;Terminate on Task Completion: No&quot;                                                                                   
+[27] &quot;Hole Board Strips Installed : Yes&quot;                                                                                  
+[28] &quot;Task Holes                  : 1, 2, 3, 4, 5, 6, 7, 8, 9,&quot;                                                           
+[29] &quot;                              10, 11, 12, 13, 14, 15, 16&quot;                                                           
+[30] &quot;Session Comment             :&quot;                                                                                      
+[31] &quot;Subject ID                  : 7579                     &quot;                                                            
+[32] &quot;Experiment ID               : DO 1-27-16               &quot;                                                            
+[33] &quot;Group ID                    : 3-1                      &quot;                                                            
+[34] &quot;Session No                  : 1&quot;                                                                                    
+[35] &quot;Data Filename               : Subject_7579_Group_3-1_Experiment_DO1-27-16.Summary&quot;                                  
+[36] &quot;&quot;                                                                                                                   
+[37] &quot;Start Date                  : 1/27/2016 &quot;                                                                           
+[38] &quot;Start Time                  : 10:07:03&quot;                                                                             
+[39] &quot;&quot;                                                                                                                   
+[40] &quot;Detail Reporting Mode       : Relative&quot;                                                                             
+[41] &quot;&quot;                                                                                                                   
+[42] &quot;Dist.   Time         Amb.   Time         Ster.  Time         Vert.  Vert.        Session&quot;                           
+[43] &quot;Trav.   Amb.         Cnts.  Ster.        Cnts.  Rest.        Cnts.  Time         Time&quot;                              
+[44] &quot;======= ============ ====== ============ ====== ============ ====== ============ ============&quot;                      
+[45] &quot;2568.88 000:02:14.36   1341 000:00:22.44    388 000:01:50.12      0 000:00:00.00 000:05:00.00&quot;                      
+[46] &quot;1863.97 000:01:47.72   1023 000:00:23.32    393 000:02:01.48      0 000:00:00.00 000:10:00.00&quot;                      
+[47] &quot;1377.30 000:01:16.40    687 000:00:24.60    395 000:02:31.88      0 000:00:00.00 000:15:00.00&quot;                      
+[48] &quot;1191.68 000:00:58.16    558 000:00:17.56    283 000:01:45.56      0 000:00:00.00 000:20:00.00&quot;                      
+[49] &quot;&quot;                                                                                                                   
+[50] &quot;Jump    Jump         Average    Ambulatory Session&quot;                                                                 
+[51] &quot;Counts  Time         Velocity   Episodes   Time&quot;                                                                    
+[52] &quot;======= ============ ========== ========== ============&quot;                                                            
+[53] &quot;    113 000:00:33.08      43.13         66 000:05:00.00&quot;                                                            
+[54] &quot;    137 000:00:46.88      34.75         66 000:10:00.00&quot;                                                            
+[55] &quot;    107 000:00:47.36      51.86         61 000:15:00.00&quot;                                                            
+[56] &quot;     64 000:01:59.08      46.53         39 000:20:00.00&quot;                                                            
+[57] &quot;&quot;                                                                                                                   
+[58] &quot;===================================================================================================================&quot;
+[59] &quot;&quot;                                                                                                                   
+[60] &quot;Distance Traveled   :  7001.84&quot;                                                                                     
+[61] &quot;Time Ambulatory     :000:06:16.64&quot;                                                                                  
+[62] &quot;Ambulatory Count    :        3609&quot;                                                                                  
+[63] &quot;Time Stereotypic    :000:01:27.92&quot;                                                                                  
+[64] &quot;Stereotypic Count   :        1459&quot;                                                                                  
+[65] &quot;Time Resting        :000:08:09.04&quot;                                                                                  
+[66] &quot;Vertical Count      :           0&quot;                                                                                  
+[67] &quot;Time Vertical       :000:00:00.00&quot;                                                                                  
+[68] &quot;Jump Count          :         421&quot;                                                                                  
+[69] &quot;Time Jumping        :000:04:06.40&quot;                                                                                  
+[70] &quot;Average Velocity    :    43.61&quot;                                                                                     
+[71] &quot;Ambulatory Episodes :         232&quot;                                                                                  
+[72] &quot;&quot;                                                                                                                   
+[73] &quot;Total Session Time    :       000:20:00.00&quot;                                                                         
+[74] &quot;Task Complete Time    :       Not Complete&quot;                                                                         
+[75] &quot;Latency To First Hole :       N/A&quot;                                                                                  
+[76] &quot;Novel Task Entries    :               0&quot;                                                                            
+[77] &quot;Novel NonTask Entries :               0&quot;                                                                            
+[78] &quot;Novel Entries         :               0&quot;                                                                            
+[79] &quot;&quot;                                                                                                                   
+[80] &quot;Repeat Task Entries   :               0&quot;                                                                            
+[81] &quot;Repeat NonTask Entries:               0&quot;                                                                            
+[82] &quot;Repeat Entries        :               0&quot;                                                                            
+[83] &quot;&quot;                                                                                                                   
+[84] &quot;Total Entries         :               0&quot;                                                                            
+[85] &quot;&quot;                                                                                                                   
+[86] &quot;Avg. Novel Task IRT   :            0.00&quot;                                                                            
+[87] &quot;Avg. Novel NonTask IRT:            0.00&quot;                                                                            
+[88] &quot;Avg. Novel Total IRT  :            0.00&quot;                                                                            
+[89] &quot;&quot;                                                                                                                   
+[90] &quot;Working Memory Ratio  :            0.00&quot;                                                                            
+[91] &quot;Reference Memory Ratio:            0.00&quot;                                                                            
+[92] &quot;&quot;                                                                                                                   </code></pre>
+<p>The 92 line files appear to have everything in them. Looking at the 195 line file.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">readLines</span>(<span class="fu">paste</span>(<span class="st">&quot;./data/raw/HB_DATA/&quot;</span>,<span class="fu">names</span>(lengths[<span class="fu">which</span>(lengths <span class="sc">==</span> <span class="dv">195</span>)][<span class="dv">1</span>]),<span class="at">sep=</span><span class="st">&quot;&quot;</span>))</span></code></pre></div>
+<pre><code>  [1] &quot;&quot;                                                                                                                   
+  [2] &quot;&quot;                                                                                                                   
+  [3] &quot;Printed : 01/20/2016 09:32:37&quot;                                                                                      
+  [4] &quot;&quot;                                                                                                                   
+  [5] &quot;                               Activity Summary, 6.02&quot;                                                              
+  [6] &quot;                               ================&quot;                                                                    
+  [7] &quot;&quot;                                                                                                                   
+  [8] &quot;Experiment Title            : DO Group2&quot;                                                                            
+  [9] &quot;&quot;                                                                                                                   
+ [10] &quot;********** Experiment Aborted **********&quot;                                                                           
+ [11] &quot;&quot;                                                                                                                   
+ [12] &quot;Experiment Comment          :&quot;                                                                                      
+ [13] &quot;Resolution (ms)             : 40&quot;                                                                                   
+ [14] &quot;Box Size                    : 4&quot;                                                                                    
+ [15] &quot;Resting Delay (ms)          : 1200&quot;                                                                                 
+ [16] &quot;Ambulatory Trigger          : 3&quot;                                                                                    
+ [17] &quot;Session Type                : C&quot;                                                                                    
+ [18] &quot;Session Time (min)          : 20&quot;                                                                                   
+ [19] &quot;Actual Run Time             : 000:02:54.32&quot;                                                                         
+ [20] &quot;Data Save Interval (sec)    : 120&quot;                                                                                  
+ [21] &quot;Start on Animal Entry       : Yes&quot;                                                                                  
+ [22] &quot;&quot;                                                                                                                   
+ [23] &quot;Raw Filename                : 01202016.I0&quot;                                                                          
+ [24] &quot;Chamber Number              : 8&quot;                                                                                    
+ [25] &quot;Chamber Type                : ENV-515-16&quot;                                                                           
+ [26] &quot;Units                       : Cm&quot;                                                                                   
+ [27] &quot;&quot;                                                                                                                   
+ [28] &quot;Hole Board Installed        : Yes&quot;                                                                                  
+ [29] &quot;Terminate on Task Completion: No&quot;                                                                                   
+ [30] &quot;Hole Board Strips Installed : Yes&quot;                                                                                  
+ [31] &quot;Task Holes                  : &quot;                                                                                     
+ [32] &quot;&quot;                                                                                                                   
+ [33] &quot;Session Comment             :&quot;                                                                                      
+ [34] &quot;Subject ID                  : 7610                     &quot;                                                            
+ [35] &quot;Experiment ID               : DO 1-20-16               &quot;                                                            
+ [36] &quot;Group ID                    : 2                        &quot;                                                            
+ [37] &quot;Session No                  : 1&quot;                                                                                    
+ [38] &quot;Data Filename               : Subject_7610_Group_2_Experiment_DO1-20-16.Summary&quot;                                    
+ [39] &quot;&quot;                                                                                                                   
+ [40] &quot;Start Date                  : 1/20/2016 &quot;                                                                           
+ [41] &quot;Start Time                  : 09:27:30&quot;                                                                             
+ [42] &quot;&quot;                                                                                                                   
+ [43] &quot;Detail Reporting Mode       : Relative&quot;                                                                             
+ [44] &quot;&quot;                                                                                                                   
+ [45] &quot;Dist.   Time         Amb.   Time         Ster.  Time         Vert.  Vert.        Session&quot;                           
+ [46] &quot;Trav.   Amb.         Cnts.  Ster.        Cnts.  Rest.        Cnts.  Time         Time&quot;                              
+ [47] &quot;======= ============ ====== ============ ====== ============ ====== ============ ============&quot;                      
+ [48] &quot;   0.00 000:00:00.00      0 000:00:00.36      4 000:00:00.84      0 000:00:00.00 000:02:00.00&quot;                      
+ [49] &quot;   0.00 000:00:00.00      0 000:00:00.00      0 000:00:00.00      0 000:00:00.00 000:02:54.32&quot;                      
+ [50] &quot;&quot;                                                                                                                   
+ [51] &quot;Jump    Jump         Average    Ambulatory Session&quot;                                                                 
+ [52] &quot;Counts  Time         Velocity   Episodes   Time&quot;                                                                    
+ [53] &quot;======= ============ ========== ========== ============&quot;                                                            
+ [54] &quot;      1 000:01:58.80       0.00          0 000:02:00.00&quot;                                                            
+ [55] &quot;      0 000:00:54.32       0.00          0 000:02:54.32&quot;                                                            
+ [56] &quot;&quot;                                                                                                                   
+ [57] &quot;===================================================================================================================&quot;
+ [58] &quot;&quot;                                                                                                                   
+ [59] &quot;Distance Traveled   :     0.00&quot;                                                                                     
+ [60] &quot;Time Ambulatory     :000:00:00.00&quot;                                                                                  
+ [61] &quot;Ambulatory Count    :           0&quot;                                                                                  
+ [62] &quot;Time Stereotypic    :000:00:00.36&quot;                                                                                  
+ [63] &quot;Stereotypic Count   :           4&quot;                                                                                  
+ [64] &quot;Time Resting        :000:00:00.84&quot;                                                                                  
+ [65] &quot;Vertical Count      :           0&quot;                                                                                  
+ [66] &quot;Time Vertical       :000:00:00.00&quot;                                                                                  
+ [67] &quot;Jump Count          :           1&quot;                                                                                  
+ [68] &quot;Time Jumping        :000:02:53.12&quot;                                                                                  
+ [69] &quot;Average Velocity    :     0.00&quot;                                                                                     
+ [70] &quot;Ambulatory Episodes :           0&quot;                                                                                  
+ [71] &quot;&quot;                                                                                                                   
+ [72] &quot;Total Session Time    :       000:02:54.32&quot;                                                                         
+ [73] &quot;Task Complete Time    :       Not Complete&quot;                                                                         
+ [74] &quot;Latency To First Hole :       N/A&quot;                                                                                  
+ [75] &quot;Novel Task Entries    :               0&quot;                                                                            
+ [76] &quot;Novel NonTask Entries :               0&quot;                                                                            
+ [77] &quot;Novel Entries         :               0&quot;                                                                            
+ [78] &quot;&quot;                                                                                                                   
+ [79] &quot;Repeat Task Entries   :               0&quot;                                                                            
+ [80] &quot;Repeat NonTask Entries:               0&quot;                                                                            
+ [81] &quot;Repeat Entries        :               0&quot;                                                                            
+ [82] &quot;&quot;                                                                                                                   
+ [83] &quot;Total Entries         :               0&quot;                                                                            
+ [84] &quot;&quot;                                                                                                                   
+ [85] &quot;Avg. Novel Task IRT   :            0.00&quot;                                                                            
+ [86] &quot;Avg. Novel NonTask IRT:            0.00&quot;                                                                            
+ [87] &quot;Avg. Novel Total IRT  :            0.00&quot;                                                                            
+ [88] &quot;&quot;                                                                                                                   
+ [89] &quot;Working Memory Ratio  :            0.00&quot;                                                                            
+ [90] &quot;Reference Memory Ratio:            0.00&quot;                                                                            
+ [91] &quot;&quot;                                                                                                                   
+ [92] &quot;&quot;                                                                                                                   
+ [93] &quot;&quot;                                                                                                                   
+ [94] &quot;Printed : 01/20/2016 09:56:02&quot;                                                                                      
+ [95] &quot;&quot;                                                                                                                   
+ [96] &quot;                               Activity Summary, 6.02&quot;                                                              
+ [97] &quot;                               ================&quot;                                                                    
+ [98] &quot;&quot;                                                                                                                   
+ [99] &quot;Experiment Title            : DO Group2&quot;                                                                            
+[100] &quot;Experiment Comment          :&quot;                                                                                      
+[101] &quot;Resolution (ms)             : 40&quot;                                                                                   
+[102] &quot;Box Size                    : 4&quot;                                                                                    
+[103] &quot;Resting Delay (ms)          : 1200&quot;                                                                                 
+[104] &quot;Ambulatory Trigger          : 3&quot;                                                                                    
+[105] &quot;Session Type                : C&quot;                                                                                    
+[106] &quot;Session Time (min)          : 20&quot;                                                                                   
+[107] &quot;Actual Run Time             : 000:20:00.00&quot;                                                                         
+[108] &quot;Data Save Interval (sec)    : 120&quot;                                                                                  
+[109] &quot;Start on Animal Entry       : Yes&quot;                                                                                  
+[110] &quot;&quot;                                                                                                                   
+[111] &quot;Raw Filename                : 01202016.Q0&quot;                                                                          
+[112] &quot;Chamber Number              : 8&quot;                                                                                    
+[113] &quot;Chamber Type                : ENV-515-16&quot;                                                                           
+[114] &quot;Units                       : Cm&quot;                                                                                   
+[115] &quot;&quot;                                                                                                                   
+[116] &quot;Hole Board Installed        : Yes&quot;                                                                                  
+[117] &quot;Terminate on Task Completion: No&quot;                                                                                   
+[118] &quot;Hole Board Strips Installed : Yes&quot;                                                                                  
+[119] &quot;Task Holes                  : &quot;                                                                                     
+[120] &quot;&quot;                                                                                                                   
+[121] &quot;Session Comment             :&quot;                                                                                      
+[122] &quot;Subject ID                  : 7610                     &quot;                                                            
+[123] &quot;Experiment ID               : DO 1-20-16               &quot;                                                            
+[124] &quot;Group ID                    : 2                        &quot;                                                            
+[125] &quot;Session No                  : 2&quot;                                                                                    
+[126] &quot;Data Filename               : Subject_7610_Group_2_Experiment_DO1-20-16.Summary&quot;                                    
+[127] &quot;&quot;                                                                                                                   
+[128] &quot;Start Date                  : 1/20/2016 &quot;                                                                           
+[129] &quot;Start Time                  : 09:35:23&quot;                                                                             
+[130] &quot;&quot;                                                                                                                   
+[131] &quot;Detail Reporting Mode       : Relative&quot;                                                                             
+[132] &quot;&quot;                                                                                                                   
+[133] &quot;Dist.   Time         Amb.   Time         Ster.  Time         Vert.  Vert.        Session&quot;                           
+[134] &quot;Trav.   Amb.         Cnts.  Ster.        Cnts.  Rest.        Cnts.  Time         Time&quot;                              
+[135] &quot;======= ============ ====== ============ ====== ============ ====== ============ ============&quot;                      
+[136] &quot;1118.01 000:00:46.96    516 000:00:16.44    271 000:00:55.36      0 000:00:00.00 000:02:00.00&quot;                      
+[137] &quot; 619.24 000:00:29.76    259 000:00:18.84    323 000:01:07.60      0 000:00:00.00 000:04:00.00&quot;                      
+[138] &quot; 475.87 000:00:20.60    195 000:00:19.60    326 000:01:15.92      0 000:00:00.00 000:06:00.00&quot;                      
+[139] &quot; 481.15 000:00:23.36    225 000:00:18.12    306 000:01:12.92      0 000:00:00.00 000:08:00.00&quot;                      
+[140] &quot; 462.14 000:00:21.04    177 000:00:19.32    337 000:01:14.40      0 000:00:00.00 000:10:00.00&quot;                      
+[141] &quot; 383.72 000:00:16.68    133 000:00:21.88    367 000:01:20.28      0 000:00:00.00 000:12:00.00&quot;                      
+[142] &quot; 495.92 000:00:21.56    216 000:00:17.36    300 000:01:16.20      0 000:00:00.00 000:14:00.00&quot;                      
+[143] &quot; 446.37 000:00:16.64    175 000:00:17.88    314 000:01:18.04      0 000:00:00.00 000:16:00.00&quot;                      
+[144] &quot; 456.65 000:00:18.88    175 000:00:13.32    223 000:01:24.08      0 000:00:00.00 000:18:00.00&quot;                      
+[145] &quot; 486.82 000:00:18.44    181 000:00:15.76    253 000:01:24.40      0 000:00:00.00 000:20:00.00&quot;                      
+[146] &quot;&quot;                                                                                                                   
+[147] &quot;Jump    Jump         Average    Ambulatory Session&quot;                                                                 
+[148] &quot;Counts  Time         Velocity   Episodes   Time&quot;                                                                    
+[149] &quot;======= ============ ========== ========== ============&quot;                                                            
+[150] &quot;      8 000:00:01.24      35.24         24 000:02:00.00&quot;                                                            
+[151] &quot;     14 000:00:03.80      38.67         23 000:04:00.00&quot;                                                            
+[152] &quot;      7 000:00:03.32      35.42         18 000:06:00.00&quot;                                                            
+[153] &quot;     18 000:00:05.52      39.41         20 000:08:00.00&quot;                                                            
+[154] &quot;     29 000:00:05.88      23.94         17 000:10:00.00&quot;                                                            
+[155] &quot;      9 000:00:01.16      19.75         13 000:12:00.00&quot;                                                            
+[156] &quot;     13 000:00:04.88      43.22         18 000:14:00.00&quot;                                                            
+[157] &quot;     23 000:00:06.64      45.40         12 000:16:00.00&quot;                                                            
+[158] &quot;     14 000:00:03.80      27.33         18 000:18:00.00&quot;                                                            
+[159] &quot;      9 000:00:02.12      27.31         15 000:20:00.00&quot;                                                            
+[160] &quot;&quot;                                                                                                                   
+[161] &quot;===================================================================================================================&quot;
+[162] &quot;&quot;                                                                                                                   
+[163] &quot;Distance Traveled   :  5425.88&quot;                                                                                     
+[164] &quot;Time Ambulatory     :000:03:53.92&quot;                                                                                  
+[165] &quot;Ambulatory Count    :        2252&quot;                                                                                  
+[166] &quot;Time Stereotypic    :000:02:58.52&quot;                                                                                  
+[167] &quot;Stereotypic Count   :        3020&quot;                                                                                  
+[168] &quot;Time Resting        :000:12:29.20&quot;                                                                                  
+[169] &quot;Vertical Count      :           0&quot;                                                                                  
+[170] &quot;Time Vertical       :000:00:00.00&quot;                                                                                  
+[171] &quot;Jump Count          :         144&quot;                                                                                  
+[172] &quot;Time Jumping        :000:00:38.36&quot;                                                                                  
+[173] &quot;Average Velocity    :    33.98&quot;                                                                                     
+[174] &quot;Ambulatory Episodes :         178&quot;                                                                                  
+[175] &quot;&quot;                                                                                                                   
+[176] &quot;Total Session Time    :       000:20:00.00&quot;                                                                         
+[177] &quot;Task Complete Time    :       000:00:20.76&quot;                                                                         
+[178] &quot;Latency To First Hole :       000:00:20.68&quot;                                                                         
+[179] &quot;Novel Task Entries    :               0&quot;                                                                            
+[180] &quot;Novel NonTask Entries :              16&quot;                                                                            
+[181] &quot;Novel Entries         :              16&quot;                                                                            
+[182] &quot;&quot;                                                                                                                   
+[183] &quot;Repeat Task Entries   :               0&quot;                                                                            
+[184] &quot;Repeat NonTask Entries:             112&quot;                                                                            
+[185] &quot;Repeat Entries        :             112&quot;                                                                            
+[186] &quot;&quot;                                                                                                                   
+[187] &quot;Total Entries         :             128&quot;                                                                            
+[188] &quot;&quot;                                                                                                                   
+[189] &quot;Avg. Novel Task IRT   :            0.00&quot;                                                                            
+[190] &quot;Avg. Novel NonTask IRT:           28.48&quot;                                                                            
+[191] &quot;Avg. Novel Total IRT  :           28.48&quot;                                                                            
+[192] &quot;&quot;                                                                                                                   
+[193] &quot;Working Memory Ratio  :            0.00&quot;                                                                            
+[194] &quot;Reference Memory Ratio:            0.00&quot;                                                                            
+[195] &quot;&quot;                                                                                                                   </code></pre>
+<p>The 195 line file has two trials in it, one of which isn’t full length. Looking at a 66 line file.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">readLines</span>(<span class="fu">paste</span>(<span class="st">&quot;./data/raw/HB_DATA/&quot;</span>,<span class="fu">names</span>(lengths[<span class="fu">which</span>(lengths <span class="sc">==</span> <span class="dv">66</span>)][<span class="dv">1</span>]),<span class="at">sep=</span><span class="st">&quot;&quot;</span>))</span></code></pre></div>
+<pre><code> [1] &quot;&quot;                                                                                             
+ [2] &quot;&quot;                                                                                             
+ [3] &quot;Printed : 10/26/2016 09:22:38&quot;                                                                
+ [4] &quot;&quot;                                                                                             
+ [5] &quot;                               Activity Summary, 6.02&quot;                                        
+ [6] &quot;                               ================&quot;                                              
+ [7] &quot;&quot;                                                                                             
+ [8] &quot;Experiment Title            : Holeboard&quot;                                                      
+ [9] &quot;Experiment Comment          :&quot;                                                                
+[10] &quot;Resolution (ms)             : 40&quot;                                                             
+[11] &quot;Box Size                    : 3&quot;                                                              
+[12] &quot;Resting Delay (ms)          : 1000&quot;                                                           
+[13] &quot;Ambulatory Trigger          : 1&quot;                                                              
+[14] &quot;Session Type                : C&quot;                                                              
+[15] &quot;Session Time (min)          : 20&quot;                                                             
+[16] &quot;Actual Run Time             : 000:00:09.12&quot;                                                   
+[17] &quot;Data Save Interval (sec)    : 300&quot;                                                            
+[18] &quot;Start on Animal Entry       : Yes&quot;                                                            
+[19] &quot;&quot;                                                                                             
+[20] &quot;Raw Filename                : 10262016.S0&quot;                                                    
+[21] &quot;Chamber Number              : 2&quot;                                                              
+[22] &quot;Chamber Type                : ENV-515-16&quot;                                                     
+[23] &quot;Units                       : Cm&quot;                                                             
+[24] &quot;&quot;                                                                                             
+[25] &quot;Hole Board Installed        : Yes&quot;                                                            
+[26] &quot;Terminate on Task Completion: No&quot;                                                             
+[27] &quot;Hole Board Strips Installed : Yes&quot;                                                            
+[28] &quot;Task Holes                  : 1, 2, 3, 4, 5, 6, 7, 8, 9,&quot;                                     
+[29] &quot;                              10, 11, 12, 13, 14, 15, 16&quot;                                     
+[30] &quot;Session Comment             :&quot;                                                                
+[31] &quot;Subject ID                  : 8585                     &quot;                                      
+[32] &quot;Experiment ID               : DO 10-26-16              &quot;                                      
+[33] &quot;Group ID                    :                          &quot;                                      
+[34] &quot;Session No                  : 2&quot;                                                              
+[35] &quot;Data Filename               : Subject_8585_Group__Experiment_DO10-26-16.Summary&quot;              
+[36] &quot;&quot;                                                                                             
+[37] &quot;Start Date                  : 10/26/2016&quot;                                                     
+[38] &quot;Start Time                  : 09:22:27&quot;                                                       
+[39] &quot;&quot;                                                                                             
+[40] &quot;Detail Reporting Mode       : Relative&quot;                                                       
+[41] &quot;&quot;                                                                                             
+[42] &quot;Dist.   Time         Amb.   Time         Ster.  Time         Vert.  Vert.        Session&quot;     
+[43] &quot;Trav.   Amb.         Cnts.  Ster.        Cnts.  Rest.        Cnts.  Time         Time&quot;        
+[44] &quot;======= ============ ====== ============ ====== ============ ====== ============ ============&quot;
+[45] &quot;No Block information found.&quot;                                                                  
+[46] &quot;&quot;                                                                                             
+[47] &quot;Total Session Time    :       000:00:09.12&quot;                                                   
+[48] &quot;Task Complete Time    :       Not Complete&quot;                                                   
+[49] &quot;Latency To First Hole :       N/A&quot;                                                            
+[50] &quot;Novel Task Entries    :               0&quot;                                                      
+[51] &quot;Novel NonTask Entries :               0&quot;                                                      
+[52] &quot;Novel Entries         :               0&quot;                                                      
+[53] &quot;&quot;                                                                                             
+[54] &quot;Repeat Task Entries   :               0&quot;                                                      
+[55] &quot;Repeat NonTask Entries:               0&quot;                                                      
+[56] &quot;Repeat Entries        :               0&quot;                                                      
+[57] &quot;&quot;                                                                                             
+[58] &quot;Total Entries         :               0&quot;                                                      
+[59] &quot;&quot;                                                                                             
+[60] &quot;Avg. Novel Task IRT   :            0.00&quot;                                                      
+[61] &quot;Avg. Novel NonTask IRT:            0.00&quot;                                                      
+[62] &quot;Avg. Novel Total IRT  :            0.00&quot;                                                      
+[63] &quot;&quot;                                                                                             
+[64] &quot;Working Memory Ratio  :            0.00&quot;                                                      
+[65] &quot;Reference Memory Ratio:            0.00&quot;                                                      
+[66] &quot;&quot;                                                                                             </code></pre>
+<p>Again, the file appears to be an incomplete trial. Trials appear to be distinguished by a line that is prefixed by the word <code>Printed :</code> and then the date and time of printing. Each trial ends with the <code>Reference Memory Ratio:</code> line. From speaking with Leona, Troy, and Tyler, I have found out that there were often aborted trials and that the only trials that matter were a full 20 minutes long.</p>
+<p>The full trials can therefore be pulled out of the data by using the <code>Actual Run Time             :</code> line and finding which ones are 20 minutes long. Using this information to extract a line for each trial. Variables to extract include the following:</p>
+<p>Getting a list of the variables in a 92 line file by extracting what comes before colons.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>linelength_92_file <span class="ot">=</span> <span class="fu">readLines</span>(<span class="fu">paste</span>(<span class="st">&quot;./data/raw/HB_DATA/&quot;</span>,<span class="fu">names</span>(lengths[<span class="fu">which</span>(lengths <span class="sc">==</span> <span class="dv">92</span>)][<span class="dv">1</span>]),<span class="at">sep=</span><span class="st">&quot;&quot;</span>))</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>linelength_92_file[<span class="fu">grep</span>(<span class="st">&quot;^.*:&quot;</span>, linelength_92_file)]</span></code></pre></div>
+<pre><code> [1] &quot;Printed : 01/27/2016 10:28:45&quot;                                                                
+ [2] &quot;Experiment Title            : DO holeboard&quot;                                                   
+ [3] &quot;Experiment Comment          :&quot;                                                                
+ [4] &quot;Resolution (ms)             : 40&quot;                                                             
+ [5] &quot;Box Size                    : 3&quot;                                                              
+ [6] &quot;Resting Delay (ms)          : 1000&quot;                                                           
+ [7] &quot;Ambulatory Trigger          : 1&quot;                                                              
+ [8] &quot;Session Type                : C&quot;                                                              
+ [9] &quot;Session Time (min)          : 20&quot;                                                             
+[10] &quot;Actual Run Time             : 000:20:00.00&quot;                                                   
+[11] &quot;Data Save Interval (sec)    : 300&quot;                                                            
+[12] &quot;Start on Animal Entry       : Yes&quot;                                                            
+[13] &quot;Raw Filename                : 01272016.B0&quot;                                                    
+[14] &quot;Chamber Number              : 1&quot;                                                              
+[15] &quot;Chamber Type                : ENV-515-16&quot;                                                     
+[16] &quot;Units                       : Cm&quot;                                                             
+[17] &quot;Hole Board Installed        : Yes&quot;                                                            
+[18] &quot;Terminate on Task Completion: No&quot;                                                             
+[19] &quot;Hole Board Strips Installed : Yes&quot;                                                            
+[20] &quot;Task Holes                  : 1, 2, 3, 4, 5, 6, 7, 8, 9,&quot;                                     
+[21] &quot;Session Comment             :&quot;                                                                
+[22] &quot;Subject ID                  : 7579                     &quot;                                      
+[23] &quot;Experiment ID               : DO 1-27-16               &quot;                                      
+[24] &quot;Group ID                    : 3-1                      &quot;                                      
+[25] &quot;Session No                  : 1&quot;                                                              
+[26] &quot;Data Filename               : Subject_7579_Group_3-1_Experiment_DO1-27-16.Summary&quot;            
+[27] &quot;Start Date                  : 1/27/2016 &quot;                                                     
+[28] &quot;Start Time                  : 10:07:03&quot;                                                       
+[29] &quot;Detail Reporting Mode       : Relative&quot;                                                       
+[30] &quot;2568.88 000:02:14.36   1341 000:00:22.44    388 000:01:50.12      0 000:00:00.00 000:05:00.00&quot;
+[31] &quot;1863.97 000:01:47.72   1023 000:00:23.32    393 000:02:01.48      0 000:00:00.00 000:10:00.00&quot;
+[32] &quot;1377.30 000:01:16.40    687 000:00:24.60    395 000:02:31.88      0 000:00:00.00 000:15:00.00&quot;
+[33] &quot;1191.68 000:00:58.16    558 000:00:17.56    283 000:01:45.56      0 000:00:00.00 000:20:00.00&quot;
+[34] &quot;    113 000:00:33.08      43.13         66 000:05:00.00&quot;                                      
+[35] &quot;    137 000:00:46.88      34.75         66 000:10:00.00&quot;                                      
+[36] &quot;    107 000:00:47.36      51.86         61 000:15:00.00&quot;                                      
+[37] &quot;     64 000:01:59.08      46.53         39 000:20:00.00&quot;                                      
+[38] &quot;Distance Traveled   :  7001.84&quot;                                                               
+[39] &quot;Time Ambulatory     :000:06:16.64&quot;                                                            
+[40] &quot;Ambulatory Count    :        3609&quot;                                                            
+[41] &quot;Time Stereotypic    :000:01:27.92&quot;                                                            
+[42] &quot;Stereotypic Count   :        1459&quot;                                                            
+[43] &quot;Time Resting        :000:08:09.04&quot;                                                            
+[44] &quot;Vertical Count      :           0&quot;                                                            
+[45] &quot;Time Vertical       :000:00:00.00&quot;                                                            
+[46] &quot;Jump Count          :         421&quot;                                                            
+[47] &quot;Time Jumping        :000:04:06.40&quot;                                                            
+[48] &quot;Average Velocity    :    43.61&quot;                                                               
+[49] &quot;Ambulatory Episodes :         232&quot;                                                            
+[50] &quot;Total Session Time    :       000:20:00.00&quot;                                                   
+[51] &quot;Task Complete Time    :       Not Complete&quot;                                                   
+[52] &quot;Latency To First Hole :       N/A&quot;                                                            
+[53] &quot;Novel Task Entries    :               0&quot;                                                      
+[54] &quot;Novel NonTask Entries :               0&quot;                                                      
+[55] &quot;Novel Entries         :               0&quot;                                                      
+[56] &quot;Repeat Task Entries   :               0&quot;                                                      
+[57] &quot;Repeat NonTask Entries:               0&quot;                                                      
+[58] &quot;Repeat Entries        :               0&quot;                                                      
+[59] &quot;Total Entries         :               0&quot;                                                      
+[60] &quot;Avg. Novel Task IRT   :            0.00&quot;                                                      
+[61] &quot;Avg. Novel NonTask IRT:            0.00&quot;                                                      
+[62] &quot;Avg. Novel Total IRT  :            0.00&quot;                                                      
+[63] &quot;Working Memory Ratio  :            0.00&quot;                                                      
+[64] &quot;Reference Memory Ratio:            0.00&quot;                                                      </code></pre>
+<p>Adding in variables for each of these into a data frame.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>field_grep <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;^Printed :&quot;</span>,</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Experiment Title            :&quot;</span>,</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Experiment Comment          :&quot;</span>,</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Resolution </span><span class="sc">\\</span><span class="st">(ms</span><span class="sc">\\</span><span class="st">)             :&quot;</span>,</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Box Size                    :&quot;</span>,</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Resting Delay </span><span class="sc">\\</span><span class="st">(ms</span><span class="sc">\\</span><span class="st">)          :&quot;</span>,</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Ambulatory Trigger          :&quot;</span>,</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Session Type                :&quot;</span>,</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Session Time </span><span class="sc">\\</span><span class="st">(min</span><span class="sc">\\</span><span class="st">)          :&quot;</span>,</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Actual Run Time             :&quot;</span>,</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Data Save Interval </span><span class="sc">\\</span><span class="st">(sec</span><span class="sc">\\</span><span class="st">)    :&quot;</span>,</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Start on Animal Entry       :&quot;</span>,</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Raw Filename                :&quot;</span>,</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Chamber Number              :&quot;</span>,</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Chamber Type                :&quot;</span>,</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Units                       :&quot;</span>,</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Hole Board Installed        :&quot;</span>,</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Terminate on Task Completion:&quot;</span>,</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Hole Board Strips Installed :&quot;</span>,</span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Task Holes                  :&quot;</span>,</span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Session Comment             :&quot;</span>,</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Subject ID                  :&quot;</span>,</span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Experiment ID               :&quot;</span>,</span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Group ID                    :&quot;</span>,</span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Session No                  :&quot;</span>,</span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Data Filename               :&quot;</span>,</span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Start Date                  :&quot;</span>,</span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Start Time                  :&quot;</span>,</span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Detail Reporting Mode       :&quot;</span>,</span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Distance Traveled   :&quot;</span>,</span>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Time Ambulatory     :&quot;</span>,</span>
+<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Ambulatory Count    :&quot;</span>,</span>
+<span id="cb16-33"><a href="#cb16-33" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Time Stereotypic    :&quot;</span>,</span>
+<span id="cb16-34"><a href="#cb16-34" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Stereotypic Count   :&quot;</span>,</span>
+<span id="cb16-35"><a href="#cb16-35" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Time Resting        :&quot;</span>,</span>
+<span id="cb16-36"><a href="#cb16-36" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Vertical Count      :&quot;</span>,</span>
+<span id="cb16-37"><a href="#cb16-37" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Time Vertical       :&quot;</span>,</span>
+<span id="cb16-38"><a href="#cb16-38" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Jump Count          :&quot;</span>,</span>
+<span id="cb16-39"><a href="#cb16-39" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Time Jumping        :&quot;</span>,</span>
+<span id="cb16-40"><a href="#cb16-40" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Average Velocity    :&quot;</span>,</span>
+<span id="cb16-41"><a href="#cb16-41" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Ambulatory Episodes :&quot;</span>,</span>
+<span id="cb16-42"><a href="#cb16-42" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Total Session Time    :&quot;</span>,</span>
+<span id="cb16-43"><a href="#cb16-43" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Task Complete Time    :&quot;</span>,</span>
+<span id="cb16-44"><a href="#cb16-44" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Latency To First Hole :&quot;</span>,</span>
+<span id="cb16-45"><a href="#cb16-45" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Novel Task Entries    :&quot;</span>,</span>
+<span id="cb16-46"><a href="#cb16-46" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Novel NonTask Entries :&quot;</span>,</span>
+<span id="cb16-47"><a href="#cb16-47" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Novel Entries         :&quot;</span>,</span>
+<span id="cb16-48"><a href="#cb16-48" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Repeat Task Entries   :&quot;</span>,</span>
+<span id="cb16-49"><a href="#cb16-49" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Repeat NonTask Entries:&quot;</span>,</span>
+<span id="cb16-50"><a href="#cb16-50" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Repeat Entries        :&quot;</span>,</span>
+<span id="cb16-51"><a href="#cb16-51" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Total Entries         :&quot;</span>,</span>
+<span id="cb16-52"><a href="#cb16-52" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Avg</span><span class="sc">\\</span><span class="st">. Novel Task IRT   :&quot;</span>,</span>
+<span id="cb16-53"><a href="#cb16-53" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Avg</span><span class="sc">\\</span><span class="st">. Novel NonTask IRT:&quot;</span>,</span>
+<span id="cb16-54"><a href="#cb16-54" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Avg</span><span class="sc">\\</span><span class="st">. Novel Total IRT  :&quot;</span>,</span>
+<span id="cb16-55"><a href="#cb16-55" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Working Memory Ratio  :&quot;</span>,</span>
+<span id="cb16-56"><a href="#cb16-56" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;^Reference Memory Ratio:&quot;</span>)</span>
+<span id="cb16-57"><a href="#cb16-57" aria-hidden="true" tabindex="-1"></a>field_id <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;Printed&quot;</span>,</span>
+<span id="cb16-58"><a href="#cb16-58" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Experiment_Title&quot;</span>,</span>
+<span id="cb16-59"><a href="#cb16-59" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Experiment_Comment&quot;</span>,</span>
+<span id="cb16-60"><a href="#cb16-60" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Resolution_ms&quot;</span>,</span>
+<span id="cb16-61"><a href="#cb16-61" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Box_Size&quot;</span>,</span>
+<span id="cb16-62"><a href="#cb16-62" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Resting_Delay_ms&quot;</span>,</span>
+<span id="cb16-63"><a href="#cb16-63" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Ambulatory_Trigger&quot;</span>,</span>
+<span id="cb16-64"><a href="#cb16-64" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Session_Type&quot;</span>,</span>
+<span id="cb16-65"><a href="#cb16-65" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Session_Time_min&quot;</span>,</span>
+<span id="cb16-66"><a href="#cb16-66" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Actual_Run_Time&quot;</span>,</span>
+<span id="cb16-67"><a href="#cb16-67" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Data_Save_Interval_sec&quot;</span>,</span>
+<span id="cb16-68"><a href="#cb16-68" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Start_on_Animal_Entry&quot;</span>,</span>
+<span id="cb16-69"><a href="#cb16-69" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Raw_Filename&quot;</span>,</span>
+<span id="cb16-70"><a href="#cb16-70" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Chamber_Number&quot;</span>,</span>
+<span id="cb16-71"><a href="#cb16-71" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Chamber_Type&quot;</span>,</span>
+<span id="cb16-72"><a href="#cb16-72" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Units&quot;</span>,</span>
+<span id="cb16-73"><a href="#cb16-73" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Hole_Board_Installed&quot;</span>,</span>
+<span id="cb16-74"><a href="#cb16-74" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Terminate_on_Task_Completion&quot;</span>,</span>
+<span id="cb16-75"><a href="#cb16-75" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Hole_Board_Strips_Installed&quot;</span>,</span>
+<span id="cb16-76"><a href="#cb16-76" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Task_Holes&quot;</span>,</span>
+<span id="cb16-77"><a href="#cb16-77" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Session_Comment&quot;</span>,</span>
+<span id="cb16-78"><a href="#cb16-78" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Subject_ID&quot;</span>,</span>
+<span id="cb16-79"><a href="#cb16-79" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Experiment_ID&quot;</span>,</span>
+<span id="cb16-80"><a href="#cb16-80" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Group_ID&quot;</span>,</span>
+<span id="cb16-81"><a href="#cb16-81" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Session_No&quot;</span>,</span>
+<span id="cb16-82"><a href="#cb16-82" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Data_Filename&quot;</span>,</span>
+<span id="cb16-83"><a href="#cb16-83" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Start_Date&quot;</span>,</span>
+<span id="cb16-84"><a href="#cb16-84" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Start_Time&quot;</span>,</span>
+<span id="cb16-85"><a href="#cb16-85" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Detail_Reporting_Mode&quot;</span>,</span>
+<span id="cb16-86"><a href="#cb16-86" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Distance_Traveled&quot;</span>,</span>
+<span id="cb16-87"><a href="#cb16-87" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Time_Ambulatory&quot;</span>,</span>
+<span id="cb16-88"><a href="#cb16-88" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Ambulatory_Count&quot;</span>,</span>
+<span id="cb16-89"><a href="#cb16-89" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Time_Stereotypic&quot;</span>,</span>
+<span id="cb16-90"><a href="#cb16-90" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Stereotypic_Count&quot;</span>,</span>
+<span id="cb16-91"><a href="#cb16-91" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Time_Resting&quot;</span>,</span>
+<span id="cb16-92"><a href="#cb16-92" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Vertical_Count&quot;</span>,</span>
+<span id="cb16-93"><a href="#cb16-93" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Time_Vertical&quot;</span>,</span>
+<span id="cb16-94"><a href="#cb16-94" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Jump_Count&quot;</span>,</span>
+<span id="cb16-95"><a href="#cb16-95" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Time_Jumping&quot;</span>,</span>
+<span id="cb16-96"><a href="#cb16-96" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Average_Velocity&quot;</span>,</span>
+<span id="cb16-97"><a href="#cb16-97" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Ambulatory_Episodes&quot;</span>,</span>
+<span id="cb16-98"><a href="#cb16-98" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Total_Session_Time&quot;</span>,</span>
+<span id="cb16-99"><a href="#cb16-99" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Task_Complete_Time&quot;</span>,</span>
+<span id="cb16-100"><a href="#cb16-100" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Latency_To_First_Hole&quot;</span>,</span>
+<span id="cb16-101"><a href="#cb16-101" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Novel_Task_Entries&quot;</span>,</span>
+<span id="cb16-102"><a href="#cb16-102" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Novel_NonTask_Entries&quot;</span>,</span>
+<span id="cb16-103"><a href="#cb16-103" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Novel_Entries&quot;</span>,</span>
+<span id="cb16-104"><a href="#cb16-104" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Repeat_Task_Entries&quot;</span>,</span>
+<span id="cb16-105"><a href="#cb16-105" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Repeat_NonTask_Entries&quot;</span>,</span>
+<span id="cb16-106"><a href="#cb16-106" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Repeat_Entries&quot;</span>,</span>
+<span id="cb16-107"><a href="#cb16-107" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Total_Entries&quot;</span>,</span>
+<span id="cb16-108"><a href="#cb16-108" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Avg_Novel_Task_IRT&quot;</span>,</span>
+<span id="cb16-109"><a href="#cb16-109" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Avg_Novel_NonTask_IRT&quot;</span>,</span>
+<span id="cb16-110"><a href="#cb16-110" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Avg_Novel_Total_IRT&quot;</span>,</span>
+<span id="cb16-111"><a href="#cb16-111" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Working_Memory_Ratio&quot;</span>,</span>
+<span id="cb16-112"><a href="#cb16-112" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;Reference_Memory_Ratio&quot;</span>)</span>
+<span id="cb16-113"><a href="#cb16-113" aria-hidden="true" tabindex="-1"></a>field_type <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;mdy_hms&quot;</span>,</span>
+<span id="cb16-114"><a href="#cb16-114" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-115"><a href="#cb16-115" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-116"><a href="#cb16-116" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-117"><a href="#cb16-117" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-118"><a href="#cb16-118" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-119"><a href="#cb16-119" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-120"><a href="#cb16-120" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-121"><a href="#cb16-121" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-122"><a href="#cb16-122" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-123"><a href="#cb16-123" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-124"><a href="#cb16-124" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character_to_boolean&quot;</span>,</span>
+<span id="cb16-125"><a href="#cb16-125" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-126"><a href="#cb16-126" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-127"><a href="#cb16-127" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-128"><a href="#cb16-128" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-129"><a href="#cb16-129" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character_to_boolean&quot;</span>,</span>
+<span id="cb16-130"><a href="#cb16-130" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character_to_boolean&quot;</span>,</span>
+<span id="cb16-131"><a href="#cb16-131" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character_to_boolean&quot;</span>,</span>
+<span id="cb16-132"><a href="#cb16-132" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-133"><a href="#cb16-133" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-134"><a href="#cb16-134" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-135"><a href="#cb16-135" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-136"><a href="#cb16-136" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-137"><a href="#cb16-137" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-138"><a href="#cb16-138" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-139"><a href="#cb16-139" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-140"><a href="#cb16-140" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-141"><a href="#cb16-141" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;character&quot;</span>,</span>
+<span id="cb16-142"><a href="#cb16-142" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;float&quot;</span>,</span>
+<span id="cb16-143"><a href="#cb16-143" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-144"><a href="#cb16-144" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-145"><a href="#cb16-145" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-146"><a href="#cb16-146" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-147"><a href="#cb16-147" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-148"><a href="#cb16-148" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-149"><a href="#cb16-149" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-150"><a href="#cb16-150" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-151"><a href="#cb16-151" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-152"><a href="#cb16-152" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;float&quot;</span>,</span>
+<span id="cb16-153"><a href="#cb16-153" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-154"><a href="#cb16-154" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-155"><a href="#cb16-155" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-156"><a href="#cb16-156" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;hhh:mm:ss:ff&quot;</span>,</span>
+<span id="cb16-157"><a href="#cb16-157" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-158"><a href="#cb16-158" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-159"><a href="#cb16-159" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-160"><a href="#cb16-160" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-161"><a href="#cb16-161" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-162"><a href="#cb16-162" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-163"><a href="#cb16-163" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;integer&quot;</span>,</span>
+<span id="cb16-164"><a href="#cb16-164" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;float&quot;</span>,</span>
+<span id="cb16-165"><a href="#cb16-165" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;float&quot;</span>,</span>
+<span id="cb16-166"><a href="#cb16-166" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;float&quot;</span>,</span>
+<span id="cb16-167"><a href="#cb16-167" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;float&quot;</span>,</span>
+<span id="cb16-168"><a href="#cb16-168" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;float&quot;</span>)</span>
+<span id="cb16-169"><a href="#cb16-169" aria-hidden="true" tabindex="-1"></a>holeboard_fields <span class="ot">=</span> <span class="fu">data.frame</span>(<span class="at">FieldID =</span> field_id, <span class="at">FieldGREP =</span> field_grep, <span class="at">FieldType =</span> field_type, <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>Parsing files.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>holeboard_trials <span class="ot">=</span> <span class="fu">as.data.frame</span>(<span class="fu">matrix</span>(<span class="at">nrow =</span> <span class="dv">0</span>, <span class="at">ncol =</span> <span class="fu">nrow</span>(holeboard_fields)), <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(holeboard_trials) <span class="ot">=</span> holeboard_fields<span class="sc">$</span>FieldID</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>file_trial <span class="ot">=</span> <span class="fu">as.data.frame</span>(<span class="fu">matrix</span>(<span class="at">nrow =</span> <span class="dv">0</span>, <span class="at">ncol =</span> <span class="dv">2</span>), <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(file_trial) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;file_name&quot;</span>,<span class="st">&quot;trial_id&quot;</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>holeboard_trials <span class="ot">=</span> <span class="fu">cbind</span>(file_trial, holeboard_trials)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>holeboard_trial_blank <span class="ot">=</span> holeboard_trials</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>holeboard_trial_blank[<span class="dv">1</span>,] <span class="ot">=</span> <span class="fu">rep</span>(<span class="st">&quot;&quot;</span>, <span class="at">times =</span> <span class="fu">ncol</span>(holeboard_trial_blank))</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(DO_holeboard_files)) {</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  file_i <span class="ot">=</span> DO_holeboard_files[i]</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  lines_i <span class="ot">=</span> <span class="fu">readLines</span>(<span class="fu">paste</span>(<span class="st">&quot;./data/raw/HB_DATA/&quot;</span>,file_i,<span class="at">sep=</span><span class="st">&quot;&quot;</span>))</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  trial_starts_i <span class="ot">=</span> <span class="fu">grep</span>(<span class="st">&quot;^Printed :&quot;</span>, lines_i)</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>  trial_stops_i <span class="ot">=</span> <span class="fu">grep</span>(<span class="st">&quot;^Reference Memory Ratio:&quot;</span>, lines_i)</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(trial_starts_i)) {</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>    holeboard_trial_j <span class="ot">=</span> holeboard_trial_blank</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>    holeboard_trial_j[<span class="dv">1</span>,<span class="st">&quot;file_name&quot;</span>] <span class="ot">=</span> file_i</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>    holeboard_trial_j[<span class="dv">1</span>,<span class="st">&quot;trial_id&quot;</span>] <span class="ot">=</span> j</span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>    lines_j <span class="ot">=</span> lines_i[<span class="fu">seq</span>(<span class="at">from =</span> trial_starts_i[j], <span class="at">to =</span> trial_stops_i[j], <span class="at">by =</span> <span class="dv">1</span>)]</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (k <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(holeboard_fields)) {</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>      field_k <span class="ot">=</span> holeboard_fields[k,<span class="st">&quot;FieldID&quot;</span>]</span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>      grep_k <span class="ot">=</span> holeboard_fields[k,<span class="st">&quot;FieldGREP&quot;</span>]</span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>      line_k <span class="ot">=</span> lines_j[<span class="fu">grep</span>(grep_k, lines_j)]</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>      line_k <span class="ot">=</span> <span class="fu">ifelse</span>(<span class="fu">length</span>(line_k) <span class="sc">!=</span> <span class="dv">0</span>, <span class="fu">gsub</span>(grep_k,<span class="st">&quot;&quot;</span>,line_k), <span class="cn">NA</span>)</span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>      line_k <span class="ot">=</span> <span class="fu">ifelse</span>(<span class="sc">!</span>(<span class="fu">is.na</span>(line_k)), <span class="fu">trimws</span>(line_k), <span class="cn">NA</span>)</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>      holeboard_trial_j[<span class="dv">1</span>,field_k] <span class="ot">=</span> line_k</span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a>    holeboard_trials <span class="ot">=</span> <span class="fu">rbind</span>(holeboard_trials, holeboard_trial_j)</span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb17-29"><a href="#cb17-29" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(holeboard_trials,<span class="st">&quot;./data/raw/HB_DATA/holeboard_trials_raw.RDS&quot;</span>,<span class="at">compress=</span><span class="st">&quot;xz&quot;</span>)</span></code></pre></div>
+<p>The md5 checksum of the output file (<code>holeboard_trials_raw.RDS</code>) is: <code>NA</code>.</p>
+<p>Filtering by the complete trials and beginning re-typing fields to proper types.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>holeboard_complete <span class="ot">=</span> holeboard_trials[<span class="fu">which</span>(holeboard_trials<span class="sc">$</span>Total_Session_Time <span class="sc">==</span> <span class="st">&quot;000:20:00.00&quot;</span>),]</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete<span class="sc">$</span>trial_id <span class="ot">=</span> <span class="fu">as.integer</span>(holeboard_complete<span class="sc">$</span>trial_id)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(holeboard_fields)) {</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  field_i <span class="ot">=</span> holeboard_fields[i,<span class="st">&quot;FieldID&quot;</span>]</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  type_i <span class="ot">=</span> holeboard_fields[i,<span class="st">&quot;FieldType&quot;</span>]</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  column_i <span class="ot">=</span> <span class="fu">which</span>(<span class="fu">colnames</span>(holeboard_complete) <span class="sc">==</span> field_i)</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (type_i <span class="sc">==</span> <span class="st">&quot;integer&quot;</span>) {</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    holeboard_complete[,column_i] <span class="ot">=</span> <span class="fu">as.integer</span>(holeboard_complete[,column_i])</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (type_i <span class="sc">==</span> <span class="st">&quot;float&quot;</span>) {</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    holeboard_complete[,column_i] <span class="ot">=</span> <span class="fu">as.numeric</span>(holeboard_complete[,column_i])</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (type_i <span class="sc">==</span> <span class="st">&quot;hhh:mm:ss:ff&quot;</span>) {</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>    hours_i <span class="ot">=</span> <span class="fu">as.numeric</span>(<span class="fu">gsub</span>(<span class="st">&quot;^(</span><span class="sc">\\</span><span class="st">d{3}):(</span><span class="sc">\\</span><span class="st">d{2}):(</span><span class="sc">\\</span><span class="st">d{2})</span><span class="sc">\\</span><span class="st">.(</span><span class="sc">\\</span><span class="st">d{+})$&quot;</span>,<span class="st">&quot;</span><span class="sc">\\</span><span class="st">1&quot;</span>,holeboard_complete[,column_i]))</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>    minutes_i <span class="ot">=</span> <span class="fu">as.numeric</span>(<span class="fu">gsub</span>(<span class="st">&quot;^(</span><span class="sc">\\</span><span class="st">d{3}):(</span><span class="sc">\\</span><span class="st">d{2}):(</span><span class="sc">\\</span><span class="st">d{2})</span><span class="sc">\\</span><span class="st">.(</span><span class="sc">\\</span><span class="st">d{+})$&quot;</span>,<span class="st">&quot;</span><span class="sc">\\</span><span class="st">2&quot;</span>,holeboard_complete[,column_i]))</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>    seconds_i <span class="ot">=</span> <span class="fu">as.numeric</span>(<span class="fu">gsub</span>(<span class="st">&quot;^(</span><span class="sc">\\</span><span class="st">d{3}):(</span><span class="sc">\\</span><span class="st">d{2}):(</span><span class="sc">\\</span><span class="st">d{2})</span><span class="sc">\\</span><span class="st">.(</span><span class="sc">\\</span><span class="st">d{+})$&quot;</span>,<span class="st">&quot;</span><span class="sc">\\</span><span class="st">3&quot;</span>,holeboard_complete[,column_i]))</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>    milliseconds_i <span class="ot">=</span> <span class="fu">as.numeric</span>(<span class="fu">paste</span>(<span class="st">&quot;0.&quot;</span>,<span class="fu">gsub</span>(<span class="st">&quot;^(</span><span class="sc">\\</span><span class="st">d{3}):(</span><span class="sc">\\</span><span class="st">d{2}):(</span><span class="sc">\\</span><span class="st">d{2})</span><span class="sc">\\</span><span class="st">.(</span><span class="sc">\\</span><span class="st">d{+})$&quot;</span>,<span class="st">&quot;</span><span class="sc">\\</span><span class="st">4&quot;</span>,holeboard_complete[,column_i]),<span class="at">sep=</span><span class="st">&quot;&quot;</span>))</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>    holeboard_complete[,column_i] <span class="ot">=</span> (hours_i <span class="sc">*</span> <span class="dv">3600</span>) <span class="sc">+</span> (minutes_i <span class="sc">*</span> <span class="dv">60</span>) <span class="sc">+</span> seconds_i <span class="sc">+</span> milliseconds_i</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (type_i <span class="sc">==</span> <span class="st">&quot;character_to_boolean&quot;</span>) {</span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>    holeboard_complete[,column_i] <span class="ot">=</span> holeboard_complete[,column_i] <span class="sc">==</span> <span class="st">&quot;Yes&quot;</span></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (type_i <span class="sc">==</span> <span class="st">&quot;mdy_hms&quot;</span>) {</span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>    holeboard_complete[,column_i] <span class="ot">=</span> <span class="fu">mdy_hms</span>(holeboard_complete[,column_i], <span class="at">tz =</span> <span class="st">&quot;America/New_York&quot;</span>)</span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (type_i <span class="sc">==</span> <span class="st">&quot;mdy&quot;</span>) {</span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>    holeboard_complete[,column_i] <span class="ot">=</span> <span class="fu">mdy</span>(holeboard_complete[,column_i])</span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>    holeboard_complete[,column_i] <span class="ot">=</span> <span class="fu">as.character</span>(holeboard_complete[,column_i])</span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<pre><code>Warning: NAs introduced by coercion
+
+Warning: NAs introduced by coercion
+
+Warning: NAs introduced by coercion
+
+Warning: NAs introduced by coercion
+
+Warning: NAs introduced by coercion
+
+Warning: NAs introduced by coercion
+
+Warning: NAs introduced by coercion
+
+Warning: NAs introduced by coercion</code></pre>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>fields_seconds <span class="ot">=</span> holeboard_fields[<span class="fu">which</span>(holeboard_fields<span class="sc">$</span>FieldType <span class="sc">==</span> <span class="st">&quot;hhh:mm:ss:ff&quot;</span>),<span class="st">&quot;FieldID&quot;</span>]</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>fields_seconds <span class="ot">=</span> <span class="fu">which</span>(<span class="fu">colnames</span>(holeboard_complete) <span class="sc">%in%</span> fields_seconds)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(holeboard_complete)[fields_seconds] <span class="ot">=</span> <span class="fu">paste</span>(<span class="fu">colnames</span>(holeboard_complete)[fields_seconds],<span class="st">&quot;_sec&quot;</span>,<span class="at">sep=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<p>Re-typing <code>Start_Time</code> to a date and dropping <code>Start_Date</code></p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>holeboard_complete<span class="sc">$</span>Start_Time <span class="ot">=</span> <span class="fu">mdy_hms</span>(<span class="fu">paste</span>(holeboard_complete<span class="sc">$</span>Start_Date, holeboard_complete<span class="sc">$</span>Start_Time, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>), <span class="at">tz =</span> <span class="st">&quot;America/New_York&quot;</span>)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete <span class="ot">=</span> holeboard_complete[,(<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> <span class="fu">which</span>(<span class="fu">colnames</span>(holeboard_complete) <span class="sc">==</span> <span class="st">&quot;Start_Date&quot;</span>))]</span></code></pre></div>
+<p>Changing <code>NA</code> values of <code>Task_Complete_Time_sec</code> and <code>Latency_To_First_Hole_sec</code> to the maximum possible time of 20 minutes (1200.0 seconds) to keep them continuous variables</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>holeboard_complete[<span class="fu">which</span>(<span class="fu">is.na</span>(holeboard_complete<span class="sc">$</span>Task_Complete_Time_sec)),<span class="st">&quot;Task_Complete_Time_sec&quot;</span>] <span class="ot">=</span> <span class="fl">1200.0</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete[<span class="fu">which</span>(<span class="fu">is.na</span>(holeboard_complete<span class="sc">$</span>Latency_To_First_Hole_sec)),<span class="st">&quot;Latency_To_First_Hole_sec&quot;</span>] <span class="ot">=</span> <span class="fl">1200.0</span></span></code></pre></div>
+<p>It should be noted that <code>Task_Complete_Time_sec</code> and all task-related columns appear to be meaningless at the moment. The task appears to be related to whether holes were baited or not (see column <code>Task_Holes</code>).</p>
+<p>Identifying duplicated subject ID data and attempting to resolve duplicates.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>holeboard_complete_duplicate_subject_IDs <span class="ot">=</span> holeboard_complete[<span class="fu">duplicated</span>(holeboard_complete<span class="sc">$</span>Subject_ID),<span class="st">&quot;Subject_ID&quot;</span>]</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete_duplicate_subjects <span class="ot">=</span> holeboard_complete[<span class="fu">which</span>(holeboard_complete<span class="sc">$</span>Subject_ID <span class="sc">%in%</span> holeboard_complete_duplicate_subject_IDs),]</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>holeboard_complete_duplicate_subjects[<span class="fu">order</span>(holeboard_complete_duplicate_subjects<span class="sc">$</span>Subject_ID),]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["file_name"],"name":[1],"type":["chr"],"align":["left"]},{"label":["trial_id"],"name":[2],"type":["int"],"align":["right"]},{"label":["Printed"],"name":[3],"type":["dttm"],"align":["right"]},{"label":["Experiment_Title"],"name":[4],"type":["chr"],"align":["left"]},{"label":["Experiment_Comment"],"name":[5],"type":["chr"],"align":["left"]},{"label":["Resolution_ms"],"name":[6],"type":["int"],"align":["right"]},{"label":["Box_Size"],"name":[7],"type":["int"],"align":["right"]},{"label":["Resting_Delay_ms"],"name":[8],"type":["int"],"align":["right"]},{"label":["Ambulatory_Trigger"],"name":[9],"type":["int"],"align":["right"]},{"label":["Session_Type"],"name":[10],"type":["chr"],"align":["left"]},{"label":["Session_Time_min"],"name":[11],"type":["int"],"align":["right"]},{"label":["Actual_Run_Time_sec"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["Data_Save_Interval_sec"],"name":[13],"type":["int"],"align":["right"]},{"label":["Start_on_Animal_Entry"],"name":[14],"type":["lgl"],"align":["right"]},{"label":["Raw_Filename"],"name":[15],"type":["chr"],"align":["left"]},{"label":["Chamber_Number"],"name":[16],"type":["int"],"align":["right"]},{"label":["Chamber_Type"],"name":[17],"type":["chr"],"align":["left"]},{"label":["Units"],"name":[18],"type":["chr"],"align":["left"]},{"label":["Hole_Board_Installed"],"name":[19],"type":["lgl"],"align":["right"]},{"label":["Terminate_on_Task_Completion"],"name":[20],"type":["lgl"],"align":["right"]},{"label":["Hole_Board_Strips_Installed"],"name":[21],"type":["lgl"],"align":["right"]},{"label":["Task_Holes"],"name":[22],"type":["chr"],"align":["left"]},{"label":["Session_Comment"],"name":[23],"type":["chr"],"align":["left"]},{"label":["Subject_ID"],"name":[24],"type":["chr"],"align":["left"]},{"label":["Experiment_ID"],"name":[25],"type":["chr"],"align":["left"]},{"label":["Group_ID"],"name":[26],"type":["chr"],"align":["left"]},{"label":["Session_No"],"name":[27],"type":["int"],"align":["right"]},{"label":["Data_Filename"],"name":[28],"type":["chr"],"align":["left"]},{"label":["Start_Time"],"name":[29],"type":["dttm"],"align":["right"]},{"label":["Detail_Reporting_Mode"],"name":[30],"type":["chr"],"align":["left"]},{"label":["Distance_Traveled"],"name":[31],"type":["dbl"],"align":["right"]},{"label":["Time_Ambulatory_sec"],"name":[32],"type":["dbl"],"align":["right"]},{"label":["Ambulatory_Count"],"name":[33],"type":["int"],"align":["right"]},{"label":["Time_Stereotypic_sec"],"name":[34],"type":["dbl"],"align":["right"]},{"label":["Stereotypic_Count"],"name":[35],"type":["int"],"align":["right"]},{"label":["Time_Resting_sec"],"name":[36],"type":["dbl"],"align":["right"]},{"label":["Vertical_Count"],"name":[37],"type":["int"],"align":["right"]},{"label":["Time_Vertical_sec"],"name":[38],"type":["dbl"],"align":["right"]},{"label":["Jump_Count"],"name":[39],"type":["int"],"align":["right"]},{"label":["Time_Jumping_sec"],"name":[40],"type":["dbl"],"align":["right"]},{"label":["Average_Velocity"],"name":[41],"type":["dbl"],"align":["right"]},{"label":["Ambulatory_Episodes"],"name":[42],"type":["int"],"align":["right"]},{"label":["Total_Session_Time_sec"],"name":[43],"type":["dbl"],"align":["right"]},{"label":["Task_Complete_Time_sec"],"name":[44],"type":["dbl"],"align":["right"]},{"label":["Latency_To_First_Hole_sec"],"name":[45],"type":["dbl"],"align":["right"]},{"label":["Novel_Task_Entries"],"name":[46],"type":["int"],"align":["right"]},{"label":["Novel_NonTask_Entries"],"name":[47],"type":["int"],"align":["right"]},{"label":["Novel_Entries"],"name":[48],"type":["int"],"align":["right"]},{"label":["Repeat_Task_Entries"],"name":[49],"type":["int"],"align":["right"]},{"label":["Repeat_NonTask_Entries"],"name":[50],"type":["int"],"align":["right"]},{"label":["Repeat_Entries"],"name":[51],"type":["int"],"align":["right"]},{"label":["Total_Entries"],"name":[52],"type":["int"],"align":["right"]},{"label":["Avg_Novel_Task_IRT"],"name":[53],"type":["dbl"],"align":["right"]},{"label":["Avg_Novel_NonTask_IRT"],"name":[54],"type":["dbl"],"align":["right"]},{"label":["Avg_Novel_Total_IRT"],"name":[55],"type":["dbl"],"align":["right"]},{"label":["Working_Memory_Ratio"],"name":[56],"type":["dbl"],"align":["right"]},{"label":["Reference_Memory_Ratio"],"name":[57],"type":["dbl"],"align":["right"]}],"data":[{"1":"Subject_7973_Group_12-2_Experiment_5-11-16.Summary","2":"1","3":"2016-05-11 10:12:32","4":"DO HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"05112016.Q0","16":"8","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"7973","25":"5-11-16","26":"12-2","27":"1","28":"Subject_7973_Group_12-2_Experiment_5-11-16.Summary","29":"2016-05-11 09:49:02","30":"Relative","31":"3682.63","32":"163.40","33":"1557","34":"143.48","35":"2267","36":"861.92","37":"0","38":"0","39":"92","40":"31.20","41":"67.63","42":"213","43":"1200","44":"1200.00","45":"1.32","46":"15","47":"0","48":"15","49":"100","50":"0","51":"100","52":"115","53":"50.45","54":"0","55":"50.45","56":"0.13","57":"1","_rn_":"173"},{"1":"Subject_7973_Group_13-1_Experiment_DO5-18-16.Summary","2":"1","3":"2016-05-18 10:01:20","4":"DO HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"05182016.C0","16":"2","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"7973","25":"DO 5-18-16","26":"13-1","27":"1","28":"Subject_7973_Group_13-1_Experiment_DO5-18-16.Summary","29":"2016-05-18 09:40:35","30":"Relative","31":"4326.03","32":"236.96","33":"2090","34":"188.68","35":"3022","36":"771.68","37":"0","38":"0","39":"17","40":"2.68","41":"65.44","42":"276","43":"1200","44":"332.36","45":"88.44","46":"16","47":"0","48":"16","49":"91","50":"0","51":"91","52":"107","53":"16.26","54":"0","55":"16.26","56":"0.15","57":"1","_rn_":"174"},{"1":"Subject_8574_Group_28-1_Experiment_DO10-19-16.Summary","2":"2","3":"2016-10-19 09:05:28","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10192016.O0","16":"6","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8578","25":"DO 10-19-16","26":"28-1","27":"2","28":"Subject_8578_Group_28-1_Experiment_DO10-19-16.Summary","29":"2016-10-19 08:44:10","30":"Relative","31":"3582.79","32":"186.44","33":"1560","34":"146.56","35":"2290","36":"809.80","37":"0","38":"0","39":"87","40":"57.20","41":"52.73","42":"201","43":"1200","44":"1200.00","45":"19.28","46":"15","47":"0","48":"15","49":"68","50":"0","51":"68","52":"83","53":"81.50","54":"0","55":"81.50","56":"0.18","57":"1","_rn_":"372"},{"1":"Subject_8578_Group_28-2_Experiment_DO10-19-16.Summary","2":"1","3":"2016-10-19 09:39:33","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10192016.S0","16":"2","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8578","25":"DO 10-19-16","26":"28-2","27":"3","28":"Subject_8578_Group_28-2_Experiment_DO10-19-16.Summary","29":"2016-10-19 09:18:53","30":"Relative","31":"3845.32","32":"203.40","33":"1562","34":"143.52","35":"2111","36":"837.80","37":"0","38":"0","39":"48","40":"15.28","41":"64.10","42":"246","43":"1200","44":"907.40","45":"100.72","46":"16","47":"0","48":"16","49":"93","50":"0","51":"93","52":"109","53":"53.77","54":"0","55":"53.77","56":"0.15","57":"1","_rn_":"379"},{"1":"Subject_8575_Group_28-1_Experiment_DO10-19-16.Summary","2":"2","3":"2016-10-19 09:05:53","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10192016.Q0","16":"8","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8579","25":"DO 10-19-16","26":"28-1","27":"2","28":"Subject_8579_Group_28-1_Experiment_DO10-19-16.Summary","29":"2016-10-19 08:44:10","30":"Relative","31":"4843.46","32":"243.60","33":"2287","34":"164.64","35":"2629","36":"695.76","37":"0","38":"0","39":"187","40":"96.00","41":"54.63","42":"240","43":"1200","44":"766.92","45":"19.68","46":"16","47":"0","48":"16","49":"114","50":"0","51":"114","52":"130","53":"49.81","54":"0","55":"49.81","56":"0.12","57":"1","_rn_":"374"},{"1":"Subject_8579_Group_28-2_Experiment_DO10-19-16.Summary","2":"1","3":"2016-10-19 09:40:01","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10192016.U0","16":"4","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8579","25":"DO 10-19-16","26":"28-2","27":"3","28":"Subject_8579_Group_28-2_Experiment_DO10-19-16.Summary","29":"2016-10-19 09:18:53","30":"Relative","31":"7209.38","32":"397.40","33":"3553","34":"148.72","35":"2364","36":"628.00","37":"0","38":"0","39":"84","40":"25.88","41":"49.52","42":"262","43":"1200","44":"258.12","45":"47.20","46":"16","47":"0","48":"16","49":"154","50":"0","51":"154","52":"170","53":"14.06","54":"0","55":"14.06","56":"0.09","57":"1","_rn_":"380"},{"1":"Subject_8639_Group_29-1_Experiment_DO10-26-16.Summary","2":"1","3":"2016-10-26 08:59:35","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10262016.F0","16":"5","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8639","25":"DO 10-26-16","26":"29-1","27":"1","28":"Subject_8639_Group_29-1_Experiment_DO10-26-16.Summary","29":"2016-10-26 08:38:31","30":"Relative","31":"3751.12","32":"184.60","33":"1589","34":"155.40","35":"2457","36":"841.04","37":"0","38":"0","39":"50","40":"18.96","41":"73.89","42":"246","43":"1200","44":"1200.00","45":"1200.00","46":"0","47":"0","48":"0","49":"0","50":"0","51":"0","52":"0","53":"0.00","54":"0","55":"0.00","56":"0.00","57":"0","_rn_":"446"},{"1":"Subject_8639_Group_35-1_Experiment_DO1-18-17.Summary","2":"1","3":"2017-01-18 10:15:44","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"01182017.B0","16":"1","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"tyler","24":"8639","25":"DO 1-18-17","26":"35-1","27":"1","28":"Subject_8639_Group_35-1_Experiment_DO1-18-17.Summary","29":"2017-01-18 09:55:23","30":"Relative","31":"1635.64","32":"65.60","33":"507","34":"123.48","35":"1764","36":"1000.68","37":"0","38":"0","39":"17","40":"10.24","41":"79.97","42":"125","43":"1200","44":"1200.00","45":"11.28","46":"15","47":"0","48":"15","49":"56","50":"0","51":"56","52":"71","53":"51.70","54":"0","55":"51.70","56":"0.21","57":"1","_rn_":"447"},{"1":"Subject_8640_Group_29-1_Experiment_DO10-26-16.Summary","2":"1","3":"2016-10-26 08:59:54","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10262016.H0","16":"7","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8640","25":"DO 10-26-16","26":"29-1","27":"1","28":"Subject_8640_Group_29-1_Experiment_DO10-26-16.Summary","29":"2016-10-26 08:38:31","30":"Relative","31":"5528.06","32":"283.20","33":"2420","34":"134.56","35":"2122","36":"722.52","37":"0","38":"0","39":"160","40":"59.72","41":"58.09","42":"272","43":"1200","44":"780.40","45":"212.28","46":"16","47":"0","48":"16","49":"59","50":"0","51":"59","52":"75","53":"37.87","54":"0","55":"37.87","56":"0.21","57":"1","_rn_":"448"},{"1":"Subject_8640_Group_35-1_Experiment_DO1-18-17.Summary","2":"1","3":"2017-01-18 10:16:15","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"01182017.E0","16":"4","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"tyler","24":"8640","25":"DO 1-18-17","26":"35-1","27":"1","28":"Subject_8640_Group_35-1_Experiment_DO1-18-17.Summary","29":"2017-01-18 09:55:23","30":"Relative","31":"4200.01","32":"205.32","33":"1927","34":"145.44","35":"2391","36":"797.40","37":"0","38":"0","39":"109","40":"51.84","41":"61.99","42":"217","43":"1200","44":"606.40","45":"44.16","46":"16","47":"0","48":"16","49":"63","50":"0","51":"63","52":"79","53":"37.48","54":"0","55":"37.48","56":"0.20","57":"1","_rn_":"449"},{"1":"Subject_8641_Group_29-2_Experiment_DO10-26-16.Summary","2":"2","3":"2016-10-26 09:43:47","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10262016.Z0","16":"1","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8641","25":"DO 10-26-16","26":"29-2","27":"3","28":"Subject_8641_Group_29-2_Experiment_DO10-26-16.Summary","29":"2016-10-26 09:23:45","30":"Relative","31":"5907.00","32":"290.56","33":"3064","34":"143.32","35":"2483","36":"658.04","37":"0","38":"0","39":"352","40":"108.08","41":"59.17","42":"276","43":"1200","44":"245.28","45":"28.76","46":"16","47":"0","48":"16","49":"64","50":"0","51":"64","52":"80","53":"14.43","54":"0","55":"14.43","56":"0.20","57":"1","_rn_":"451"},{"1":"Subject_8641_Group_35-1_Experiment_DO1-18-17.Summary","2":"1","3":"2017-01-18 10:16:55","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"01182017.G0","16":"6","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"tyler","24":"8641","25":"DO 1-18-17","26":"35-1","27":"1","28":"Subject_8641_Group_35-1_Experiment_DO1-18-17.Summary","29":"2017-01-18 09:55:23","30":"Relative","31":"2337.30","32":"104.56","33":"770","34":"147.00","35":"2233","36":"937.68","37":"0","38":"0","39":"40","40":"10.76","41":"77.46","42":"165","43":"1200","44":"642.32","45":"66.76","46":"16","47":"0","48":"16","49":"51","50":"0","51":"51","52":"67","53":"38.37","54":"0","55":"38.37","56":"0.24","57":"1","_rn_":"452"},{"1":"Subject_8642_Group_29-2_Experiment_DO10-26-16.Summary","2":"1","3":"2016-10-26 09:43:48","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10262016.B1","16":"3","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8642","25":"DO 10-26-16","26":"29-2","27":"3","28":"Subject_8642_Group_29-2_Experiment_DO10-26-16.Summary","29":"2016-10-26 09:23:45","30":"Relative","31":"886.12","32":"40.52","33":"335","34":"48.44","35":"646","36":"1111.04","37":"0","38":"0","39":"0","40":"0.00","41":"39.64","42":"29","43":"1200","44":"1200.00","45":"1200.00","46":"0","47":"0","48":"0","49":"0","50":"0","51":"0","52":"0","53":"0.00","54":"0","55":"0.00","56":"0.00","57":"0","_rn_":"454"},{"1":"Subject_8642_Group_35-1_Experiment_DO1-18-17.Summary","2":"1","3":"2017-01-18 10:17:35","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"01182017.I0","16":"8","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"tyler","24":"8642","25":"DO 1-18-17","26":"35-1","27":"1","28":"Subject_8642_Group_35-1_Experiment_DO1-18-17.Summary","29":"2017-01-18 09:55:23","30":"Relative","31":"5068.71","32":"211.72","33":"2150","34":"161.08","35":"2481","36":"782.64","37":"0","38":"0","39":"98","40":"44.56","41":"63.96","42":"231","43":"1200","44":"1200.00","45":"23.96","46":"13","47":"0","48":"13","49":"109","50":"0","51":"109","52":"122","53":"34.12","54":"0","55":"34.12","56":"0.11","57":"1","_rn_":"455"},{"1":"Subject_8671_Group_33-1_Experiment_DO11-30-16.Summary","2":"1","3":"2016-11-30 09:18:01","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"11302016.N0","16":"5","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8671","25":"DO 11-30-16","26":"33-1","27":"1","28":"Subject_8671_Group_33-1_Experiment_DO11-30-16.Summary","29":"2016-11-30 08:57:05","30":"Relative","31":"4305.57","32":"196.92","33":"1840","34":"167.32","35":"2612","36":"799.44","37":"0","38":"0","39":"72","40":"36.32","41":"75.72","42":"264","43":"1200","44":"519.32","45":"58.44","46":"16","47":"0","48":"16","49":"128","50":"0","51":"128","52":"144","53":"30.72","54":"0","55":"30.72","56":"0.11","57":"1","_rn_":"485"},{"1":"Subject_8671_Group_35-1_Experiment_DO1-18-17.Summary","2":"1","3":"2017-01-18 10:16:01","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"01182017.D0","16":"3","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"tyler","24":"8671","25":"DO 1-18-17","26":"35-1","27":"1","28":"Subject_8671_Group_35-1_Experiment_DO1-18-17.Summary","29":"2017-01-18 09:55:23","30":"Relative","31":"5493.02","32":"287.20","33":"2552","34":"155.16","35":"2421","36":"695.80","37":"0","38":"0","39":"141","40":"61.84","41":"54.21","42":"247","43":"1200","44":"1200.00","45":"120.32","46":"14","47":"0","48":"14","49":"28","50":"0","51":"28","52":"42","53":"74.42","54":"0","55":"74.42","56":"0.33","57":"1","_rn_":"486"},{"1":"Subject_8672_Group_33-1_Experiment_DO11-30-16.Summary","2":"1","3":"2016-11-30 09:18:29","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"11302016.P0","16":"7","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8672","25":"DO 11-30-16","26":"33-1","27":"1","28":"Subject_8672_Group_33-1_Experiment_DO11-30-16.Summary","29":"2016-11-30 08:57:05","30":"Relative","31":"3734.38","32":"174.56","33":"1472","34":"130.56","35":"1913","36":"793.88","37":"0","38":"0","39":"191","40":"101.00","41":"67.96","42":"209","43":"1200","44":"1200.00","45":"55.04","46":"14","47":"0","48":"14","49":"71","50":"0","51":"71","52":"85","53":"63.98","54":"0","55":"63.98","56":"0.16","57":"1","_rn_":"487"},{"1":"Subject_8672_Group_35-1_Experiment_DO1-18-17.Summary","2":"1","3":"2017-01-18 10:16:37","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"01182017.F0","16":"5","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"tyler","24":"8672","25":"DO 1-18-17","26":"35-1","27":"1","28":"Subject_8672_Group_35-1_Experiment_DO1-18-17.Summary","29":"2017-01-18 09:55:23","30":"Relative","31":"5483.64","32":"267.60","33":"2484","34":"121.80","35":"1934","36":"695.56","37":"0","38":"0","39":"296","40":"115.04","41":"50.28","42":"213","43":"1200","44":"1200.00","45":"19.12","46":"15","47":"0","48":"15","49":"70","50":"0","51":"70","52":"85","53":"32.15","54":"0","55":"32.15","56":"0.18","57":"1","_rn_":"488"},{"1":"Subject_8673_Group_33-2_Experiment_DO11-30-16.Summary","2":"1","3":"2016-11-30 09:52:52","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"11302016.R0","16":"1","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8673","25":"DO 11-30-16","26":"33-2","27":"1","28":"Subject_8673_Group_33-2_Experiment_DO11-30-16.Summary","29":"2016-11-30 09:32:23","30":"Relative","31":"3177.37","32":"172.48","33":"1473","34":"115.20","35":"1783","36":"841.76","37":"0","38":"0","39":"131","40":"70.56","41":"57.40","42":"156","43":"1200","44":"1200.00","45":"16.12","46":"15","47":"0","48":"15","49":"36","50":"0","51":"36","52":"51","53":"65.24","54":"0","55":"65.24","56":"0.29","57":"1","_rn_":"489"},{"1":"Subject_8673_Group_35-1_Experiment_DO1-18-17.Summary","2":"1","3":"2017-01-18 10:17:13","4":"Holeboard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"01182017.H0","16":"7","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"tyler","24":"8673","25":"DO 1-18-17","26":"35-1","27":"1","28":"Subject_8673_Group_35-1_Experiment_DO1-18-17.Summary","29":"2017-01-18 09:55:23","30":"Relative","31":"4160.47","32":"199.24","33":"1962","34":"152.92","35":"2535","36":"727.24","37":"0","38":"0","39":"219","40":"120.60","41":"61.79","42":"203","43":"1200","44":"1200.00","45":"52.76","46":"14","47":"0","48":"14","49":"24","50":"0","51":"24","52":"38","53":"45.26","54":"0","55":"45.26","56":"0.37","57":"1","_rn_":"490"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<p>Some of these subjects appear to have duplicated holeboard sessions on the same day. Others appear to have file names with subject IDs (and file IDs reported in the file too) mismatching the subject ID in the trial. These are potentially problematic. Looking at how many mismatches between file name subject IDs and summary subject IDs there are.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">paste</span>(<span class="st">&quot;There are &quot;</span>, <span class="fu">length</span>(<span class="fu">which</span>(<span class="fu">gsub</span>(<span class="st">&quot;^Subject_(</span><span class="sc">\\</span><span class="st">d+)_.*$&quot;</span>,<span class="st">&quot;</span><span class="sc">\\</span><span class="st">1&quot;</span>,holeboard_complete<span class="sc">$</span>file_name) <span class="sc">!=</span> holeboard_complete<span class="sc">$</span>Subject_ID)), <span class="st">&quot; subjects with file IDs mismatching their holeboard subject IDs&quot;</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<pre><code>[1] &quot;There are 3 subjects with file IDs mismatching their holeboard subject IDs&quot;</code></pre>
+<p>This is not a major problem. Looking at these IDs.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>mismatch_IDs <span class="ot">=</span> <span class="fu">unique</span>(holeboard_complete[<span class="fu">which</span>(<span class="fu">gsub</span>(<span class="st">&quot;^Subject_(</span><span class="sc">\\</span><span class="st">d+)_.*$&quot;</span>,<span class="st">&quot;</span><span class="sc">\\</span><span class="st">1&quot;</span>,holeboard_complete<span class="sc">$</span>file_name) <span class="sc">!=</span> holeboard_complete<span class="sc">$</span>Subject_ID),<span class="st">&quot;Subject_ID&quot;</span>])</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete[<span class="fu">which</span>(holeboard_complete<span class="sc">$</span>Subject_ID <span class="sc">%in%</span> mismatch_IDs),]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["file_name"],"name":[1],"type":["chr"],"align":["left"]},{"label":["trial_id"],"name":[2],"type":["int"],"align":["right"]},{"label":["Printed"],"name":[3],"type":["dttm"],"align":["right"]},{"label":["Experiment_Title"],"name":[4],"type":["chr"],"align":["left"]},{"label":["Experiment_Comment"],"name":[5],"type":["chr"],"align":["left"]},{"label":["Resolution_ms"],"name":[6],"type":["int"],"align":["right"]},{"label":["Box_Size"],"name":[7],"type":["int"],"align":["right"]},{"label":["Resting_Delay_ms"],"name":[8],"type":["int"],"align":["right"]},{"label":["Ambulatory_Trigger"],"name":[9],"type":["int"],"align":["right"]},{"label":["Session_Type"],"name":[10],"type":["chr"],"align":["left"]},{"label":["Session_Time_min"],"name":[11],"type":["int"],"align":["right"]},{"label":["Actual_Run_Time_sec"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["Data_Save_Interval_sec"],"name":[13],"type":["int"],"align":["right"]},{"label":["Start_on_Animal_Entry"],"name":[14],"type":["lgl"],"align":["right"]},{"label":["Raw_Filename"],"name":[15],"type":["chr"],"align":["left"]},{"label":["Chamber_Number"],"name":[16],"type":["int"],"align":["right"]},{"label":["Chamber_Type"],"name":[17],"type":["chr"],"align":["left"]},{"label":["Units"],"name":[18],"type":["chr"],"align":["left"]},{"label":["Hole_Board_Installed"],"name":[19],"type":["lgl"],"align":["right"]},{"label":["Terminate_on_Task_Completion"],"name":[20],"type":["lgl"],"align":["right"]},{"label":["Hole_Board_Strips_Installed"],"name":[21],"type":["lgl"],"align":["right"]},{"label":["Task_Holes"],"name":[22],"type":["chr"],"align":["left"]},{"label":["Session_Comment"],"name":[23],"type":["chr"],"align":["left"]},{"label":["Subject_ID"],"name":[24],"type":["chr"],"align":["left"]},{"label":["Experiment_ID"],"name":[25],"type":["chr"],"align":["left"]},{"label":["Group_ID"],"name":[26],"type":["chr"],"align":["left"]},{"label":["Session_No"],"name":[27],"type":["int"],"align":["right"]},{"label":["Data_Filename"],"name":[28],"type":["chr"],"align":["left"]},{"label":["Start_Time"],"name":[29],"type":["dttm"],"align":["right"]},{"label":["Detail_Reporting_Mode"],"name":[30],"type":["chr"],"align":["left"]},{"label":["Distance_Traveled"],"name":[31],"type":["dbl"],"align":["right"]},{"label":["Time_Ambulatory_sec"],"name":[32],"type":["dbl"],"align":["right"]},{"label":["Ambulatory_Count"],"name":[33],"type":["int"],"align":["right"]},{"label":["Time_Stereotypic_sec"],"name":[34],"type":["dbl"],"align":["right"]},{"label":["Stereotypic_Count"],"name":[35],"type":["int"],"align":["right"]},{"label":["Time_Resting_sec"],"name":[36],"type":["dbl"],"align":["right"]},{"label":["Vertical_Count"],"name":[37],"type":["int"],"align":["right"]},{"label":["Time_Vertical_sec"],"name":[38],"type":["dbl"],"align":["right"]},{"label":["Jump_Count"],"name":[39],"type":["int"],"align":["right"]},{"label":["Time_Jumping_sec"],"name":[40],"type":["dbl"],"align":["right"]},{"label":["Average_Velocity"],"name":[41],"type":["dbl"],"align":["right"]},{"label":["Ambulatory_Episodes"],"name":[42],"type":["int"],"align":["right"]},{"label":["Total_Session_Time_sec"],"name":[43],"type":["dbl"],"align":["right"]},{"label":["Task_Complete_Time_sec"],"name":[44],"type":["dbl"],"align":["right"]},{"label":["Latency_To_First_Hole_sec"],"name":[45],"type":["dbl"],"align":["right"]},{"label":["Novel_Task_Entries"],"name":[46],"type":["int"],"align":["right"]},{"label":["Novel_NonTask_Entries"],"name":[47],"type":["int"],"align":["right"]},{"label":["Novel_Entries"],"name":[48],"type":["int"],"align":["right"]},{"label":["Repeat_Task_Entries"],"name":[49],"type":["int"],"align":["right"]},{"label":["Repeat_NonTask_Entries"],"name":[50],"type":["int"],"align":["right"]},{"label":["Repeat_Entries"],"name":[51],"type":["int"],"align":["right"]},{"label":["Total_Entries"],"name":[52],"type":["int"],"align":["right"]},{"label":["Avg_Novel_Task_IRT"],"name":[53],"type":["dbl"],"align":["right"]},{"label":["Avg_Novel_NonTask_IRT"],"name":[54],"type":["dbl"],"align":["right"]},{"label":["Avg_Novel_Total_IRT"],"name":[55],"type":["dbl"],"align":["right"]},{"label":["Working_Memory_Ratio"],"name":[56],"type":["dbl"],"align":["right"]},{"label":["Reference_Memory_Ratio"],"name":[57],"type":["dbl"],"align":["right"]}],"data":[{"1":"Subject_8574_Group_28-1_Experiment_DO10-19-16.Summary","2":"2","3":"2016-10-19 09:05:28","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10192016.O0","16":"6","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8578","25":"DO 10-19-16","26":"28-1","27":"2","28":"Subject_8578_Group_28-1_Experiment_DO10-19-16.Summary","29":"2016-10-19 08:44:10","30":"Relative","31":"3582.79","32":"186.44","33":"1560","34":"146.56","35":"2290","36":"809.80","37":"0","38":"0","39":"87","40":"57.20","41":"52.73","42":"201","43":"1200","44":"1200.00","45":"19.28","46":"15","47":"0","48":"15","49":"68","50":"0","51":"68","52":"83","53":"81.50","54":"0","55":"81.50","56":"0.18","57":"1","_rn_":"372"},{"1":"Subject_8575_Group_28-1_Experiment_DO10-19-16.Summary","2":"2","3":"2016-10-19 09:05:53","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10192016.Q0","16":"8","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8579","25":"DO 10-19-16","26":"28-1","27":"2","28":"Subject_8579_Group_28-1_Experiment_DO10-19-16.Summary","29":"2016-10-19 08:44:10","30":"Relative","31":"4843.46","32":"243.60","33":"2287","34":"164.64","35":"2629","36":"695.76","37":"0","38":"0","39":"187","40":"96.00","41":"54.63","42":"240","43":"1200","44":"766.92","45":"19.68","46":"16","47":"0","48":"16","49":"114","50":"0","51":"114","52":"130","53":"49.81","54":"0","55":"49.81","56":"0.12","57":"1","_rn_":"374"},{"1":"Subject_8578_Group_28-2_Experiment_DO10-19-16.Summary","2":"1","3":"2016-10-19 09:39:33","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10192016.S0","16":"2","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8578","25":"DO 10-19-16","26":"28-2","27":"3","28":"Subject_8578_Group_28-2_Experiment_DO10-19-16.Summary","29":"2016-10-19 09:18:53","30":"Relative","31":"3845.32","32":"203.40","33":"1562","34":"143.52","35":"2111","36":"837.80","37":"0","38":"0","39":"48","40":"15.28","41":"64.10","42":"246","43":"1200","44":"907.40","45":"100.72","46":"16","47":"0","48":"16","49":"93","50":"0","51":"93","52":"109","53":"53.77","54":"0","55":"53.77","56":"0.15","57":"1","_rn_":"379"},{"1":"Subject_8579_Group_28-2_Experiment_DO10-19-16.Summary","2":"1","3":"2016-10-19 09:40:01","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"10192016.U0","16":"4","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8579","25":"DO 10-19-16","26":"28-2","27":"3","28":"Subject_8579_Group_28-2_Experiment_DO10-19-16.Summary","29":"2016-10-19 09:18:53","30":"Relative","31":"7209.38","32":"397.40","33":"3553","34":"148.72","35":"2364","36":"628.00","37":"0","38":"0","39":"84","40":"25.88","41":"49.52","42":"262","43":"1200","44":"258.12","45":"47.20","46":"16","47":"0","48":"16","49":"154","50":"0","51":"154","52":"170","53":"14.06","54":"0","55":"14.06","56":"0.09","57":"1","_rn_":"380"},{"1":"Subject_8628_Group_34-2_Experiment_DO12-7-16.Summary","2":"1","3":"2016-12-07 09:47:07","4":"HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"12072016.Q0","16":"8","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8597","25":"DO 12-7-16","26":"34-2","27":"1","28":"Subject_8597_Group_34-2_Experiment_DO12-7-16.Summary","29":"2016-12-07 09:25:17","30":"Relative","31":"2258.50","32":"91.28","33":"978","34":"96.16","35":"1464","36":"976.12","37":"0","38":"0","39":"92","40":"36.44","41":"69.47","42":"120","43":"1200","44":"1200.00","45":"20.60","46":"14","47":"0","48":"14","49":"21","50":"0","51":"21","52":"35","53":"38.14","54":"0","55":"38.14","56":"0.40","57":"1","_rn_":"431"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<p>8597 is most likely a miskey given the proximety to 8627. The others appear to be similar miskeys. For these mismatch IDs, can gsub in the subject ID from the file name.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>mismatch_rows <span class="ot">=</span> <span class="fu">which</span>(holeboard_complete<span class="sc">$</span>Subject_ID <span class="sc">%in%</span> mismatch_IDs)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete[mismatch_rows,<span class="st">&quot;Subject_ID&quot;</span>] <span class="ot">=</span> <span class="fu">gsub</span>(<span class="st">&quot;^Subject_(</span><span class="sc">\\</span><span class="st">d+)_.*$&quot;</span>,<span class="st">&quot;</span><span class="sc">\\</span><span class="st">1&quot;</span>,holeboard_complete[mismatch_rows,<span class="st">&quot;file_name&quot;</span>])</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">which</span>(<span class="fu">duplicated</span>(holeboard_complete<span class="sc">$</span>Subject_ID)))</span></code></pre></div>
+<pre><code>[1] 8</code></pre>
+<p>This resolved two duplicates and all mismatches.</p>
+<p>Looking for obvious miskeys in subject IDs relative to date tested.</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>holeboard_complete_continuous_id <span class="ot">=</span> holeboard_complete</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete_continuous_id<span class="sc">$</span>Subject_ID <span class="ot">=</span> <span class="fu">as.numeric</span>(holeboard_complete_continuous_id<span class="sc">$</span>Subject_ID)</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>holeboard_complete_continuous_id <span class="ot">=</span> holeboard_complete_continuous_id[<span class="fu">which</span>(holeboard_complete_continuous_id<span class="sc">$</span>Subject_ID <span class="sc">&gt;</span> <span class="dv">1000</span>),]</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> holeboard_complete_continuous_id, <span class="fu">aes</span>(<span class="at">x =</span> Printed, <span class="at">y =</span> Subject_ID)) <span class="sc">+</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span></code></pre></div>
+<p><img src="figure/02_DO_holeboard_summarize.Rmd/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-14-1">
+Past versions of unnamed-chunk-14-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-14-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+ec3b9f5
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+</tr>
+<tr>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+</tr>
+<tr>
+<td>
+56ca4b6
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+</tr>
+<tr>
+<td>
+0e1a910
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The January 2017 datapoints are very obviously outside of the cloud of animals tested in the G23. Since these are mostly duplicates, can resolve these by filtering the January 2017 datapoints.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>exclude_files <span class="ot">=</span> holeboard_complete[<span class="fu">which</span>(holeboard_complete<span class="sc">$</span>Printed <span class="sc">&gt;</span> <span class="fu">ymd</span>(<span class="st">&quot;2017-01-01&quot;</span>)),<span class="st">&quot;file_name&quot;</span>]</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>exclude_rows <span class="ot">=</span> <span class="fu">which</span>(holeboard_complete<span class="sc">$</span>file_name <span class="sc">%in%</span> exclude_files)</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>holeboard_complete <span class="ot">=</span> holeboard_complete[(<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> exclude_rows),]</span></code></pre></div>
+<p>We have additional problems in January of 2016 and ~May of 2016 that have highly different subject IDs to their cohort. These should be resolved too. This can be done with studentized residuals.</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>holeboard_subject_id_lm <span class="ot">=</span> <span class="fu">lm</span>(Subject_ID <span class="sc">~</span> Printed, <span class="at">data =</span> holeboard_complete_continuous_id)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>holeboard_subject_id_studres <span class="ot">=</span> <span class="fu">studres</span>(holeboard_subject_id_lm)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>sig_subject_ids <span class="ot">=</span> <span class="fu">which</span>(<span class="dv">2</span> <span class="sc">*</span> <span class="fu">pnorm</span>(<span class="fu">abs</span>(holeboard_subject_id_studres), <span class="at">lower.tail =</span> <span class="cn">FALSE</span>) <span class="sc">&lt;</span> <span class="fl">0.01</span>)</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>holeboard_complete_continuous_id[sig_subject_ids,<span class="fu">c</span>(<span class="st">&quot;Printed&quot;</span>,<span class="st">&quot;Subject_ID&quot;</span>)]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["Printed"],"name":[1],"type":["dttm"],"align":["right"]},{"label":["Subject_ID"],"name":[2],"type":["dbl"],"align":["right"]}],"data":[{"1":"2016-05-11 10:10:06","2":"9010","_rn_":"502"},{"1":"2016-05-11 10:10:18","2":"9011","_rn_":"503"},{"1":"2016-05-11 10:11:56","2":"9012","_rn_":"504"},{"1":"2016-05-11 10:12:07","2":"9013","_rn_":"505"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<p>Most likely, these are a 9 transposed where an 8 should be. Changing these IDs to 8000s.</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>holeboard_complete_9000_rows <span class="ot">=</span> <span class="fu">which</span>(<span class="fu">as.numeric</span>(holeboard_complete<span class="sc">$</span>Subject_ID) <span class="sc">&gt;</span> <span class="dv">9000</span>)</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete[holeboard_complete_9000_rows,<span class="st">&quot;Subject_ID&quot;</span>] <span class="ot">=</span> <span class="fu">as.character</span>(<span class="fu">as.numeric</span>(holeboard_complete[holeboard_complete_9000_rows,<span class="st">&quot;Subject_ID&quot;</span>]) <span class="sc">-</span> <span class="dv">1000</span>)</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>holeboard_complete_continuous_id <span class="ot">=</span> holeboard_complete</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>holeboard_complete_continuous_id<span class="sc">$</span>Subject_ID <span class="ot">=</span> <span class="fu">as.numeric</span>(holeboard_complete_continuous_id<span class="sc">$</span>Subject_ID)</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>holeboard_complete_continuous_id <span class="ot">=</span> holeboard_complete_continuous_id[<span class="fu">which</span>(holeboard_complete_continuous_id<span class="sc">$</span>Subject_ID <span class="sc">&gt;</span> <span class="dv">1000</span>),]</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> holeboard_complete_continuous_id, <span class="fu">aes</span>(<span class="at">x =</span> Printed, <span class="at">y =</span> Subject_ID)) <span class="sc">+</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span></code></pre></div>
+<p><img src="figure/02_DO_holeboard_summarize.Rmd/unnamed-chunk-17-1.png" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-17-1">
+Past versions of unnamed-chunk-17-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-17-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+ec3b9f5
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+</tr>
+<tr>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+</tr>
+<tr>
+<td>
+56ca4b6
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+</tr>
+<tr>
+<td>
+0e1a910
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>This looks much cleaner. Looking for duplicated subject IDs.</p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>final_dup_ids <span class="ot">=</span> holeboard_complete[<span class="fu">which</span>(<span class="fu">duplicated</span>(holeboard_complete<span class="sc">$</span>Subject_ID)),<span class="st">&quot;Subject_ID&quot;</span>]</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>holeboard_complete[<span class="fu">which</span>(holeboard_complete<span class="sc">$</span>Subject_ID <span class="sc">%in%</span> final_dup_ids),]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["file_name"],"name":[1],"type":["chr"],"align":["left"]},{"label":["trial_id"],"name":[2],"type":["int"],"align":["right"]},{"label":["Printed"],"name":[3],"type":["dttm"],"align":["right"]},{"label":["Experiment_Title"],"name":[4],"type":["chr"],"align":["left"]},{"label":["Experiment_Comment"],"name":[5],"type":["chr"],"align":["left"]},{"label":["Resolution_ms"],"name":[6],"type":["int"],"align":["right"]},{"label":["Box_Size"],"name":[7],"type":["int"],"align":["right"]},{"label":["Resting_Delay_ms"],"name":[8],"type":["int"],"align":["right"]},{"label":["Ambulatory_Trigger"],"name":[9],"type":["int"],"align":["right"]},{"label":["Session_Type"],"name":[10],"type":["chr"],"align":["left"]},{"label":["Session_Time_min"],"name":[11],"type":["int"],"align":["right"]},{"label":["Actual_Run_Time_sec"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["Data_Save_Interval_sec"],"name":[13],"type":["int"],"align":["right"]},{"label":["Start_on_Animal_Entry"],"name":[14],"type":["lgl"],"align":["right"]},{"label":["Raw_Filename"],"name":[15],"type":["chr"],"align":["left"]},{"label":["Chamber_Number"],"name":[16],"type":["int"],"align":["right"]},{"label":["Chamber_Type"],"name":[17],"type":["chr"],"align":["left"]},{"label":["Units"],"name":[18],"type":["chr"],"align":["left"]},{"label":["Hole_Board_Installed"],"name":[19],"type":["lgl"],"align":["right"]},{"label":["Terminate_on_Task_Completion"],"name":[20],"type":["lgl"],"align":["right"]},{"label":["Hole_Board_Strips_Installed"],"name":[21],"type":["lgl"],"align":["right"]},{"label":["Task_Holes"],"name":[22],"type":["chr"],"align":["left"]},{"label":["Session_Comment"],"name":[23],"type":["chr"],"align":["left"]},{"label":["Subject_ID"],"name":[24],"type":["chr"],"align":["left"]},{"label":["Experiment_ID"],"name":[25],"type":["chr"],"align":["left"]},{"label":["Group_ID"],"name":[26],"type":["chr"],"align":["left"]},{"label":["Session_No"],"name":[27],"type":["int"],"align":["right"]},{"label":["Data_Filename"],"name":[28],"type":["chr"],"align":["left"]},{"label":["Start_Time"],"name":[29],"type":["dttm"],"align":["right"]},{"label":["Detail_Reporting_Mode"],"name":[30],"type":["chr"],"align":["left"]},{"label":["Distance_Traveled"],"name":[31],"type":["dbl"],"align":["right"]},{"label":["Time_Ambulatory_sec"],"name":[32],"type":["dbl"],"align":["right"]},{"label":["Ambulatory_Count"],"name":[33],"type":["int"],"align":["right"]},{"label":["Time_Stereotypic_sec"],"name":[34],"type":["dbl"],"align":["right"]},{"label":["Stereotypic_Count"],"name":[35],"type":["int"],"align":["right"]},{"label":["Time_Resting_sec"],"name":[36],"type":["dbl"],"align":["right"]},{"label":["Vertical_Count"],"name":[37],"type":["int"],"align":["right"]},{"label":["Time_Vertical_sec"],"name":[38],"type":["dbl"],"align":["right"]},{"label":["Jump_Count"],"name":[39],"type":["int"],"align":["right"]},{"label":["Time_Jumping_sec"],"name":[40],"type":["dbl"],"align":["right"]},{"label":["Average_Velocity"],"name":[41],"type":["dbl"],"align":["right"]},{"label":["Ambulatory_Episodes"],"name":[42],"type":["int"],"align":["right"]},{"label":["Total_Session_Time_sec"],"name":[43],"type":["dbl"],"align":["right"]},{"label":["Task_Complete_Time_sec"],"name":[44],"type":["dbl"],"align":["right"]},{"label":["Latency_To_First_Hole_sec"],"name":[45],"type":["dbl"],"align":["right"]},{"label":["Novel_Task_Entries"],"name":[46],"type":["int"],"align":["right"]},{"label":["Novel_NonTask_Entries"],"name":[47],"type":["int"],"align":["right"]},{"label":["Novel_Entries"],"name":[48],"type":["int"],"align":["right"]},{"label":["Repeat_Task_Entries"],"name":[49],"type":["int"],"align":["right"]},{"label":["Repeat_NonTask_Entries"],"name":[50],"type":["int"],"align":["right"]},{"label":["Repeat_Entries"],"name":[51],"type":["int"],"align":["right"]},{"label":["Total_Entries"],"name":[52],"type":["int"],"align":["right"]},{"label":["Avg_Novel_Task_IRT"],"name":[53],"type":["dbl"],"align":["right"]},{"label":["Avg_Novel_NonTask_IRT"],"name":[54],"type":["dbl"],"align":["right"]},{"label":["Avg_Novel_Total_IRT"],"name":[55],"type":["dbl"],"align":["right"]},{"label":["Working_Memory_Ratio"],"name":[56],"type":["dbl"],"align":["right"]},{"label":["Reference_Memory_Ratio"],"name":[57],"type":["dbl"],"align":["right"]}],"data":[{"1":"Subject_7973_Group_12-2_Experiment_5-11-16.Summary","2":"1","3":"2016-05-11 10:12:32","4":"DO HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"05112016.Q0","16":"8","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"7973","25":"5-11-16","26":"12-2","27":"1","28":"Subject_7973_Group_12-2_Experiment_5-11-16.Summary","29":"2016-05-11 09:49:02","30":"Relative","31":"3682.63","32":"163.40","33":"1557","34":"143.48","35":"2267","36":"861.92","37":"0","38":"0","39":"92","40":"31.20","41":"67.63","42":"213","43":"1200","44":"1200.00","45":"1.32","46":"15","47":"0","48":"15","49":"100","50":"0","51":"100","52":"115","53":"50.45","54":"0","55":"50.45","56":"0.13","57":"1","_rn_":"173"},{"1":"Subject_7973_Group_13-1_Experiment_DO5-18-16.Summary","2":"1","3":"2016-05-18 10:01:20","4":"DO HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"05182016.C0","16":"2","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"7973","25":"DO 5-18-16","26":"13-1","27":"1","28":"Subject_7973_Group_13-1_Experiment_DO5-18-16.Summary","29":"2016-05-18 09:40:35","30":"Relative","31":"4326.03","32":"236.96","33":"2090","34":"188.68","35":"3022","36":"771.68","37":"0","38":"0","39":"17","40":"2.68","41":"65.44","42":"276","43":"1200","44":"332.36","45":"88.44","46":"16","47":"0","48":"16","49":"91","50":"0","51":"91","52":"107","53":"16.26","54":"0","55":"16.26","56":"0.15","57":"1","_rn_":"174"},{"1":"Subject_8013_Group_13-1_Experiment_DO5-18-16.Summary","2":"1","3":"2016-05-18 10:00:53","4":"DO HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"05182016.B0","16":"1","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8013","25":"DO 5-18-16","26":"13-1","27":"1","28":"Subject_8013_Group_13-1_Experiment_DO5-18-16.Summary","29":"2016-05-18 09:40:35","30":"Relative","31":"4894.72","32":"247.40","33":"2407","34":"155.16","35":"2422","36":"747.88","37":"0","38":"0","39":"157","40":"49.56","41":"60.22","42":"249","43":"1200","44":"1200.00","45":"204.04","46":"1","47":"0","48":"1","49":"0","50":"0","51":"0","52":"1","53":"0.00","54":"0","55":"0.00","56":"1.00","57":"1","_rn_":"212"},{"1":"Subject_9013_Group_12-2_Experiment_5-11-16.Summary","2":"1","3":"2016-05-11 10:12:07","4":"DO HoleBoard","5":"","6":"40","7":"3","8":"1000","9":"1","10":"C","11":"20","12":"1200","13":"300","14":"TRUE","15":"05112016.P0","16":"7","17":"ENV-515-16","18":"Cm","19":"TRUE","20":"FALSE","21":"TRUE","22":"1, 2, 3, 4, 5, 6, 7, 8, 9,","23":"","24":"8013","25":"5-11-16","26":"12-2","27":"1","28":"Subject_9013_Group_12-2_Experiment_5-11-16.Summary","29":"2016-05-11 09:49:02","30":"Relative","31":"4342.22","32":"232.80","33":"1895","34":"122.28","35":"1896","36":"792.80","37":"0","38":"0","39":"112","40":"52.12","41":"56.21","42":"221","43":"1200","44":"1200.00","45":"67.68","46":"15","47":"0","48":"15","49":"48","50":"0","51":"48","52":"63","53":"52.56","54":"0","55":"52.56","56":"0.24","57":"1","_rn_":"505"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<p>These IDs cannot be resolved and should be excluded.</p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>holeboard_complete <span class="ot">=</span> holeboard_complete[(<span class="sc">-</span><span class="dv">1</span> <span class="sc">*</span> <span class="fu">which</span>(holeboard_complete<span class="sc">$</span>Subject_ID <span class="sc">%in%</span> final_dup_ids)),]</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(holeboard_complete) <span class="sc">==</span> <span class="fu">length</span>(<span class="fu">unique</span>(holeboard_complete<span class="sc">$</span>Subject_ID))</span></code></pre></div>
+<pre><code>[1] TRUE</code></pre>
+</div>
+<div id="summarizing-hole-board-data-as-data-frame-for-future-use" class="section level3">
+<h3>Summarizing hole board data as data frame for future use</h3>
+<p>This phenotype data is as clean as possible for the hole board data. Saving the complete and unique hole board dataset for downstream use.</p>
+<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(holeboard_complete) <span class="ot">=</span> holeboard_complete<span class="sc">$</span>Subject_ID</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(holeboard_complete, <span class="at">file =</span> <span class="st">&quot;./data/DO_holeboard_summarized.RDS&quot;</span>, <span class="at">compress =</span> <span class="st">&quot;xz&quot;</span>)</span></code></pre></div>
+<p>The md5 checksum of the output file (<code>DO_holeboard_summarized.RDS</code>) is: <code>21bc380683f1cf5ddefbdb0088cb8ca5</code>.</p>
+</div>
+<div id="document-control" class="section level3">
+<h3>Document Control</h3>
+<p>This document was prepared using RMarkdown in RStudio and imported into workflowr on 2020-05-01.</p>
+<p>(file was formerly saved as <a href="DO_holeboard_summarize.html">DO_holeboard_summarize.html</a>)</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
+<pre><code>R version 4.1.2 (2021-11-01)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 20.04.3 LTS
+
+Matrix products: default
+BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.8.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=C             
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] MASS_7.3-54      lubridate_1.7.10 ggplot2_3.3.3    readxl_1.3.1    
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.6        highr_0.8         pillar_1.5.1      bslib_0.2.4      
+ [5] compiler_4.1.2    cellranger_1.1.0  later_1.1.0.1     jquerylib_0.1.3  
+ [9] git2r_0.28.0      workflowr_1.6.2   tools_4.1.2       digest_0.6.27    
+[13] jsonlite_1.7.2    evaluate_0.14     lifecycle_1.0.0   tibble_3.0.6     
+[17] gtable_0.3.0      pkgconfig_2.0.3   rlang_0.4.10      DBI_1.1.1        
+[21] yaml_2.2.1        xfun_0.21         withr_2.4.1       dplyr_1.0.4      
+[25] stringr_1.4.0     knitr_1.31        generics_0.1.0    fs_1.5.0         
+[29] vctrs_0.3.6       sass_0.3.1        tidyselect_1.1.0  rprojroot_2.0.2  
+[33] grid_4.1.2        glue_1.4.2        R6_2.5.0          fansi_0.4.2      
+[37] rmarkdown_2.7     farver_2.1.0      purrr_0.3.4       magrittr_2.0.1   
+[41] whisker_0.4       scales_1.1.1      promises_1.2.0.1  ellipsis_0.3.1   
+[45] htmltools_0.5.1.1 assertthat_0.2.1  colorspace_2.0-0  httpuv_1.5.5     
+[49] labeling_0.4.2    utf8_1.1.4        stringi_1.5.3     munsell_0.5.0    
+[53] crayon_1.4.1     </code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+http://docs.mathjax.org/en/latest/configuration.html.  This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

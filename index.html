@@ -1,0 +1,2092 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>DO IVSA and Novelty Behavior: Reference Trait Analysis</title>
+
+<script src="site_libs/header-attrs-2.17/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/readable.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Diversity Outbred Reference Traits Analysis</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">DO IVSA and Novelty Behavior: Reference
+Trait Analysis</h1>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2024-04-09
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 2
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>rta/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.0). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrong6beeb0d">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong> 6beeb0d
+</a>
+</p>
+</div>
+<div id="strongRepositoryversionstrong6beeb0d"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version 6beeb0d.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    code/.Rapp.history
+    Ignored:    data/.Rhistory
+    Ignored:    data/RDS/
+    Ignored:    run/
+
+Untracked files:
+    Untracked:  LICENSE
+    Untracked:  Rplot.pdf
+    Untracked:  SENSI_chr7_snps.R
+    Untracked:  Untitled.R
+    Untracked:  analysis/17_mapping_interpretation_old.Rmd
+    Untracked:  analysis/temp.txt
+    Untracked:  code/DO_IVSA_SALINE_pleiotropy.R
+    Untracked:  code/DO_IVSA_SENS_pleiotropy.R
+    Untracked:  code/DO_SENS_SALINE_pleiotropy.R
+    Untracked:  code/DO_eQTL_perms.R
+    Untracked:  code/DO_eQTL_score_calc.R
+    Untracked:  code/SENSI_chr7_snps.R
+    Untracked:  code/STAR_RSEM_416.sh
+    Untracked:  code/eQTL_plotting_DO_striatum_416.R
+    Untracked:  code/ggplot_pub_themes.R
+    Untracked:  code/pleitropy_analysis.sbatch
+    Untracked:  code/pleitropy_saline_analysis.sbatch
+    Untracked:  code/pleitropy_sensi_saline_analysis.sbatch
+    Untracked:  code/rta_mapping_figure_leftover.R
+    Untracked:  data/20_elastic_mv_results.csv
+    Untracked:  data/20_elasticnet_predictions.RDS
+    Untracked:  data/DO_416_DGEList.RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 3).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 4).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered.RDS
+    Untracked:  data/DO_416_ERCC_DGEList.RDS
+    Untracked:  data/DO_416_ERCC_cpm.RDS
+    Untracked:  data/DO_416_normrt.RDS
+    Untracked:  data/DO_416_pheno.RDS
+    Untracked:  data/DO_416_pheno_allgenes.RDS
+    Untracked:  data/DO_416_voom (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom.RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom_allgenes.RDS
+    Untracked:  data/DO_416_voom_cpresiduals.RDS
+    Untracked:  data/DO_AQ_active_CoV_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_lever_ratio_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_mean_inf_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_rate_toptable_annotated.RDS
+    Untracked:  data/DO_IVSA_SALINE_pleio_lods.RDS
+    Untracked:  data/DO_IVSA_SENS_pleio_lods.RDS
+    Untracked:  data/DO_IVSA_SENS_pleio_pvl.RDS
+    Untracked:  data/DO_IVSA_acquisition_cancor_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_glm.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df_2024-03-27.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df_2024-03-29.RDS
+    Untracked:  data/DO_IVSA_data.RDS
+    Untracked:  data/DO_IVSA_data_2024-03-29.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_ALL.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_ALL_2024-03-29.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_AQ.RDS
+    Untracked:  data/DO_IVSA_novelty_data.RDS
+    Untracked:  data/DO_IVSA_novelty_data_2024-03-29.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_old.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_a2_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor_
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor_2024-03-25.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor_2024-03-27.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor_2024-03-29.RDS
+    Untracked:  data/DO_IVSA_prediction_a4_male_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a5_female_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_raw_data.RDS
+    Untracked:  data/DO_IVSA_transformed_data.RDS
+    Untracked:  data/DO_LIMS_data.RDS
+    Untracked:  data/DO_RTG_a1_new.qtl.RData
+    Untracked:  data/DO_RTG_a1_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a1_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a2_new.qtl.RData
+    Untracked:  data/DO_RTG_a2_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a2_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a3_new.qtl.RData
+    Untracked:  data/DO_RTG_a3_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_01.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_02.RData
+    Untracked:  data/DO_RTG_a4_new.qtl.RData
+    Untracked:  data/DO_RTG_a5_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_project_df_for_mapping.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_2020-11-06.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_a2.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_sexspecific.RDS
+    Untracked:  data/DO_SENS_SALINE_pleio_lods.RDS
+    Untracked:  data/DO_cocaine_measures_data.RDS
+    Untracked:  data/DO_demographic_data_df.RDS
+    Untracked:  data/DO_eigengene_significance.RDS
+    Untracked:  data/DO_eigengenes.RDS
+    Untracked:  data/DO_elasticnet_GEX_pvalue_histograms.RData
+    Untracked:  data/DO_highcor_cpresiduals_datatable.RDS
+    Untracked:  data/DO_holeboard_data_df.RDS
+    Untracked:  data/DO_holeboard_summarized.RDS
+    Untracked:  data/DO_lightdark_data_df.RDS
+    Untracked:  data/DO_mQTL_peaks.RDS
+    Untracked:  data/DO_mQTL_scan1s.RDS
+    Untracked:  data/DO_module_membership.RDS
+    Untracked:  data/DO_novelplace_data_df.RDS
+    Untracked:  data/DO_novelty_COC_cancor.RDS
+    Untracked:  data/DO_novelty_COC_cancor_2024-04-02.RDS
+    Untracked:  data/DO_novelty_SAL_cancor.RDS
+    Untracked:  data/DO_novelty_SAL_cancor_2024-04-02.RDS
+    Untracked:  data/DO_novelty_data.RDS
+    Untracked:  data/DO_novelty_data_2024-03-29.RDS
+    Untracked:  data/DO_novelty_response_data.RDS
+    Untracked:  data/DO_novelty_response_data_for_RTG.RDS
+    Untracked:  data/DO_novelty_response_data_with_transform.csv
+    Untracked:  data/DO_novelty_saline_cocaine_cancor.RDS
+    Untracked:  data/DO_novelty_saline_cocaine_cancor_2024-04-02.RDS
+    Untracked:  data/DO_openfield_data_df.RDS
+    Untracked:  data/DO_paraclique_data.el
+    Untracked:  data/DO_paraclique_eigengenes.RDS
+    Untracked:  data/DO_paraclique_significance_elasticnet.RDS
+    Untracked:  data/DO_paracliques.RDS
+    Untracked:  data/DO_paracliques_significance.RDS
+    Untracked:  data/DO_ploidy_calls.RDS
+    Untracked:  data/DO_pmap.RDS
+    Untracked:  data/DO_pvalue_histograms.RData
+    Untracked:  data/DO_rtg_a1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a3_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m3_toptable_annotated.RDS
+    Untracked:  data/DO_saline.qtl.RData
+    Untracked:  data/DO_saline_measures_data.RDS
+    Untracked:  data/DO_sensi_cocaine.qtl.RData
+    Untracked:  data/DO_str_2016_eQTL.RData
+    Untracked:  data/DO_str_2016_gm4qtl2.zip
+    Untracked:  data/DO_str_2016_gm4qtl2_intensities.fst
+    Untracked:  data/DO_voom_cpresiduals_NArm.RDS
+    Untracked:  data/DO_wgcna.RDS
+    Untracked:  data/IVSA_RTG_a3_blup.pdf
+    Untracked:  data/IVSA_h2_2019-11-18.tsv
+    Untracked:  data/IVSA_metadata_sheet.RDS
+    Untracked:  data/ME16_edges.tsv
+    Untracked:  data/Mus_musculus.GRCm38.94.parsed.RDS
+    Untracked:  data/Paraclique_19_MF_AMIGO.txt
+    Untracked:  data/RTG_QTL_peaks.RDS
+    Untracked:  data/RTG_figure.RDS
+    Untracked:  data/SENSI_chr7_snps.RData
+    Untracked:  data/SENS_RTG/
+    Untracked:  data/Tyr2_genotypes.RDS
+    Untracked:  data/Tyr_genotypes.RDS
+    Untracked:  data/blup_chr7_DO_RTG_a3.RDS
+    Untracked:  data/blup_spearman_cors.RData
+    Untracked:  data/cc_variants/
+    Untracked:  data/chr18_QTL_results.RDS
+    Untracked:  data/chr4_QTL_results.RDS
+    Untracked:  data/chr7_a3_QTL_results.RDS
+    Untracked:  data/chr7_blups_with_rtg.RDS
+    Untracked:  data/chr7_cocaine_BLUP.RDS
+    Untracked:  data/chr7_gene_blup.RDS
+    Untracked:  data/chr7_qtl_cors_with_spearman_blups.RDS
+    Untracked:  data/chr7_sensi_cocaine_BLUP.RDS
+    Untracked:  data/cis/
+    Untracked:  data/eQTL_annotated_peaks.RDS
+    Untracked:  data/eQTL_plots.RData
+    Untracked:  data/figures/
+    Untracked:  data/founders_key/
+    Untracked:  data/gigamuga/
+    Untracked:  data/gwas/
+    Untracked:  data/info/
+    Untracked:  data/m2G.a2.RTG.chr4snp.RData
+    Untracked:  data/mapping/
+    Untracked:  data/mapping_from_hao/
+    Untracked:  data/mpd_measures_saline.txt
+    Untracked:  data/mpd_measures_saline_cocaine.txt
+    Untracked:  data/perms/
+    Untracked:  data/pleio_df.RDS
+    Untracked:  data/qtl2/
+    Untracked:  data/raw/
+    Untracked:  data/resources/
+    Untracked:  data/tads_loops/
+    Untracked:  data/transcripts/
+    Untracked:  data/variants/
+    Untracked:  logs/
+    Untracked:  new_RTG_a3.jpeg
+    Untracked:  output/DO_module_membership.tsv
+    Untracked:  output/DO_paraclique_df.tsv
+    Untracked:  output/RDS/
+    Untracked:  output/RTG_out/
+    Untracked:  output/docs_backup_2020-07-30.tar.gz
+    Untracked:  output/elastic_net_out/
+    Untracked:  output/mapping_figure.pdf
+    Untracked:  output/mapping_plot.pdf
+    Untracked:  output/mediation_all_rta_figure.pdf
+    Untracked:  output/mediation_all_rta_figure_with_eed.pdf
+    Untracked:  output/pleio_plot2.pdf
+    Untracked:  rstudio_rta.sif
+    Untracked:  singularity/
+    Untracked:  tmp/
+    Untracked:  var/
+
+Unstaged changes:
+    Deleted:    .Rprofile
+    Modified:   .gitignore
+    Modified:   README.md
+    Modified:   analysis/17_mapping_interpretation.Rmd
+    Modified:   analysis/_site.yml
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/index.Rmd</code>) and HTML
+(<code>docs/index.html</code>) files. If you’ve configured a remote Git
+repository (see <code>?wflow_git_remote</code>), click on the hyperlinks
+in the table below to view the files as they were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+6beeb0d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2024-04-09
+</td>
+<td>
+Fixing some verbiage in the index about what has and hasn’t run.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+1a83a73
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2024-03-29
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+5f1e9fd
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2024-03-29
+</td>
+<td>
+Making a new note about the repository run history.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+aac05e9
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2024-03-29
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+7b3a93e
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2024-03-29
+</td>
+<td>
+Adding some new text about when modifications were made.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+4cc4daf
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-14
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+e6f0075
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-14
+</td>
+<td>
+Adding in mapping figures
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+d9a5e61
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+2b35689
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Adding RTG schematic figure
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+f151d3f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+31265c0
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Amending bullet point for corrplots of sensitization to the index
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+b4dbba1
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+7d68ec9
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Adding corrplots of sensitization to the index
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+a6ac329
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+1fa852e
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Rebuilding index to properly discuss the mapping scripts
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+7256c7b
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+17d4f77
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-11
+</td>
+<td>
+Rebuilding index with saline and cocaine RTA script included
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+104d80d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+5cfeec6
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+ba7c99c
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+<td>
+Initial commit on the Sumner cluster
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+e828bf0
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-08-10
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+8c7621b
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-08-10
+</td>
+<td>
+Committing changes to add a personnel section
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+3d10b1d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Rolling back to working version.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Rolling back to working version.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+fb91e30
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-13
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+d9da3ff
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-13
+</td>
+<td>
+Committed mapping interpretation link
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2e2c849
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-19
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+7438e4e
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-19
+</td>
+<td>
+Added in RTG projections for QTL mapping notebook
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+25bb585
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-03
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+9ce6d3f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-03
+</td>
+<td>
+Addition of gene interpretation
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+bb2e6dd
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+36efb98
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Adding gene expression
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2c89fef
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+c14a41e
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+workflowr::wflow_publish("./analysis/index.Rmd")
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+5f72f1e
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+389fb9f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Add in behavior summarization
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+49e1be1
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+d722eea
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Added in IVSA preprocessing and novelty response links
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+1fdf932
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+ca5c5c4
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-02
+</td>
+<td>
+Add in DO eQTL summarization
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+f63e182
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+2ac381d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-01
+</td>
+<td>
+Update to add eQTL LOD score and permutation calculation
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+c407a91
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-04
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+e578045
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-04
+</td>
+<td>
+Adding in new headers
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+f2a9154
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-04
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+0902727
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-04
+</td>
+<td>
+Tweaks
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+d06288a
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-04
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+8b6b528
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-04
+</td>
+<td>
+Update index to reflect new Rmd document for alignment
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+59eef88
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-04
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+8ee2c3e
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-04
+</td>
+<td>
+Initial add of gene expression scripts
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+db7f7b9
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+4adda2d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Tweaks again
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+9fcf6e5
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+b473693
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Tweaks
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+7c76a6a
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+a147a5f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Modifying footnote
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+327ef12
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+14d4aff
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Adding footnote
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+cbe044d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+6dd9456
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Adding footnote
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+1ef7423
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+d55e60f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Finalizing new workflowr work on 2020-05-01
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+aa57631
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+6772322
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Referencing former file name before leading left-justified numbers
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+4245411
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+4d821ca
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Fix index.Rmd.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+a849c6d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+f68e7a4
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Initial commit: drug-naive behavioral data summarization only
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+c43e250
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Start workflowr project.
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="project-overview" class="section level2">
+<h2>Project Overview</h2>
+<p>This project applies the reference trait analysis method as laid out
+by Skelly et al.<a href="#fn1" class="footnote-ref"
+id="fnref1"><sup>1</sup></a>.</p>
+<p>This method uses multivariate statistical techniques to predict a
+low-dimensional projection of high-dimensional data using an
+intermediate dataset. The technique is useful for accessing data that
+cannot be measured within the Diversity Outbred mouse population. In
+this case, we wish to make statements about the gene expression
+correlates in drug-naïve animals that predict “hidden” cocaine-taking
+phenotypes.</p>
+</div>
+<div id="personnel" class="section level2">
+<h2>Personnel</h2>
+<p>The following people have been involved in generating these
+analyses:</p>
+<ul>
+<li>Michael C. Saul</li>
+<li>Hao He</li>
+<li>Vivek M. Philip</li>
+<li>Robyn Ball</li>
+<li>Jason Bubier</li>
+<li>Lisa Tarantino</li>
+</ul>
+</div>
+<div id="analyses" class="section level2">
+<h2>Analyses</h2>
+<p>There are multiple analyses supporting this work. They are broken
+down below:</p>
+<div id="summarizing-the-drug-naïve-mouse-behavioral-data"
+class="section level3">
+<h3>1. Summarizing the drug-naïve mouse behavioral data</h3>
+<p><em>Note that some of these data predate the CSNA and are thus not
+saved in the same format as CSNA data.</em></p>
+<ul>
+<li><a href="01_DO_demographic_data_summarize.html">Summarize basic
+demographic data for drug-naïve Diversity Outbred mice</a></li>
+<li><a href="02_DO_holeboard_summarize.html">Summarize drug-naïve
+Diversity Outbred hole board data</a></li>
+<li><a href="03_DO_drug_naive_behavior_data_summarize.html">Summarize
+drug-naïve Diversity Outbred novelty response data</a></li>
+</ul>
+</div>
+<div id="summarizing-the-drug-naïve-mouse-gene-expression-data"
+class="section level3">
+<h3>2. Summarizing the drug-naïve mouse gene expression data</h3>
+<ul>
+<li><a href="04_DO_align_sh.html">Shell script for cluster work:
+alignment and read EM using STAR and RSEM (GRCm38 on Ensembl v94
+annotation)</a></li>
+<li><a href="05_DO_expression_prep_STAR_RSEM.html">Summarize gene
+expression data for drug-naïve Diversity Outbred mice</a></li>
+</ul>
+</div>
+<div id="calculate-genotype-based-ploidy-for-drug-naïve-mice"
+class="section level3">
+<h3>3. Calculate genotype-based ploidy for drug-naïve mice</h3>
+<ul>
+<li><a href="06_DO_ploidy_followup_to_expression.html">Follow up on sex
+chromosome aneuploidies implied in drug-naïve Diversity Outbred striatum
+expression</a></li>
+</ul>
+</div>
+<div id="calculate-eqtl-for-drug-naïve-mice" class="section level3">
+<h3>4. Calculate eQTL for drug-naïve mice</h3>
+<ul>
+<li><a href="07_DO_eQTL_genotype_prep.html">Summarize genotype data for
+drug-naïve Diversity Outbred mice</a></li>
+<li><a href="08_DO_eQTL_sh.html">Calculate LOD scores and permutations
+for drug-naïve Diversity Outbred mice</a></li>
+<li><a href="09_DO_eQTL_summarize.html">Summarize eQTL data for
+drug-naïve Diversity Outbred mice</a></li>
+</ul>
+</div>
+<div
+id="preprocess-intravenous-self-administration-and-associated-novelty-response-data"
+class="section level3">
+<h3>5. Preprocess intravenous self-administration and associated novelty
+response data</h3>
+<ul>
+<li><a href="10_DO_IVSA_summarize.html">Preprocess intravenous
+self-administration data for Diversity Outbred mice</a></li>
+<li><a href="11_DO_novelty_response_summarize.html">Preprocess novelty
+response data for Diversity Outbred mice</a></li>
+</ul>
+</div>
+<div
+id="run-canonical-correlation-analysis-between-diversity-outbred-ivsa-and-novelty-response"
+class="section level3">
+<h3>6. Run canonical correlation analysis between Diversity Outbred IVSA
+and novelty response</h3>
+<ul>
+<li><a href="12_DO_IVSA_novelty_cancor.html">Run
+IVSA-to-novelty-response canonical correlation and project to drug-naïve
+Diversity Outbred mice</a></li>
+<li><a href="22_DO_RTA_saline_cocaine.html">Run cocaine and saline
+sensitization-to-novelty-response canonical correlation and project to
+all Diversity Outbred mice</a></li>
+</ul>
+</div>
+<div id="correlate-rtg-predictions-with-drug-naïve-gene-expression"
+class="section level3">
+<h3>7. Correlate RTG predictions with drug-naïve gene expression</h3>
+<ul>
+<li><a href="13_DO_expression_correlation.html">Correlate RTG
+predictions with drug-naïve gene expression</a></li>
+<li><a href="14_DO_expression_interpretation.html">Interpret RTG
+correlations with drug-naïve gene expression</a></li>
+</ul>
+</div>
+<div id="project-rtg-to-all-do-animals-for-mapping"
+class="section level3">
+<h3>8. Project RTG to All DO Animals for Mapping</h3>
+<ul>
+<li><a href="15_DO_RTG_QTL_project.html">Project RTG to all DO animals
+for QTL mapping</a></li>
+<li>Mapping work for RTG traits is performed by Hao He’s scripts, which
+are not presently encapsulated here.</li>
+<li><a href="17_mapping_interpretation.html">Interpret mapping results
+and attemt to identify genes</a></li>
+</ul>
+</div>
+<div id="coexpression-analysis-of-rtg-expression-data"
+class="section level3">
+<h3>9. Coexpression Analysis of RTG Expression Data</h3>
+<ul>
+<li><a href="18_DO_coexpression_analysis.html">Perform WGCNA and
+paraclique analysis on drug-naïve gene expression</a></li>
+<li><a href="19_DO_mQTL_mapping.html">Map WGCNA and paraclique modules
+(mQTL)</a></li>
+</ul>
+</div>
+</div>
+<div id="publication-output" class="section level2">
+<h2>Publication Output</h2>
+<div id="figures" class="section level3">
+<h3>Figures</h3>
+<ul>
+<li><a href="40_DO_traitcor_figures.html">Trait correlation figures for
+IVSA and sensitization</a></li>
+<li><a href="41_RTG_schematic_figure.html">RTG schematic figure</a></li>
+<li><a href="42_RTG_mapping.html">Mapping figures</a></li>
+</ul>
+</div>
+<div id="tables" class="section level3">
+<h3>Tables</h3>
+</div>
+</div>
+<div id="general-comment-on-timeline" class="section level2">
+<h2>General Comment on Timeline</h2>
+<p>While the work contained in this workflow has been ongoing, the
+formalization of the RMarkdown documents into a <code>workflowr</code>
+document began on 2020-05-01. This <code>workflowr</code> document was
+transitioned to the Sumner cluster at JAX on 2021-12-06.</p>
+<p>The <code>workflowr</code> repository was reviewed by Michael C. Saul
+for accuracy starting on 2024-03-25. Modifications were made in response
+to comments from Lisa Tarantino, who requested that the analyses for
+cocaine and saline locomotor sensitization be made more consistent with
+the analyses for IVSA. This primarily entailed modifying the IVSA
+analysis so that it selects starting variables using a Pearson
+correlation coefficient. The modification apparently did not make any
+changes that altered conclusions made.</p>
+<p><em>NOTE: This repository was moved from a different location and not
+all scripts were committed with</em> <code>workflowr</code> <em>at that
+time. Some of the commits will have messages like, “Running this script
+in this repository.” This means that they haven’t previously ran in the
+most recent copy of the repository.</em></p>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>Skelly DA, Raghupathy N, Robledo RF, Graber JH, Chesler
+EJ. 2019. <a href="https://www.genetics.org/content/212/3/919">Reference
+Trait Analysis Reveals Correlations Between Gene Expression and
+Quantitative Traits in Disjoint Samples.</a> <em>Genetics</em>
+212:919–929. <a
+href="https://doi.org/10.1534/genetics.118.301865">doi:10.1534/genetics.118.301865</a><a
+href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

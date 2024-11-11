@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Michael C. Saul (michael.saul [at] jax.org)" />
+
+
+<title>DO Drug-Naïve eQTL Summarization</title>
+
+<script src="site_libs/header-attrs-2.17/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/readable.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+.sourceCode .row {
+  width: 100%;
+}
+.sourceCode {
+  overflow-x: auto;
+}
+.code-folding-btn {
+  margin-right: -30px;
+}
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Diversity Outbred Reference Traits Analysis</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">DO Drug-Naïve eQTL Summarization</h1>
+<h4 class="author">Michael C. Saul (michael.saul [at] jax.org)</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2024-03-29
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>rta/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.0). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200501code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20200501)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200501code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200501)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrong51ffc4d">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong> 51ffc4d
+</a>
+</p>
+</div>
+<div id="strongRepositoryversionstrong51ffc4d"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version 51ffc4d.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    analysis/figure/
+    Ignored:    code/.Rapp.history
+    Ignored:    data/.Rhistory
+    Ignored:    data/RDS/
+    Ignored:    run/
+
+Untracked files:
+    Untracked:  LICENSE
+    Untracked:  Rplot.pdf
+    Untracked:  SENSI_chr7_snps.R
+    Untracked:  Untitled.R
+    Untracked:  analysis/17_mapping_interpretation_old.Rmd
+    Untracked:  analysis/temp.txt
+    Untracked:  code/DO_IVSA_SALINE_pleiotropy.R
+    Untracked:  code/DO_IVSA_SENS_pleiotropy.R
+    Untracked:  code/DO_SENS_SALINE_pleiotropy.R
+    Untracked:  code/DO_eQTL_perms.R
+    Untracked:  code/DO_eQTL_score_calc.R
+    Untracked:  code/SENSI_chr7_snps.R
+    Untracked:  code/STAR_RSEM_416.sh
+    Untracked:  code/eQTL_plotting_DO_striatum_416.R
+    Untracked:  code/ggplot_pub_themes.R
+    Untracked:  code/pleitropy_analysis.sbatch
+    Untracked:  code/pleitropy_saline_analysis.sbatch
+    Untracked:  code/pleitropy_sensi_saline_analysis.sbatch
+    Untracked:  code/rta_mapping_figure_leftover.R
+    Untracked:  data/20_elastic_mv_results.csv
+    Untracked:  data/20_elasticnet_predictions.RDS
+    Untracked:  data/DO_416_DGEList.RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 3).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 4).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered.RDS
+    Untracked:  data/DO_416_ERCC_DGEList.RDS
+    Untracked:  data/DO_416_ERCC_cpm.RDS
+    Untracked:  data/DO_416_normrt.RDS
+    Untracked:  data/DO_416_pheno.RDS
+    Untracked:  data/DO_416_pheno_allgenes.RDS
+    Untracked:  data/DO_416_voom (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom.RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom_allgenes.RDS
+    Untracked:  data/DO_416_voom_cpresiduals.RDS
+    Untracked:  data/DO_AQ_active_CoV_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_lever_ratio_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_mean_inf_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_rate_toptable_annotated.RDS
+    Untracked:  data/DO_IVSA_SALINE_pleio_lods.RDS
+    Untracked:  data/DO_IVSA_SENS_pleio_lods.RDS
+    Untracked:  data/DO_IVSA_SENS_pleio_pvl.RDS
+    Untracked:  data/DO_IVSA_acquisition_cancor_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_glm.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df_2024-03-27.RDS
+    Untracked:  data/DO_IVSA_data.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_ALL.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_AQ.RDS
+    Untracked:  data/DO_IVSA_novelty_data.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_old.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_a2_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor_2024-03-25.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor_2024-03-27.RDS
+    Untracked:  data/DO_IVSA_prediction_a4_male_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a5_female_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_raw_data.RDS
+    Untracked:  data/DO_IVSA_transformed_data.RDS
+    Untracked:  data/DO_LIMS_data.RDS
+    Untracked:  data/DO_RTG_a1_new.qtl.RData
+    Untracked:  data/DO_RTG_a1_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a1_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a2_new.qtl.RData
+    Untracked:  data/DO_RTG_a2_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a2_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a3_new.qtl.RData
+    Untracked:  data/DO_RTG_a3_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_01.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_02.RData
+    Untracked:  data/DO_RTG_a4_new.qtl.RData
+    Untracked:  data/DO_RTG_a5_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_project_df_for_mapping.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_2020-11-06.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_a2.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_sexspecific.RDS
+    Untracked:  data/DO_SENS_SALINE_pleio_lods.RDS
+    Untracked:  data/DO_cocaine_measures_data.RDS
+    Untracked:  data/DO_demographic_data_df.RDS
+    Untracked:  data/DO_eigengene_significance.RDS
+    Untracked:  data/DO_eigengenes.RDS
+    Untracked:  data/DO_elasticnet_GEX_pvalue_histograms.RData
+    Untracked:  data/DO_highcor_cpresiduals_datatable.RDS
+    Untracked:  data/DO_holeboard_data_df.RDS
+    Untracked:  data/DO_holeboard_summarized.RDS
+    Untracked:  data/DO_lightdark_data_df.RDS
+    Untracked:  data/DO_mQTL_peaks.RDS
+    Untracked:  data/DO_mQTL_scan1s.RDS
+    Untracked:  data/DO_module_membership.RDS
+    Untracked:  data/DO_novelplace_data_df.RDS
+    Untracked:  data/DO_novelty_COC_cancor.RDS
+    Untracked:  data/DO_novelty_SAL_cancor.RDS
+    Untracked:  data/DO_novelty_data.RDS
+    Untracked:  data/DO_novelty_response_data.RDS
+    Untracked:  data/DO_novelty_response_data_for_RTG.RDS
+    Untracked:  data/DO_novelty_response_data_with_transform.csv
+    Untracked:  data/DO_novelty_saline_cocaine_cancor.RDS
+    Untracked:  data/DO_openfield_data_df.RDS
+    Untracked:  data/DO_paraclique_data.el
+    Untracked:  data/DO_paraclique_eigengenes.RDS
+    Untracked:  data/DO_paraclique_significance_elasticnet.RDS
+    Untracked:  data/DO_paracliques.RDS
+    Untracked:  data/DO_paracliques_significance.RDS
+    Untracked:  data/DO_ploidy_calls.RDS
+    Untracked:  data/DO_pmap.RDS
+    Untracked:  data/DO_pvalue_histograms.RData
+    Untracked:  data/DO_rtg_a1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a3_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m3_toptable_annotated.RDS
+    Untracked:  data/DO_saline.qtl.RData
+    Untracked:  data/DO_saline_measures_data.RDS
+    Untracked:  data/DO_sensi_cocaine.qtl.RData
+    Untracked:  data/DO_str_2016_eQTL.RData
+    Untracked:  data/DO_str_2016_gm4qtl2.zip
+    Untracked:  data/DO_str_2016_gm4qtl2_intensities.fst
+    Untracked:  data/DO_voom_cpresiduals_NArm.RDS
+    Untracked:  data/DO_wgcna.RDS
+    Untracked:  data/IVSA_RTG_a3_blup.pdf
+    Untracked:  data/IVSA_h2_2019-11-18.tsv
+    Untracked:  data/IVSA_metadata_sheet.RDS
+    Untracked:  data/ME16_edges.tsv
+    Untracked:  data/Mus_musculus.GRCm38.94.parsed.RDS
+    Untracked:  data/Paraclique_19_MF_AMIGO.txt
+    Untracked:  data/RTG_QTL_peaks.RDS
+    Untracked:  data/RTG_figure.RDS
+    Untracked:  data/SENSI_chr7_snps.RData
+    Untracked:  data/SENS_RTG/
+    Untracked:  data/Tyr2_genotypes.RDS
+    Untracked:  data/Tyr_genotypes.RDS
+    Untracked:  data/blup_chr7_DO_RTG_a3.RDS
+    Untracked:  data/blup_spearman_cors.RData
+    Untracked:  data/cc_variants/
+    Untracked:  data/chr18_QTL_results.RDS
+    Untracked:  data/chr4_QTL_results.RDS
+    Untracked:  data/chr7_a3_QTL_results.RDS
+    Untracked:  data/chr7_blups_with_rtg.RDS
+    Untracked:  data/chr7_cocaine_BLUP.RDS
+    Untracked:  data/chr7_gene_blup.RDS
+    Untracked:  data/chr7_qtl_cors_with_spearman_blups.RDS
+    Untracked:  data/chr7_sensi_cocaine_BLUP.RDS
+    Untracked:  data/cis/
+    Untracked:  data/eQTL_annotated_peaks.RDS
+    Untracked:  data/eQTL_plots.RData
+    Untracked:  data/figures/
+    Untracked:  data/founders_key/
+    Untracked:  data/gigamuga/
+    Untracked:  data/gwas/
+    Untracked:  data/info/
+    Untracked:  data/m2G.a2.RTG.chr4snp.RData
+    Untracked:  data/mapping/
+    Untracked:  data/mapping_from_hao/
+    Untracked:  data/mpd_measures_saline.txt
+    Untracked:  data/mpd_measures_saline_cocaine.txt
+    Untracked:  data/perms/
+    Untracked:  data/pleio_df.RDS
+    Untracked:  data/qtl2/
+    Untracked:  data/raw/
+    Untracked:  data/resources/
+    Untracked:  data/tads_loops/
+    Untracked:  data/transcripts/
+    Untracked:  data/variants/
+    Untracked:  logs/
+    Untracked:  new_RTG_a3.jpeg
+    Untracked:  output/DO_module_membership.tsv
+    Untracked:  output/DO_paraclique_df.tsv
+    Untracked:  output/RDS/
+    Untracked:  output/RTG_out/
+    Untracked:  output/docs_backup_2020-07-30.tar.gz
+    Untracked:  output/elastic_net_out/
+    Untracked:  output/mapping_figure.pdf
+    Untracked:  output/mapping_plot.pdf
+    Untracked:  output/mediation_all_rta_figure.pdf
+    Untracked:  output/mediation_all_rta_figure_with_eed.pdf
+    Untracked:  output/pleio_plot2.pdf
+    Untracked:  rstudio_rta.sif
+    Untracked:  singularity/
+    Untracked:  tmp/
+    Untracked:  var/
+
+Unstaged changes:
+    Deleted:    .Rprofile
+    Modified:   .gitignore
+    Modified:   README.md
+    Modified:   analysis/17_mapping_interpretation.Rmd
+    Modified:   analysis/_site.yml
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/09_DO_eQTL_summarize.Rmd</code>)
+and HTML (<code>docs/09_DO_eQTL_summarize.html</code>) files. If you’ve
+configured a remote Git repository (see <code>?wflow_git_remote</code>),
+click on the hyperlinks in the table below to view the files as they
+were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+51ffc4d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2024-03-29
+</td>
+<td>
+Fixing some issues with running this script in the present version of
+the repository
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+535b06b
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-08
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Rolling back to working version.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+7831bfe
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-09
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+3564a41
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-09
+</td>
+<td>
+workflowr::wflow_publish("./analysis/09_DO_eQTL_summarize.Rmd")
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+e9b932f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-08
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+6c6b562
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-08
+</td>
+<td>
+Reanalyzed with all new data
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2465f91
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+b6088f5
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-01
+</td>
+<td>
+Initial commit of eQTL summarization notebook
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<div id="motivation" class="section level2">
+<h2>Motivation</h2>
+<div id="purpose-of-analysis" class="section level3">
+<h3>Purpose of analysis</h3>
+<p>This script is used to summarize eQTL data. Each gene is summarized
+and an overall dataset threshold is derived from 1,000 permutations each
+on 100 different genes.</p>
+</div>
+</div>
+</div>
+<div id="analysis" class="section level1">
+<h1>Analysis</h1>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<div id="r-libraries" class="section level3">
+<h3>R libraries</h3>
+<p>Calling R libraries necessary for this analysis.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;tidyr&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;qtl2&quot;</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;ggplot2&quot;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;dplyr&quot;</span>)</span></code></pre></div>
+<pre><code>
+Attaching package: &#39;dplyr&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:stats&#39;:
+
+    filter, lag</code></pre>
+<pre><code>The following objects are masked from &#39;package:base&#39;:
+
+    intersect, setdiff, setequal, union</code></pre>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;biomaRt&quot;</span>)</span></code></pre></div>
+</div>
+<div id="importing-data" class="section level3">
+<h3>Importing data</h3>
+<div id="importing-eqtl-data" class="section level4">
+<h4>Importing eQTL data</h4>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">&quot;./data/DO_str_2016_eQTL.RData&quot;</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>DO_pheno <span class="ot">=</span> DO_str_2016_cross<span class="sc">$</span>pheno</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>DO_covar <span class="ot">=</span> DO_str_2016_cross<span class="sc">$</span>covar</span></code></pre></div>
+</div>
+<div id="importing-metadata" class="section level4">
+<h4>Importing metadata</h4>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>info_path <span class="ot">=</span> <span class="st">&quot;./data/info/&quot;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>info_rds <span class="ot">=</span> <span class="fu">list.files</span>(<span class="at">path =</span> info_path, <span class="at">pattern =</span> <span class="st">&quot;RDS$&quot;</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> info_rds) {</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  info_file_i <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="fu">paste0</span>(info_path,i))</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">exists</span>(<span class="st">&quot;DO_eQTL_metadata&quot;</span>)) {</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    DO_eQTL_metadata <span class="ot">=</span> <span class="fu">rbind</span>(DO_eQTL_metadata,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>                             info_file_i)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    DO_eQTL_metadata <span class="ot">=</span> info_file_i</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(<span class="at">list =</span> <span class="fu">c</span>(<span class="st">&quot;i&quot;</span>,<span class="st">&quot;info_file_i&quot;</span>,<span class="st">&quot;info_rds&quot;</span>,<span class="st">&quot;info_path&quot;</span>))</span></code></pre></div>
+</div>
+<div id="summarizing-permutation-tests" class="section level4">
+<h4>Summarizing permutation tests</h4>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>perms_path <span class="ot">=</span> <span class="st">&quot;./data/perms/&quot;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>perms_100_files <span class="ot">=</span> <span class="fu">list.files</span>(<span class="at">path =</span> perms_path, <span class="at">pattern =</span> <span class="st">&quot;RDS$&quot;</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> perms_100_files) {</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  perm_i <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="fu">paste0</span>(perms_path,i))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  perm_i<span class="sc">$</span>gene <span class="ot">=</span> <span class="fu">rep</span>(<span class="fu">colnames</span>(perm_i)[<span class="dv">1</span>], <span class="at">times =</span> <span class="fu">nrow</span>(perm_i))</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">colnames</span>(perm_i)[<span class="dv">1</span>] <span class="ot">=</span> <span class="st">&quot;lod&quot;</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">exists</span>(<span class="st">&quot;perms_100&quot;</span>)) {</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    perms_100 <span class="ot">=</span> <span class="fu">rbind</span>(perms_100, perm_i)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    perms_100 <span class="ot">=</span> perm_i</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(<span class="at">list =</span> <span class="fu">c</span>(<span class="st">&quot;i&quot;</span>, <span class="st">&quot;perm_i&quot;</span>,<span class="st">&quot;perms_path&quot;</span>))</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>perms_100<span class="sc">$</span>lod <span class="ot">=</span> <span class="fu">as.numeric</span>(perms_100<span class="sc">$</span>lod)</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>perms_100 <span class="ot">=</span> perms_100[<span class="fu">which</span>(<span class="sc">!</span><span class="fu">is.na</span>(perms_100<span class="sc">$</span>lod)),]</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>perms_genes <span class="ot">=</span> <span class="fu">unique</span>(perms_100<span class="sc">$</span>gene)</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>perms_mat_100 <span class="ot">=</span> <span class="fu">matrix</span>(<span class="at">nrow =</span> <span class="fu">length</span>(perms_genes),</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>                       <span class="at">ncol =</span> <span class="fu">length</span>(perms_genes))</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(perms_mat_100) <span class="ot">=</span> perms_genes</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(perms_mat_100) <span class="ot">=</span> perms_genes</span></code></pre></div>
+<p>Plotting Wilcoxon rank-sum tests comparing distribution of each
+gene’s permutations.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> perms_genes) {</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> perms_genes) {</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    perms_mat_100[i,j] <span class="ot">=</span> <span class="fu">wilcox.test</span>(perms_100[<span class="fu">which</span>(perms_100<span class="sc">$</span>gene <span class="sc">==</span> i),<span class="st">&quot;lod&quot;</span>],</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>                                     perms_100[<span class="fu">which</span>(perms_100<span class="sc">$</span>gene <span class="sc">==</span> j),<span class="st">&quot;lod&quot;</span>])<span class="sc">$</span>p.value</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>perms_ind_100 <span class="ot">=</span> <span class="fu">which</span>(<span class="fu">upper.tri</span>(perms_mat_100), <span class="at">arr.ind =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>perms_df_100 <span class="ot">=</span> <span class="fu">as.data.frame</span>(perms_ind_100)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>perms_df_100<span class="sc">$</span>perms <span class="ot">=</span> perms_mat_100[perms_ind_100]</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>perms_pval_hist <span class="ot">=</span> <span class="fu">ggplot</span>(<span class="at">data =</span> perms_df_100, <span class="fu">aes</span>(<span class="at">x =</span> perms)) <span class="sc">+</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">fill =</span> <span class="st">&quot;#66CC66&quot;</span>, <span class="at">bins =</span> <span class="dv">50</span>) <span class="sc">+</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_classic</span>() <span class="sc">+</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;P-Value&quot;</span>) <span class="sc">+</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Count&quot;</span>)</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>perms_pval_hist</span></code></pre></div>
+<p><img src="figure/09_DO_eQTL_summarize.Rmd/unnamed-chunk-5-1.png" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-5-1">
+Past versions of unnamed-chunk-5-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-5-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+535b06b
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-08
+</td>
+</tr>
+<tr>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+</tr>
+<tr>
+<td>
+e9b932f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-08
+</td>
+</tr>
+<tr>
+<td>
+2465f91
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-01
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Getting thresholds for permutations.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>perms_1_thresh <span class="ot">=</span> <span class="fu">quantile</span>(perms_100<span class="sc">$</span>lod, <span class="at">probs =</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span>, <span class="fl">0.63</span>, <span class="dv">1</span>))</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>p0p05 <span class="ot">=</span> perms_1_thresh[<span class="st">&quot;95%&quot;</span>]</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>p0p10 <span class="ot">=</span> perms_1_thresh[<span class="st">&quot;90%&quot;</span>]</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>p0p63 <span class="ot">=</span> perms_1_thresh[<span class="st">&quot;37%&quot;</span>]</span></code></pre></div>
+<p>Getting LOD peaks.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>cis_path <span class="ot">=</span> <span class="st">&quot;./data/cis/&quot;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>LOD_files <span class="ot">=</span> <span class="fu">list.files</span>(<span class="at">path =</span> cis_path, <span class="at">pattern =</span> <span class="st">&quot;^DO_lod_scores_cis_arrayid_</span><span class="sc">\\</span><span class="st">d+.RDS$&quot;</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> LOD_files) {</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  LOD_scores_i <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="fu">paste0</span>(cis_path,i))</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assign</span>(<span class="fu">gsub</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">.RDS&quot;</span>,<span class="st">&quot;&quot;</span>,i), LOD_scores_i)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  peaks_i <span class="ot">=</span> <span class="fu">find_peaks</span>(LOD_scores_i,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>                       <span class="at">map =</span> DO_str_2016_cross<span class="sc">$</span>pmap,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>                       <span class="at">threshold =</span> p0p63)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">exists</span>(<span class="st">&quot;peaks_lod&quot;</span>)) {</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>      peaks_lod <span class="ot">=</span> <span class="fu">rbind</span>(peaks_lod, peaks_i)</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>      peaks_lod <span class="ot">=</span> peaks_i</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rm</span>(<span class="at">list =</span> <span class="fu">c</span>(<span class="st">&quot;LOD_scores_i&quot;</span>,<span class="st">&quot;peaks_i&quot;</span>))</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(<span class="at">list =</span> <span class="fu">c</span>(<span class="st">&quot;i&quot;</span>))</span></code></pre></div>
+<p>Getting genes and LOD thresholds.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>peaks_lod_2 <span class="ot">=</span> peaks_lod</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>genes_lod <span class="ot">=</span> <span class="fu">unique</span>(peaks_lod<span class="sc">$</span>lodcolumn)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>peaks_lod<span class="sc">$</span>is_cis <span class="ot">=</span> <span class="fu">rep</span>(<span class="cn">FALSE</span>, <span class="at">times =</span> <span class="fu">nrow</span>(peaks_lod))</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>peaks_lod<span class="sc">$</span>threshold <span class="ot">=</span> <span class="fu">rep</span>(<span class="st">&quot;suggestive&quot;</span>, <span class="at">times =</span> <span class="fu">nrow</span>(peaks_lod))</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>peaks_lod<span class="sc">$</span>threshold <span class="ot">=</span> <span class="fu">ifelse</span>(peaks_lod<span class="sc">$</span>lod <span class="sc">&gt;</span> p0p10,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;ten_percent&quot;</span>, peaks_lod<span class="sc">$</span>threshold)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>peaks_lod<span class="sc">$</span>threshold <span class="ot">=</span> <span class="fu">ifelse</span>(peaks_lod<span class="sc">$</span>lod <span class="sc">&gt;</span> p0p05,</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;five_percent&quot;</span>, peaks_lod<span class="sc">$</span>threshold)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>peaks_lod<span class="sc">$</span>gene_chr <span class="ot">=</span> <span class="fu">rep</span>(<span class="st">&quot;none&quot;</span>, <span class="at">times =</span> <span class="fu">nrow</span>(peaks_lod))</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>peaks_lod<span class="sc">$</span>gene_pos <span class="ot">=</span> <span class="fu">rep</span>(<span class="sc">-</span><span class="dv">1000</span>, <span class="at">times =</span> <span class="fu">nrow</span>(peaks_lod))</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> genes_lod) {</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  gene_i_chr <span class="ot">=</span> DO_eQTL_metadata[i,<span class="st">&quot;chromosome_name&quot;</span>]</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  gene_i_start <span class="ot">=</span> (DO_eQTL_metadata[i,<span class="st">&quot;start_position&quot;</span>]) <span class="sc">/</span> <span class="fl">1e6</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>  gene_i_end <span class="ot">=</span> (DO_eQTL_metadata[i,<span class="st">&quot;end_position&quot;</span>]) <span class="sc">/</span> <span class="fl">1e6</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>  gene_i_strand <span class="ot">=</span> DO_eQTL_metadata[i,<span class="st">&quot;strand&quot;</span>]</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>  gene_i_position <span class="ot">=</span> <span class="fu">ifelse</span>(gene_i_strand <span class="sc">==</span> <span class="dv">1</span>, gene_i_start, gene_i_end)</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>  gene_i_rows <span class="ot">=</span> <span class="fu">which</span>(peaks_lod<span class="sc">$</span>lodcolumn <span class="sc">==</span> i)</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>  peaks_lod[gene_i_rows,<span class="st">&quot;gene_chr&quot;</span>] <span class="ot">=</span> gene_i_chr</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>  peaks_lod[gene_i_rows,<span class="st">&quot;gene_pos&quot;</span>] <span class="ot">=</span> gene_i_position</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>  peaks_lod[gene_i_rows,<span class="st">&quot;is_cis&quot;</span>] <span class="ot">=</span> <span class="fu">ifelse</span>((peaks_lod[gene_i_rows,<span class="st">&quot;chr&quot;</span>] <span class="sc">==</span> gene_i_chr <span class="sc">&amp;</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>                                              peaks_lod[gene_i_rows,<span class="st">&quot;pos&quot;</span>] <span class="sc">&gt;</span> (gene_i_start <span class="sc">-</span> <span class="dv">5</span>) <span class="sc">&amp;</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>                                              peaks_lod[gene_i_rows,<span class="st">&quot;pos&quot;</span>] <span class="sc">&lt;</span> (gene_i_end <span class="sc">+</span> <span class="dv">5</span>)),</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>                                           <span class="cn">TRUE</span>, <span class="cn">FALSE</span>)</span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical <span class="ot">=</span> peaks_lod[<span class="fu">which</span>(peaks_lod<span class="sc">$</span>gene_chr <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">19</span>,<span class="st">&quot;X&quot;</span>)),]</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical<span class="sc">$</span>gene_chr <span class="ot">=</span> <span class="fu">factor</span>(peaks_lod_canonical<span class="sc">$</span>gene_chr, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">19</span>,<span class="st">&quot;X&quot;</span>), <span class="at">ordered =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical<span class="sc">$</span>chr <span class="ot">=</span> <span class="fu">factor</span>(peaks_lod_canonical<span class="sc">$</span>chr, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">19</span>,<span class="st">&quot;X&quot;</span>), <span class="at">ordered =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a>lod_max <span class="ot">=</span> <span class="fu">as.data.frame</span>(peaks_lod_canonical <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(chr) <span class="sc">%&gt;%</span> <span class="fu">summarize</span>(<span class="at">max_pos =</span> <span class="fu">max</span>(pos)))</span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(lod_max) <span class="ot">=</span> lod_max<span class="sc">$</span>chr</span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a>lod_max<span class="sc">$</span>add <span class="ot">=</span> <span class="fu">rep</span>(<span class="sc">-</span><span class="dv">1000</span>, <span class="at">times =</span> <span class="fu">nrow</span>(lod_max))</span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a>lod_max<span class="sc">$</span>med <span class="ot">=</span> <span class="fu">rep</span>(<span class="sc">-</span><span class="dv">1000</span>, <span class="at">times =</span> <span class="fu">nrow</span>(lod_max))</span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a>gene_max <span class="ot">=</span> <span class="fu">as.data.frame</span>(peaks_lod_canonical <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(gene_chr) <span class="sc">%&gt;%</span> <span class="fu">summarize</span>(<span class="at">max_pos =</span> <span class="fu">max</span>(gene_pos)))</span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(gene_max) <span class="ot">=</span> gene_max<span class="sc">$</span>gene_chr</span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a>gene_max<span class="sc">$</span>add <span class="ot">=</span> <span class="fu">rep</span>(<span class="sc">-</span><span class="dv">1000</span>, <span class="at">times =</span> <span class="fu">nrow</span>(gene_max))</span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a>gene_max<span class="sc">$</span>med <span class="ot">=</span> <span class="fu">rep</span>(<span class="sc">-</span><span class="dv">1000</span>, <span class="at">times =</span> <span class="fu">nrow</span>(gene_max))</span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a>gap <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(lod_max)) {</span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true" tabindex="-1"></a>  lod_length_i <span class="ot">=</span> lod_max[i,<span class="st">&quot;max_pos&quot;</span>]</span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true" tabindex="-1"></a>  gene_length_i <span class="ot">=</span> gene_max[i,<span class="st">&quot;max_pos&quot;</span>]</span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (i <span class="sc">==</span> <span class="dv">1</span>) {</span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true" tabindex="-1"></a>    lod_max[i,<span class="st">&quot;add&quot;</span>] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true" tabindex="-1"></a>    gene_max[i,<span class="st">&quot;add&quot;</span>] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true" tabindex="-1"></a>    lod_max[i,<span class="st">&quot;med&quot;</span>] <span class="ot">=</span> lod_length_i <span class="sc">/</span> <span class="dv">2</span></span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true" tabindex="-1"></a>    gene_max[i,<span class="st">&quot;med&quot;</span>] <span class="ot">=</span> gene_length_i <span class="sc">/</span> <span class="dv">2</span></span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb12-49"><a href="#cb12-49" aria-hidden="true" tabindex="-1"></a>    lod_max[i,<span class="st">&quot;add&quot;</span>] <span class="ot">=</span> lod_max[i<span class="dv">-1</span>,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> lod_max[i<span class="dv">-1</span>,<span class="st">&quot;max_pos&quot;</span>] <span class="sc">+</span> gap</span>
+<span id="cb12-50"><a href="#cb12-50" aria-hidden="true" tabindex="-1"></a>    lod_max[i,<span class="st">&quot;med&quot;</span>] <span class="ot">=</span> (lod_max[i,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> lod_max[i,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> lod_length_i) <span class="sc">/</span> <span class="dv">2</span></span>
+<span id="cb12-51"><a href="#cb12-51" aria-hidden="true" tabindex="-1"></a>    gene_max[i,<span class="st">&quot;add&quot;</span>] <span class="ot">=</span> gene_max[i<span class="dv">-1</span>,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> gene_max[i<span class="dv">-1</span>,<span class="st">&quot;max_pos&quot;</span>] <span class="sc">+</span> gap</span>
+<span id="cb12-52"><a href="#cb12-52" aria-hidden="true" tabindex="-1"></a>    gene_max[i,<span class="st">&quot;med&quot;</span>] <span class="ot">=</span> (gene_max[i,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> gene_max[i,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> gene_length_i) <span class="sc">/</span> <span class="dv">2</span></span>
+<span id="cb12-53"><a href="#cb12-53" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-54"><a href="#cb12-54" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Plotting eQTLs.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical<span class="sc">$</span>pos_add <span class="ot">=</span> peaks_lod_canonical<span class="sc">$</span>pos <span class="sc">+</span> lod_max[peaks_lod_canonical<span class="sc">$</span>chr,<span class="st">&quot;add&quot;</span>]</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical<span class="sc">$</span>gene_pos_add <span class="ot">=</span> peaks_lod_canonical<span class="sc">$</span>gene_pos <span class="sc">+</span> gene_max[peaks_lod_canonical<span class="sc">$</span>gene_chr,<span class="st">&quot;add&quot;</span>]</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical<span class="sc">$</span>chr17_43_49_Mb <span class="ot">=</span> <span class="fu">ifelse</span>(peaks_lod_canonical<span class="sc">$</span>chr <span class="sc">==</span> <span class="st">&quot;17&quot;</span> <span class="sc">&amp;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>                                           peaks_lod_canonical<span class="sc">$</span>pos <span class="sc">&gt;</span> <span class="dv">43</span> <span class="sc">&amp;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>                                           peaks_lod_canonical<span class="sc">$</span>pos <span class="sc">&lt;</span> <span class="dv">49</span>,</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>                                         <span class="st">&quot;chr17_43_49_Mb&quot;</span>, <span class="st">&quot;not&quot;</span>)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical<span class="sc">$</span>color <span class="ot">=</span> <span class="fu">paste</span>(peaks_lod_canonical<span class="sc">$</span>is_cis,</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>                                  peaks_lod_canonical<span class="sc">$</span>chr17_43_49_Mb,</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>trans_bands <span class="ot">=</span> <span class="fu">data.frame</span>(<span class="at">v =</span> <span class="fu">c</span>(<span class="fl">41.557569</span>,<span class="fl">172.25964</span>,<span class="fl">103.601351</span>,<span class="fl">45.75523</span>), </span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>                         <span class="at">chr =</span> <span class="fu">c</span>(<span class="st">&quot;1&quot;</span>,<span class="st">&quot;2&quot;</span>,<span class="st">&quot;9&quot;</span>,<span class="st">&quot;17&quot;</span>),</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>                         <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>trans_bands<span class="sc">$</span>pos_add <span class="ot">=</span> trans_bands<span class="sc">$</span>v <span class="sc">+</span> lod_max[trans_bands</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>                                              <span class="sc">$</span>chr,<span class="st">&quot;add&quot;</span>]</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>eQTL_plot <span class="ot">=</span> <span class="fu">ggplot</span>(<span class="at">data =</span> peaks_lod_canonical[<span class="fu">which</span>(peaks_lod_canonical<span class="sc">$</span>threshold <span class="sc">==</span> <span class="st">&quot;five_percent&quot;</span>),], <span class="fu">aes</span>(<span class="at">x =</span> pos_add, <span class="at">y =</span> gene_pos_add, <span class="at">color =</span> is_cis)) <span class="sc">+</span> </span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> trans_bands<span class="sc">$</span>pos_add, <span class="at">color =</span> <span class="st">&quot;#CCCCCC&quot;</span>) <span class="sc">+</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="fl">0.25</span>) <span class="sc">+</span> </span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#666666&quot;</span>,<span class="st">&quot;#999999&quot;</span>)) <span class="sc">+</span> </span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Peak Position&quot;</span>) <span class="sc">+</span> </span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Gene Position&quot;</span>) <span class="sc">+</span></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> lod_max<span class="sc">$</span>med, </span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>                     <span class="at">minor_breaks =</span> <span class="fu">c</span>(lod_max<span class="sc">$</span>add, (lod_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> lod_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;max_pos&quot;</span>])), </span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>                     <span class="at">labels =</span> lod_max<span class="sc">$</span>chr) <span class="sc">+</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> gene_max<span class="sc">$</span>med, </span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>                     <span class="at">minor_breaks =</span> <span class="fu">c</span>(gene_max<span class="sc">$</span>add, (gene_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> gene_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;max_pos&quot;</span>])), </span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>                     <span class="at">labels =</span> gene_max<span class="sc">$</span>gene_chr) <span class="sc">+</span> </span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()<span class="sc">+</span> </span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>, </span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>        <span class="at">panel.grid.major =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_rug</span>(<span class="at">data =</span> peaks_lod_canonical[<span class="fu">which</span>(peaks_lod_canonical<span class="sc">$</span>threshold <span class="sc">==</span> <span class="st">&quot;five_percent&quot;</span> <span class="sc">&amp;</span> <span class="sc">!</span>peaks_lod_canonical<span class="sc">$</span>is_cis),],</span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>           <span class="fu">aes</span>(<span class="at">x =</span> pos_add, <span class="at">y =</span> gene_pos_add),</span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a>           <span class="at">alpha =</span> <span class="fl">0.1</span>)</span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>eQTL_plot</span></code></pre></div>
+<p><img src="figure/09_DO_eQTL_summarize.Rmd/unnamed-chunk-9-1.png" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-9-1">
+Past versions of unnamed-chunk-9-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-9-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+535b06b
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-08
+</td>
+</tr>
+<tr>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+</tr>
+<tr>
+<td>
+7831bfe
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-09
+</td>
+</tr>
+<tr>
+<td>
+e9b932f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-08
+</td>
+</tr>
+<tr>
+<td>
+2465f91
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-01
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Plotting chr17 eQTL plot.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>chr17_plot <span class="ot">=</span> <span class="fu">ggplot</span>(<span class="at">data =</span> peaks_lod_canonical[<span class="fu">which</span>(peaks_lod_canonical<span class="sc">$</span>threshold <span class="sc">==</span> <span class="st">&quot;five_percent&quot;</span>),], <span class="fu">aes</span>(<span class="at">x =</span> pos_add, <span class="at">y =</span> gene_pos_add, <span class="at">color =</span> color, <span class="at">size =</span> chr17_43_49_Mb)) <span class="sc">+</span> </span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> trans_bands<span class="sc">$</span>pos_add, <span class="at">color =</span> <span class="st">&quot;#CCCCCC&quot;</span>, <span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span> </span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#CC3333&quot;</span>,<span class="st">&quot;#666666&quot;</span>,<span class="st">&quot;#FFCC33&quot;</span>,<span class="st">&quot;#999999&quot;</span>)) <span class="sc">+</span> </span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Peak Position&quot;</span>) <span class="sc">+</span> </span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Gene Position&quot;</span>) <span class="sc">+</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> lod_max<span class="sc">$</span>med, </span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>                     <span class="at">minor_breaks =</span> <span class="fu">c</span>(lod_max<span class="sc">$</span>add, (lod_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> lod_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;max_pos&quot;</span>])), </span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>                     <span class="at">labels =</span> lod_max<span class="sc">$</span>chr) <span class="sc">+</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> gene_max<span class="sc">$</span>med, </span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>                     <span class="at">minor_breaks =</span> <span class="fu">c</span>(gene_max<span class="sc">$</span>add, (gene_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> gene_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;max_pos&quot;</span>])), </span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>                     <span class="at">labels =</span> gene_max<span class="sc">$</span>gene_chr) <span class="sc">+</span> </span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()<span class="sc">+</span> </span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>, </span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>        <span class="at">panel.grid.major =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_size_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="fl">0.25</span>)) <span class="sc">+</span></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_rug</span>(<span class="at">data =</span> peaks_lod_canonical[<span class="fu">which</span>(peaks_lod_canonical<span class="sc">$</span>threshold <span class="sc">==</span> <span class="st">&quot;five_percent&quot;</span> <span class="sc">&amp;</span> <span class="sc">!</span>peaks_lod_canonical<span class="sc">$</span>is_cis),],</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>           <span class="fu">aes</span>(<span class="at">x =</span> pos_add, <span class="at">y =</span> gene_pos_add),</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>           <span class="at">color =</span> <span class="st">&quot;black&quot;</span>, <span class="at">size =</span> <span class="fl">0.25</span>, <span class="at">alpha =</span> <span class="fl">0.1</span>)</span></code></pre></div>
+<pre><code>Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.
+This warning is displayed once every 8 hours.
+Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
+generated.</code></pre>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>chr17_plot</span></code></pre></div>
+<p><img src="figure/09_DO_eQTL_summarize.Rmd/unnamed-chunk-10-1.png" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-10-1">
+Past versions of unnamed-chunk-10-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-10-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+535b06b
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-08
+</td>
+</tr>
+<tr>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+</tr>
+<tr>
+<td>
+7831bfe
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-09
+</td>
+</tr>
+<tr>
+<td>
+e9b932f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-08
+</td>
+</tr>
+<tr>
+<td>
+2465f91
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-01
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Plotting chr9 plot.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical<span class="sc">$</span>chr9_100_106_Mb <span class="ot">=</span> <span class="fu">ifelse</span>(<span class="fu">as.character</span>(peaks_lod_canonical<span class="sc">$</span>chr) <span class="sc">==</span> <span class="st">&quot;9&quot;</span> <span class="sc">&amp;</span> peaks_lod_canonical<span class="sc">$</span>pos <span class="sc">&gt;=</span> <span class="dv">100</span> <span class="sc">&amp;</span> peaks_lod_canonical<span class="sc">$</span>pos <span class="sc">&lt;=</span> <span class="dv">106</span>,</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>                                             <span class="st">&quot;not&quot;</span>, <span class="st">&quot;IS&quot;</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>peaks_lod_canonical<span class="sc">$</span>color_chr9 <span class="ot">=</span> <span class="fu">paste</span>(peaks_lod_canonical<span class="sc">$</span>is_cis, peaks_lod_canonical<span class="sc">$</span>chr9_100_106_Mb, <span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>chr9_plot <span class="ot">=</span> <span class="fu">ggplot</span>(<span class="at">data =</span> peaks_lod_canonical[<span class="fu">which</span>(peaks_lod_canonical<span class="sc">$</span>threshold <span class="sc">==</span> <span class="st">&quot;five_percent&quot;</span>),], <span class="fu">aes</span>(<span class="at">x =</span> pos_add, <span class="at">y =</span> gene_pos_add, <span class="at">color =</span> color_chr9, <span class="at">size =</span> chr9_100_106_Mb)) <span class="sc">+</span> </span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> trans_bands[<span class="fu">which</span>(trans_bands<span class="sc">$</span>chr <span class="sc">==</span> <span class="st">&quot;9&quot;</span>),<span class="st">&quot;pos_add&quot;</span>], <span class="at">color =</span> <span class="st">&quot;#CCCCCC&quot;</span>, <span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span> </span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#666666&quot;</span>,<span class="st">&quot;#CC3333&quot;</span>,<span class="st">&quot;#999999&quot;</span>,<span class="st">&quot;#FFCC33&quot;</span>)) <span class="sc">+</span> </span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Peak Position&quot;</span>) <span class="sc">+</span> </span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Gene Position&quot;</span>) <span class="sc">+</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> lod_max<span class="sc">$</span>med, </span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>                     <span class="at">minor_breaks =</span> <span class="fu">c</span>(lod_max<span class="sc">$</span>add, (lod_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> lod_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;max_pos&quot;</span>])), </span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>                     <span class="at">labels =</span> lod_max<span class="sc">$</span>chr) <span class="sc">+</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> gene_max<span class="sc">$</span>med, </span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>                     <span class="at">minor_breaks =</span> <span class="fu">c</span>(gene_max<span class="sc">$</span>add, (gene_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;add&quot;</span>] <span class="sc">+</span> gene_max[<span class="st">&quot;X&quot;</span>,<span class="st">&quot;max_pos&quot;</span>])), </span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>                     <span class="at">labels =</span> gene_max<span class="sc">$</span>gene_chr) <span class="sc">+</span> </span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()<span class="sc">+</span> </span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>, </span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>        <span class="at">panel.grid.major =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_size_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="fl">0.25</span>,<span class="dv">2</span>)) <span class="sc">+</span></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_rug</span>(<span class="at">data =</span> peaks_lod_canonical[<span class="fu">which</span>(peaks_lod_canonical<span class="sc">$</span>threshold <span class="sc">==</span> <span class="st">&quot;five_percent&quot;</span> <span class="sc">&amp;</span> <span class="sc">!</span>peaks_lod_canonical<span class="sc">$</span>is_cis),],</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>           <span class="fu">aes</span>(<span class="at">x =</span> pos_add, <span class="at">y =</span> gene_pos_add),</span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>           <span class="at">color =</span> <span class="st">&quot;black&quot;</span>, <span class="at">size =</span> <span class="fl">0.25</span>, <span class="at">alpha =</span> <span class="fl">0.1</span>)</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>chr9_plot</span></code></pre></div>
+<p><img src="figure/09_DO_eQTL_summarize.Rmd/unnamed-chunk-11-1.png" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-11-1">
+Past versions of unnamed-chunk-11-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-11-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+535b06b
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-08
+</td>
+</tr>
+<tr>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+</tr>
+<tr>
+<td>
+e9b932f
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-08
+</td>
+</tr>
+<tr>
+<td>
+2465f91
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-01
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Getting annotation for genes</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>genes <span class="ot">=</span> <span class="fu">unique</span>(peaks_lod_canonical<span class="sc">$</span>lodcolumn)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>maRt <span class="ot">=</span> <span class="fu">useMart</span>(<span class="at">biomart =</span> <span class="st">&quot;ENSEMBL_MART_ENSEMBL&quot;</span>,</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">host =</span> <span class="st">&quot;https://jan2019.archive.ensembl.org&quot;</span>,</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">dataset =</span> <span class="st">&quot;mmusculus_gene_ensembl&quot;</span>)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>maRt_filter <span class="ot">=</span> <span class="st">&quot;ensembl_gene_id&quot;</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>maRt_attributes <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;mgi_symbol&quot;</span>,<span class="st">&quot;mgi_description&quot;</span>,<span class="st">&quot;mgi_id&quot;</span>,<span class="st">&quot;chromosome_name&quot;</span>,<span class="st">&quot;start_position&quot;</span>,</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>                    <span class="st">&quot;end_position&quot;</span>,<span class="st">&quot;strand&quot;</span>,<span class="st">&quot;ensembl_gene_id&quot;</span>)</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>Mm_maRt <span class="ot">=</span> <span class="fu">getBM</span>(maRt_attributes, maRt_filter, genes, maRt)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(Mm_maRt) <span class="ot">=</span> Mm_maRt<span class="sc">$</span>ensembl_gene_id</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>annotated_peaks <span class="ot">=</span> <span class="fu">cbind</span>(Mm_maRt[peaks_lod_canonical<span class="sc">$</span>lodcolumn,],</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>                        peaks_lod_canonical) </span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(annotated_peaks) <span class="ot">=</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(annotated_peaks)</span></code></pre></div>
+<p>Saving annotated peaks and plots.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="fu">ls</span>(<span class="at">pattern =</span> <span class="st">&quot;plot$&quot;</span>), <span class="at">file =</span> <span class="st">&quot;./data/eQTL_plots.RData&quot;</span>)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(annotated_peaks, <span class="st">&quot;./data/eQTL_annotated_peaks.RDS&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="output" class="section level3">
+<h3>Output</h3>
+<p>The output data are saved in <code>./data/</code>.</p>
+</div>
+<div id="document-control" class="section level3">
+<h3>Document Control</h3>
+<p>This document was prepared using RMarkdown in RStudio.</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
+<pre><code>R version 4.2.1 (2022-06-23)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 20.04.6 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/liblapack.so.3
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] biomaRt_2.54.1 dplyr_1.1.2    ggplot2_3.4.2  qtl2_0.32      tidyr_1.3.0   
+
+loaded via a namespace (and not attached):
+ [1] Biobase_2.58.0         httr_1.4.4             sass_0.4.2            
+ [4] bit64_4.0.5            jsonlite_1.8.3         bslib_0.4.0           
+ [7] assertthat_0.2.1       highr_0.9              stats4_4.2.1          
+[10] BiocFileCache_2.6.1    blob_1.2.3             GenomeInfoDbData_1.2.9
+[13] yaml_2.3.6             progress_1.2.2         pillar_1.9.0          
+[16] RSQLite_2.2.18         glue_1.6.2             digest_0.6.30         
+[19] promises_1.2.0.1       XVector_0.38.0         colorspace_2.0-3      
+[22] htmltools_0.5.3        httpuv_1.6.6           XML_3.99-0.11         
+[25] pkgconfig_2.0.3        zlibbioc_1.44.0        purrr_1.0.1           
+[28] scales_1.2.1           whisker_0.4            later_1.3.0           
+[31] git2r_0.32.0           tibble_3.2.1           KEGGREST_1.38.0       
+[34] farver_2.1.1           generics_0.1.3         IRanges_2.32.0        
+[37] ellipsis_0.3.2         cachem_1.0.6           withr_2.5.0           
+[40] BiocGenerics_0.44.0    cli_3.4.1              magrittr_2.0.3        
+[43] crayon_1.5.2           memoise_2.0.1          evaluate_0.17         
+[46] fs_1.5.2               fansi_1.0.3            xml2_1.3.3            
+[49] tools_4.2.1            data.table_1.14.8      prettyunits_1.1.1     
+[52] hms_1.1.2              lifecycle_1.0.3        stringr_1.5.0         
+[55] S4Vectors_0.36.2       munsell_0.5.0          AnnotationDbi_1.60.2  
+[58] Biostrings_2.66.0      compiler_4.2.1         jquerylib_0.1.4       
+[61] GenomeInfoDb_1.34.9    rlang_1.1.1            grid_4.2.1            
+[64] RCurl_1.98-1.9         rstudioapi_0.14        rappdirs_0.3.3        
+[67] labeling_0.4.2         bitops_1.0-7           rmarkdown_2.17        
+[70] gtable_0.3.1           DBI_1.1.3              curl_4.3.3            
+[73] R6_2.5.1               knitr_1.42             fastmap_1.1.0         
+[76] bit_4.0.4              utf8_1.2.2             filelock_1.0.2        
+[79] workflowr_1.7.0        rprojroot_2.0.3        stringi_1.7.8         
+[82] parallel_4.2.1         Rcpp_1.0.9             vctrs_0.6.2           
+[85] png_0.1-7              dbplyr_2.2.1           tidyselect_1.2.0      
+[88] xfun_0.39             </code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Michael C. Saul (michael.saul [at] jax.org)" />
+
+
+<title>DO Drug-Naïve Demographic Data Summarize</title>
+
+<script src="site_libs/header-attrs-2.7/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/readable.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/master/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+.sourceCode .row {
+  width: 100%;
+}
+.sourceCode {
+  overflow-x: auto;
+}
+.code-folding-btn {
+  margin-right: -30px;
+}
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-sm-12 col-md-4 col-lg-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-sm-12 col-md-8 col-lg-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Diversity Outbred Reference Traits Analysis</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">DO Drug-Naïve Demographic Data Summarize</h1>
+<h4 class="author">Michael C. Saul (michael.saul [at] jax.org)</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2021-12-06
+</p>
+<p>
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>rta/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+</p>
+<p>
+This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/jdblischak/workflowr">workflowr</a> (version 1.6.2). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200501code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20200501)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200501code" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200501)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrong66ab3c9"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> 66ab3c9 </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrong66ab3c9" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version 66ab3c9. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rproj.user/
+    Ignored:    code/.Rapp.history
+    Ignored:    data/.Rhistory
+    Ignored:    data/RDS/
+    Ignored:    run/
+
+Untracked files:
+    Untracked:  LICENSE
+    Untracked:  Untitled.R
+    Untracked:  analysis/17_mapping_interpretation_old.Rmd
+    Untracked:  analysis/20_predict_acquisition_from_novelty.Rmd
+    Untracked:  analysis/21_DO_elasticnet_correlation.Rmd
+    Untracked:  analysis/Gapdh_msa.tex
+    Untracked:  analysis/Pcdha6_msa.tex
+    Untracked:  analysis/temp.txt
+    Untracked:  code/DO_eQTL_perms.R
+    Untracked:  code/DO_eQTL_score_calc.R
+    Untracked:  code/STAR_RSEM_416.sh
+    Untracked:  code/eQTL_plotting_DO_striatum_416.R
+    Untracked:  code/ggplot_pub_themes.R
+    Untracked:  data/20_elastic_mv_results.csv
+    Untracked:  data/20_elasticnet_predictions.RDS
+    Untracked:  data/DO_416_DGEList.RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 3).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 4).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered.RDS
+    Untracked:  data/DO_416_ERCC_DGEList.RDS
+    Untracked:  data/DO_416_ERCC_cpm.RDS
+    Untracked:  data/DO_416_normrt.RDS
+    Untracked:  data/DO_416_pheno.RDS
+    Untracked:  data/DO_416_pheno_allgenes.RDS
+    Untracked:  data/DO_416_voom (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom.RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom_allgenes.RDS
+    Untracked:  data/DO_416_voom_cpresiduals.RDS
+    Untracked:  data/DO_AQ_active_CoV_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_lever_ratio_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_mean_inf_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_rate_toptable_annotated.RDS
+    Untracked:  data/DO_IVSA_acquisition_cancor_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_glm.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df.RDS
+    Untracked:  data/DO_IVSA_data.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_ALL.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_AQ.RDS
+    Untracked:  data/DO_IVSA_novelty_data.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_old.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_a2_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a4_male_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a5_female_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_raw_data.RDS
+    Untracked:  data/DO_IVSA_transformed_data.RDS
+    Untracked:  data/DO_LIMS_data.RDS
+    Untracked:  data/DO_RTG_a1_new.qtl.RData
+    Untracked:  data/DO_RTG_a1_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a1_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a2_new.qtl.RData
+    Untracked:  data/DO_RTG_a2_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a2_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a3_new.qtl.RData
+    Untracked:  data/DO_RTG_a3_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_01.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_02.RData
+    Untracked:  data/DO_RTG_a4_new.qtl.RData
+    Untracked:  data/DO_RTG_a5_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_project_df_for_mapping.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_2020-11-06.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_a2.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_sexspecific.RDS
+    Untracked:  data/DO_demographic_data_df.RDS
+    Untracked:  data/DO_eigengene_significance.RDS
+    Untracked:  data/DO_eigengenes.RDS
+    Untracked:  data/DO_highcor_cpresiduals_datatable.RDS
+    Untracked:  data/DO_holeboard_data_df.RDS
+    Untracked:  data/DO_holeboard_summarized.RDS
+    Untracked:  data/DO_lightdark_data_df.RDS
+    Untracked:  data/DO_mQTL_peaks.RDS
+    Untracked:  data/DO_mQTL_scan1s.RDS
+    Untracked:  data/DO_module_membership.RDS
+    Untracked:  data/DO_novelplace_data_df.RDS
+    Untracked:  data/DO_novelty_data.RDS
+    Untracked:  data/DO_novelty_response_data.RDS
+    Untracked:  data/DO_novelty_response_data_for_RTG.RDS
+    Untracked:  data/DO_novelty_response_data_with_transform.csv
+    Untracked:  data/DO_openfield_data_df.RDS
+    Untracked:  data/DO_paraclique_data.el
+    Untracked:  data/DO_paraclique_eigengenes.RDS
+    Untracked:  data/DO_paracliques.RDS
+    Untracked:  data/DO_paracliques_significance.RDS
+    Untracked:  data/DO_ploidy_calls.RDS
+    Untracked:  data/DO_pmap.RDS
+    Untracked:  data/DO_pvalue_histograms.RData
+    Untracked:  data/DO_rtg_a1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a3_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m3_toptable_annotated.RDS
+    Untracked:  data/DO_str_2016_eQTL.RData
+    Untracked:  data/DO_str_2016_gm4qtl2.zip
+    Untracked:  data/DO_str_2016_gm4qtl2_intensities.fst
+    Untracked:  data/DO_voom_cpresiduals_NArm.RDS
+    Untracked:  data/DO_wgcna.RDS
+    Untracked:  data/IVSA_RTG_a3_blup.pdf
+    Untracked:  data/IVSA_h2_2019-11-18.tsv
+    Untracked:  data/IVSA_metadata_sheet.RDS
+    Untracked:  data/ME16_edges.tsv
+    Untracked:  data/Mus_musculus.GRCm38.94.parsed.RDS
+    Untracked:  data/Paraclique_19_MF_AMIGO.txt
+    Untracked:  data/RTG_QTL_peaks.RDS
+    Untracked:  data/RTG_figure.RDS
+    Untracked:  data/SENS_RTG/
+    Untracked:  data/Tyr2_genotypes.RDS
+    Untracked:  data/Tyr_genotypes.RDS
+    Untracked:  data/blup_chr7_DO_RTG_a3.RDS
+    Untracked:  data/cc_variants/
+    Untracked:  data/chr18_QTL_results.RDS
+    Untracked:  data/chr4_QTL_results.RDS
+    Untracked:  data/cis/
+    Untracked:  data/eQTL_annotated_peaks.RDS
+    Untracked:  data/eQTL_plots.RData
+    Untracked:  data/figures/
+    Untracked:  data/founders_key/
+    Untracked:  data/gigamuga/
+    Untracked:  data/gwas/
+    Untracked:  data/info/
+    Untracked:  data/m2G.a2.RTG.chr4snp.RData
+    Untracked:  data/mapping_from_hao/
+    Untracked:  data/perms/
+    Untracked:  data/qtl2/
+    Untracked:  data/raw/
+    Untracked:  data/resources/
+    Untracked:  data/tads_loops/
+    Untracked:  data/transcripts/
+    Untracked:  data/variants/
+    Untracked:  logs/
+    Untracked:  new_RTG_a3.jpeg
+    Untracked:  output/RTG_out/
+    Untracked:  output/docs_backup_2020-07-30.tar.gz
+    Untracked:  output/elastic_net_out/
+    Untracked:  singularity/
+    Untracked:  tmp/
+    Untracked:  var/
+
+Unstaged changes:
+    Deleted:    .Rprofile
+    Modified:   .gitignore
+    Modified:   README.md
+    Modified:   analysis/17_mapping_interpretation.Rmd
+    Modified:   analysis/_site.yml
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were made to the R Markdown (<code>analysis/01_DO_demographic_data_summarize.Rmd</code>) and HTML (<code>docs/01_DO_demographic_data_summarize.html</code>) files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view the files as they were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+66ab3c9
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-06
+</td>
+<td>
+Recommitting for Sumner
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Rolling back to working version.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+56ca4b6
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+All files commit
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+a5eb656
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+b029f15
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Referencing former file name before leading left-justified numbers
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+4cf4136
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+e429e0a
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Change name and formatting
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<div id="motivation" class="section level2">
+<h2>Motivation</h2>
+<div id="purpose-of-analysis" class="section level3">
+<h3>Purpose of analysis</h3>
+<p>This initial script exists to summarize the demographic data of a number of mice used in this study.</p>
+</div>
+</div>
+</div>
+<div id="analysis" class="section level1">
+<h1>Analysis</h1>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<div id="r-libraries" class="section level3">
+<h3>R libraries</h3>
+<p>Calling R libraries necessary for this analysis.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;readxl&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;lubridate&quot;</span>)</span></code></pre></div>
+<pre><code>
+Attaching package: &#39;lubridate&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:base&#39;:
+
+    date, intersect, setdiff, union</code></pre>
+</div>
+</div>
+</div>
+<div id="data-import" class="section level1">
+<h1>Data Import</h1>
+<div id="importing-data" class="section level2">
+<h2>Importing data</h2>
+<div id="importing-basic-mouse-demographic-data" class="section level3">
+<h3>Importing basic mouse demographic data</h3>
+<p>Importing and cleaning up basic demographic data (note: original version of file was named <code>DO Mice.xlsx</code> with spaces included, but file name was changed to add underscores on 2020-05-01).</p>
+<p>The md5 checksum of the input <code>DO_Mice.xlsx</code> file is: <code>2cd59a9908f5319fbd2a6e14e41360f1</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>DO_demodata <span class="ot">=</span> <span class="fu">as.data.frame</span>(<span class="fu">read_excel</span>(<span class="st">&quot;./data/raw/DO_Mice.xlsx&quot;</span>), <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(DO_demodata) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;Mouse_ID&quot;</span>, <span class="st">&quot;Strain&quot;</span>, <span class="st">&quot;DOB&quot;</span>, <span class="st">&quot;Sex&quot;</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(DO_demodata) <span class="ot">=</span> <span class="fu">as.character</span>(DO_demodata<span class="sc">$</span>Mouse_ID)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>DO_demodata <span class="ot">=</span> DO_demodata[,<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>DO_demodata<span class="sc">$</span>DOB <span class="ot">=</span> <span class="fu">mdy</span>(DO_demodata<span class="sc">$</span>DOB)</span></code></pre></div>
+</div>
+<div id="summarizing-demographic-data-as-data-frame-for-future-use" class="section level3">
+<h3>Summarizing demographic data as data frame for future use</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Saving demodata</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(DO_demodata,<span class="st">&quot;./data/DO_demographic_data_df.RDS&quot;</span>,<span class="at">compress=</span><span class="st">&quot;xz&quot;</span>)</span></code></pre></div>
+<p>The md5 checksum of the output file (<code>DO_demographic_data_df.RDS</code>) is: <code>3dca8fe2a9452557e78d87d839784cfc</code>.</p>
+<p>These are the measures used, and they are already summarized as a data frame.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Measure Name</th>
+<th>Measure Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Strain</code></td>
+<td>Mouse strain used in in study</td>
+</tr>
+<tr class="even">
+<td><code>DOB</code></td>
+<td>Mouse date of birth</td>
+</tr>
+<tr class="odd">
+<td><code>Sex</code></td>
+<td>Sex of mouse</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="document-control" class="section level3">
+<h3>Document Control</h3>
+<p>This document was prepared using RMarkdown in RStudio and imported into workflowr on 2020-05-01.</p>
+<p>(file was formerly saved as <a href="DO_demographic_data_summarize.html">DO_demographic_data_summarize.html</a>)</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
+<pre><code>R version 4.1.2 (2021-11-01)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 20.04.3 LTS
+
+Matrix products: default
+BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.8.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=C             
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] lubridate_1.7.10 readxl_1.3.1    
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.6        whisker_0.4       knitr_1.31        magrittr_2.0.1   
+ [5] workflowr_1.6.2   R6_2.5.0          rlang_0.4.10      fansi_0.4.2      
+ [9] stringr_1.4.0     tools_4.1.2       xfun_0.21         utf8_1.1.4       
+[13] git2r_0.28.0      jquerylib_0.1.3   htmltools_0.5.1.1 ellipsis_0.3.1   
+[17] rprojroot_2.0.2   yaml_2.2.1        digest_0.6.27     tibble_3.0.6     
+[21] lifecycle_1.0.0   crayon_1.4.1      later_1.1.0.1     sass_0.3.1       
+[25] vctrs_0.3.6       fs_1.5.0          promises_1.2.0.1  glue_1.4.2       
+[29] evaluate_0.14     rmarkdown_2.7     stringi_1.5.3     cellranger_1.1.0 
+[33] compiler_4.1.2    bslib_0.2.4       pillar_1.5.1      generics_0.1.0   
+[37] jsonlite_1.7.2    httpuv_1.5.5      pkgconfig_2.0.3  </code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+http://docs.mathjax.org/en/latest/configuration.html.  This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

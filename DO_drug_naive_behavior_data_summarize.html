@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Michael C. Saul (michael.saul [at] jax.org)" />
+
+
+<title>DO Drug-Naïve Novelty Behavior Summarization</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/spacelab.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/master/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #ffffff;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">DO_RTG</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">DO Drug-Naïve Novelty Behavior Summarization</h1>
+<h4 class="author"><em>Michael C. Saul (michael.saul [at] jax.org)</em></h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2020-05-01
+</p>
+<p>
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 1
+</p>
+<p>
+<strong>Knit directory:</strong> <code>DO_RTG/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+</p>
+<p>
+This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/jdblischak/workflowr">workflowr</a> (version 1.6.2). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted changes </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguncommittedchanges" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The R Markdown file has unstaged changes. To know which version of the R Markdown file created these results, you’ll want to first commit it to the Git repo. If you’re still working on the analysis, you can ignore this warning. When you’re finished, you can run <code>wflow_publish</code> to commit the R Markdown file and build the HTML.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200501code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20200501)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200501code" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200501)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongd489238"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> d489238 </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrongd489238" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version d489238. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+</p>
+<pre><code>
+Untracked files:
+    Untracked:  LICENSE
+    Untracked:  data/DO_demographic_data_df.RDS
+    Untracked:  data/DO_holeboard_data_df.RDS
+    Untracked:  data/DO_holeboard_summarized.RDS
+    Untracked:  data/DO_lightdark_data_df.RDS
+    Untracked:  data/DO_novelplace_data_df.RDS
+    Untracked:  data/DO_openfield_data_df.RDS
+    Untracked:  data/raw/
+
+Unstaged changes:
+    Modified:   analysis/DO_drug_naive_behavior_data_summarize.Rmd
+    Modified:   analysis/_site.yml
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were made to the R Markdown (<code>analysis/DO_drug_naive_behavior_data_summarize.Rmd</code>) and HTML (<code>docs/DO_drug_naive_behavior_data_summarize.html</code>) files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view the files as they were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+html
+</td>
+<td>
+4f21348
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+552c246
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+6184a34
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Change summarization script message to call out workflowr.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+34fe350
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+c2a2c0e
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-05-01
+</td>
+<td>
+Summarize all novelty response data.
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<div id="motivation" class="section level2">
+<h2>Motivation</h2>
+<div id="purpose-of-analysis" class="section level3">
+<h3>Purpose of analysis</h3>
+<p>This analysis is to reduce the amount of behavioral variables into a few meaningful variables that are useful for gene expression and genetics work.</p>
+</div>
+</div>
+</div>
+<div id="analysis" class="section level1">
+<h1>Analysis</h1>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<div id="r-libraries" class="section level3">
+<h3>R libraries</h3>
+<p>Calling R libraries necessary for this analysis.</p>
+<pre class="r"><code>library(&quot;readxl&quot;)</code></pre>
+<pre><code>Warning: package &#39;readxl&#39; was built under R version 3.5.2</code></pre>
+<pre class="r"><code>library(&quot;ggplot2&quot;)</code></pre>
+<pre><code>Warning: package &#39;ggplot2&#39; was built under R version 3.5.2</code></pre>
+<pre class="r"><code>library(&quot;GGally&quot;)
+library(&quot;lubridate&quot;)</code></pre>
+<pre><code>
+Attaching package: &#39;lubridate&#39;</code></pre>
+<pre><code>The following object is masked from &#39;package:base&#39;:
+
+    date</code></pre>
+</div>
+</div>
+</div>
+<div id="data-import" class="section level1">
+<h1>Data Import</h1>
+<div id="importing-data" class="section level2">
+<h2>Importing data</h2>
+<div id="importing-basic-mouse-demographic-data" class="section level3">
+<h3>Importing basic mouse demographic data</h3>
+<p>Importing basic demographic data.</p>
+<p>The md5 checksum of the input file (<code>DO_demographic_data_df.RDS</code>) is: <code>4b2986bc1efe307e940590eb60767d72</code>.</p>
+<pre class="r"><code>DO_demodata = readRDS(&quot;./data/DO_demographic_data_df.RDS&quot;)</code></pre>
+<p>These are the measures used, and they are already summarized as a data frame.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Measure Name</th>
+<th>Measure Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Strain</code></td>
+<td>Mouse strain used in in study</td>
+</tr>
+<tr class="even">
+<td><code>DOB</code></td>
+<td>Mouse date of birth</td>
+</tr>
+<tr class="odd">
+<td><code>Sex</code></td>
+<td>Sex of mouse</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="importing-and-summarizing-holeboard-data" class="section level3">
+<h3>Importing and summarizing holeboard data</h3>
+<p>Importing DO holeboard data as cleaned up, properly data typed, and deduplicated in the <code>DO_holeboard_summarize.Rmd</code> script.</p>
+<p>The md5 checksum of the input file (<code>DO_holeboard_summarized.RDS</code>) is: <code>8f6e29c8533bf26aec472b5d0833e995</code>.</p>
+<pre class="r"><code>DO_holeboard_raw = readRDS(&quot;./data/DO_holeboard_summarized.RDS&quot;)
+
+DO_holeboard_data_cols = c(&quot;Distance_Traveled&quot;,&quot;Time_Ambulatory_sec&quot;,&quot;Ambulatory_Count&quot;,
+                           &quot;Time_Stereotypic_sec&quot;,&quot;Stereotypic_Count&quot;,&quot;Time_Resting_sec&quot;,
+                           &quot;Jump_Count&quot;,&quot;Time_Jumping_sec&quot;,&quot;Average_Velocity&quot;,&quot;Ambulatory_Episodes&quot;,
+                           &quot;Latency_To_First_Hole_sec&quot;,&quot;Novel_Entries&quot;,&quot;Repeat_Entries&quot;,
+                           &quot;Total_Entries&quot;,&quot;Avg_Novel_Total_IRT&quot;)
+
+DO_holeboard = DO_holeboard_raw[,DO_holeboard_data_cols]
+rm(list = c(&quot;DO_holeboard_raw&quot;,&quot;DO_holeboard_data_cols&quot;))
+
+# Saving holeboard data
+saveRDS(DO_holeboard,&quot;./data/DO_holeboard_data_df.RDS&quot;,compress=&quot;xz&quot;)</code></pre>
+<p>The md5 checksum of the output file (<code>DO_holeboard_data_df.RDS</code>) is: <code>695eef957cd396566ad2df74bbed0d8c</code></p>
+<p>These are the measures used, and they are already summarized as a data frame.</p>
+<table>
+<colgroup>
+<col width="32%" />
+<col width="67%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Measure Name</th>
+<th>Measure Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Distance_Traveled</code></td>
+<td>Distance travelled in the holeboard apparatus (cm)</td>
+</tr>
+<tr class="even">
+<td><code>Time_Ambulatory_sec</code></td>
+<td>Time spent traveling in the holeboard apparatus (sec)</td>
+</tr>
+<tr class="odd">
+<td><code>Ambulatory_Count</code></td>
+<td>Count of ambulatory activity</td>
+</tr>
+<tr class="even">
+<td><code>Time_Stereotypic_sec</code></td>
+<td>Time spent engaged in stereotypic behavior (sec)</td>
+</tr>
+<tr class="odd">
+<td><code>Stereotypic_Count</code></td>
+<td>Count of sterotypic behavior</td>
+</tr>
+<tr class="even">
+<td><code>Time_Resting_sec</code></td>
+<td>Time spent resting in the apparatus (sec)</td>
+</tr>
+<tr class="odd">
+<td><code>Jump_Count</code></td>
+<td>Count of jumps</td>
+</tr>
+<tr class="even">
+<td><code>Time_Jumping_sec</code></td>
+<td>Time spent jumping (sec)</td>
+</tr>
+<tr class="odd">
+<td><code>Average_Velocity</code></td>
+<td>Average speed the mouse was moving (unsure of units)</td>
+</tr>
+<tr class="even">
+<td><code>Ambulatory_Episodes</code></td>
+<td>Count of episodes moving</td>
+</tr>
+<tr class="odd">
+<td><code>Latency_To_First_Hole_sec</code></td>
+<td>Time in seconds until first hole dip (1200 = no dip)</td>
+</tr>
+<tr class="even">
+<td><code>Novel_Entries</code></td>
+<td>Count of entries into novel holes</td>
+</tr>
+<tr class="odd">
+<td><code>Repeat_Entries</code></td>
+<td>Count of entries into holes previously entered</td>
+</tr>
+<tr class="even">
+<td><code>Total_Entries</code></td>
+<td>Count of total hole board entries</td>
+</tr>
+<tr class="odd">
+<td><code>Avg_Novel_Total_IRT</code></td>
+<td>An inter-task measure of time for novel entries</td>
+</tr>
+</tbody>
+</table>
+<p>The holeboard trials are each 20 minutes (1200 seconds) long.</p>
+</div>
+<div id="importing-light-dark-data" class="section level3">
+<h3>Importing light-dark data</h3>
+<p>Importing and cleaning up DO light-dark data (note: original version of file was named <code>DO LightDark modified.xlsx</code> with spaces included, but file name was changed to add underscores on 2020-05-01).</p>
+<p>The md5 checksum of the input file (<code>DO_LightDark_modified.xlsx</code>) is: <code>2c39851259ab4191102465f64ca1cc83</code></p>
+<pre class="r"><code>DO_lightdark_raw = as.data.frame(read_excel(&quot;./data/raw/DO_LightDark_modified.xlsx&quot;),
+                                 stringsAsFactors = FALSE)
+row.names(DO_lightdark_raw) = as.character(DO_lightdark_raw[,&quot;Subject&quot;])
+DO_lightdark_raw = DO_lightdark_raw[,(-1 * which(colnames(DO_lightdark_raw) == &quot;Subject&quot;))]
+colnames(DO_lightdark_raw) = gsub(&quot; &quot;, &quot;_&quot;, colnames(DO_lightdark_raw))</code></pre>
+</div>
+<div id="summarizing-light-dark-data" class="section level3">
+<h3>Summarizing light-dark data</h3>
+<p>Zone 1 is light; zone 2 is dark.</p>
+<p>Deriving the following measures into a data frame:</p>
+<table>
+<colgroup>
+<col width="28%" />
+<col width="71%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Measure Name</th>
+<th>Measure Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Light_Dist</code></td>
+<td>Distance traveled in light compartment</td>
+</tr>
+<tr class="even">
+<td><code>Dark_Dist</code></td>
+<td>Distance traveled in dark compartment</td>
+</tr>
+<tr class="odd">
+<td><code>Total_Dist</code></td>
+<td>Total distance traveled in both compartments</td>
+</tr>
+<tr class="even">
+<td><code>P_Light_Dist</code></td>
+<td>Proportion of distance traveled in light compartment</td>
+</tr>
+<tr class="odd">
+<td><code>P_Dark_Dist</code></td>
+<td>Proportion of distance traveled in dark compartment</td>
+</tr>
+<tr class="even">
+<td><code>Light_Sec</code></td>
+<td>Seconds spent ambulating in light compartment</td>
+</tr>
+<tr class="odd">
+<td><code>Dark_Sec</code></td>
+<td>Seconds spent ambulating in dark compartment</td>
+</tr>
+<tr class="even">
+<td><code>Total_Sec</code></td>
+<td>Total seconds spent ambulating in both compartments</td>
+</tr>
+<tr class="odd">
+<td><code>P_Light_Sec</code></td>
+<td>Proportion of ambulating seconds spent in light compartment</td>
+</tr>
+<tr class="even">
+<td><code>P_Dark_Sec</code></td>
+<td>Proportion of ambulating seconds spent in dark compartment</td>
+</tr>
+<tr class="odd">
+<td><code>Transitions</code></td>
+<td>Total transitions between light and dark</td>
+</tr>
+<tr class="even">
+<td><code>P_Stereotypic_Light</code></td>
+<td>Proportion of stereotypic time in light</td>
+</tr>
+<tr class="odd">
+<td><code>Sec_Stereotypic_Dark</code></td>
+<td>Number of seconds spent in stereotypic behavior in dark</td>
+</tr>
+<tr class="even">
+<td><code>Light_Resting_Sec</code></td>
+<td>Total resting time in the light</td>
+</tr>
+<tr class="odd">
+<td><code>Dark_Resting_Sec</code></td>
+<td>Total resting time in the dark</td>
+</tr>
+<tr class="even">
+<td><code>Light_Amb_Counts</code></td>
+<td>Ambulatory counts in light</td>
+</tr>
+<tr class="odd">
+<td><code>Dark_Amb_Counts</code></td>
+<td>Ambulatory counts in dark</td>
+</tr>
+<tr class="even">
+<td><code>Total_Amb_Counts</code></td>
+<td>Ambulatory counts total</td>
+</tr>
+<tr class="odd">
+<td><code>P_Amb_Counts_Light</code></td>
+<td>Proportion of ambulatory counts in light</td>
+</tr>
+<tr class="even">
+<td><code>P_Amb_Counts_Dark</code></td>
+<td>Proportion of ambulatory counts in dark</td>
+</tr>
+<tr class="odd">
+<td><code>Light_Duration</code></td>
+<td>Duration spent in light</td>
+</tr>
+<tr class="even">
+<td><code>Dark_Duration</code></td>
+<td>Duration spent in dark</td>
+</tr>
+<tr class="odd">
+<td><code>Total_Duration</code></td>
+<td>Total duration spent in light/dark box</td>
+</tr>
+<tr class="even">
+<td><code>P_Duration_Light</code></td>
+<td>Proportion of duration spent in light</td>
+</tr>
+<tr class="odd">
+<td><code>P_Duration_Dark</code></td>
+<td>Proportion of duration spent in dark</td>
+</tr>
+</tbody>
+</table>
+<p>To integrate: LD_pct_time_in_light</p>
+<p>Distances are centimeters.</p>
+<pre class="r"><code># Using initial columns for information
+DO_lightdark = rbind(DO_lightdark_raw[,1:19])
+DO_lightdark_noinfo = which(colSums(is.na(DO_lightdark)) == nrow(DO_lightdark))
+DO_lightdark = DO_lightdark[,(-1 * DO_lightdark_noinfo)]
+rm(list = c(&quot;DO_lightdark_noinfo&quot;))
+
+# Calculating distance-related measures
+Light_Dist_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Distance_Bin_\\d{1,2}_Zone_1$&quot;, colnames(DO_lightdark_raw))]
+Dark_Dist_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Distance_Bin_\\d{1,2}_Zone_2$&quot;, colnames(DO_lightdark_raw))]
+Total_Dist_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Distance_Bin_\\d{1,2}$&quot;, colnames(DO_lightdark_raw))]
+Light_Stereotypic_Time_cols = colnames(DO_lightdark_raw)[grep(&quot;^Stereotypic_Time_Bin_\\d{1,2}_Zone_1$&quot;, colnames(DO_lightdark_raw))]
+Dark_Stereotypic_Time_cols = colnames(DO_lightdark_raw)[grep(&quot;^Stereotypic_Time_Bin_\\d{1,2}_Zone_2$&quot;, colnames(DO_lightdark_raw))]
+Light_Resting_Time_cols = colnames(DO_lightdark_raw)[grep(&quot;^Resting_Time_Bin_\\d{1,2}_Zone_1$&quot;, colnames(DO_lightdark_raw))]
+Dark_Resting_Time_cols = colnames(DO_lightdark_raw)[grep(&quot;^Resting_Time_Bin_\\d{1,2}_Zone_2$&quot;, colnames(DO_lightdark_raw))]
+
+DO_lightdark$Light_Dist = rowSums(as.matrix(DO_lightdark_raw[,Light_Dist_cols]))
+DO_lightdark$Dark_Dist = rowSums(as.matrix(DO_lightdark_raw[,Dark_Dist_cols]))
+DO_lightdark$Total_Dist = rowSums(as.matrix(DO_lightdark_raw[,Total_Dist_cols]))
+DO_lightdark$P_Light_Dist = DO_lightdark$Light_Dist / DO_lightdark$Total_Dist
+DO_lightdark$P_Dark_Dist = DO_lightdark$Dark_Dist / DO_lightdark$Total_Dist
+
+# Calculating time-related measures
+Light_Sec_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Time_Bin_\\d{1,2}_Zone_1$&quot;, colnames(DO_lightdark_raw))]
+Dark_Sec_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Time_Bin_\\d{1,2}_Zone_2$&quot;, colnames(DO_lightdark_raw))]
+Total_Sec_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Time_Bin_\\d{1,2}$&quot;, colnames(DO_lightdark_raw))]
+DO_lightdark$Light_Sec = rowSums(as.matrix(DO_lightdark_raw[,Light_Sec_cols]))
+DO_lightdark$Dark_Sec = rowSums(as.matrix(DO_lightdark_raw[,Dark_Sec_cols]))
+DO_lightdark$Total_Sec = rowSums(as.matrix(DO_lightdark_raw[,Total_Sec_cols]))
+DO_lightdark$P_Light_Sec = DO_lightdark$Light_Sec / DO_lightdark$Total_Sec
+DO_lightdark$P_Dark_Sec = DO_lightdark$Dark_Sec / DO_lightdark$Total_Sec
+DO_lightdark$P_Stereotypic_Light = rowSums(as.matrix(DO_lightdark_raw[,Light_Stereotypic_Time_cols])) / (rowSums(as.matrix(DO_lightdark_raw[,Light_Stereotypic_Time_cols])) + rowSums(as.matrix(DO_lightdark_raw[,Dark_Stereotypic_Time_cols])))
+DO_lightdark$Sec_Stereotypic_Dark = rowSums(as.matrix(DO_lightdark_raw[,Dark_Stereotypic_Time_cols]))
+DO_lightdark$Light_Resting_Sec = rowSums(as.matrix(DO_lightdark_raw[,Light_Resting_Time_cols]))
+DO_lightdark$Dark_Resting_Sec = rowSums(as.matrix(DO_lightdark_raw[,Dark_Resting_Time_cols]))
+
+# Calculating transitions
+Transitions_cols = colnames(DO_lightdark_raw)[grep(&quot;^Zone_Entries_Bin_\\d{1,2}$&quot;, colnames(DO_lightdark_raw))]
+DO_lightdark$Transitions = rowSums(as.matrix(DO_lightdark_raw[,Transitions_cols]))
+
+# Calculating ambulatory counts
+Light_Counts_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Counts_Bin_\\d{1,2}_Zone_1$&quot;, colnames(DO_lightdark_raw))]
+Dark_Counts_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Counts_Bin_\\d{1,2}_Zone_2$&quot;, colnames(DO_lightdark_raw))]
+Total_Counts_cols = colnames(DO_lightdark_raw)[grep(&quot;^Ambulatory_Counts_Bin_\\d{1,2}$&quot;, colnames(DO_lightdark_raw))]
+DO_lightdark$Light_Amb_Counts = rowSums(as.matrix(DO_lightdark_raw[,Light_Counts_cols]))
+DO_lightdark$Dark_Amb_Counts = rowSums(as.matrix(DO_lightdark_raw[,Dark_Counts_cols]))
+DO_lightdark$Total_Amb_Counts = rowSums(as.matrix(DO_lightdark_raw[,Total_Counts_cols]))
+DO_lightdark$P_Amb_Counts_Light = DO_lightdark$Light_Amb_Counts / DO_lightdark$Total_Amb_Counts
+DO_lightdark$P_Amb_Counts_Dark = DO_lightdark$Dark_Amb_Counts / DO_lightdark$Total_Amb_Counts
+
+# Calculating duration
+Light_Duration_cols = colnames(DO_lightdark_raw)[grep(&quot;^Duration_Bin_\\d{1,2}_Zone_1$&quot;, colnames(DO_lightdark_raw))]
+Dark_Duration_cols = colnames(DO_lightdark_raw)[grep(&quot;^Duration_Bin_\\d{1,2}_Zone_2$&quot;, colnames(DO_lightdark_raw))]
+Total_Duration_cols = colnames(DO_lightdark_raw)[grep(&quot;^Duration_Bin_\\d{1,2}$&quot;, colnames(DO_lightdark_raw))]
+DO_lightdark$Light_Duration = rowSums(as.matrix(DO_lightdark_raw[,Light_Duration_cols]))
+DO_lightdark$Dark_Duration = rowSums(as.matrix(DO_lightdark_raw[,Dark_Duration_cols]))
+DO_lightdark$Total_Duration = rowSums(as.matrix(DO_lightdark_raw[,Total_Duration_cols]))
+DO_lightdark$P_Duration_Light = DO_lightdark$Light_Duration / DO_lightdark$Total_Duration
+DO_lightdark$P_Duration_Dark = DO_lightdark$Dark_Duration / DO_lightdark$Total_Duration
+
+# Removing helper vectors
+rm(list = ls()[grep(&quot;cols$&quot;,ls())])
+
+# Saving raw data
+saveRDS(DO_lightdark_raw, &quot;./data/raw/DO_lightdark_raw.RDS&quot;, compress = &quot;xz&quot;)
+rm(list = c(&quot;DO_lightdark_raw&quot;))
+
+# Saving light-dark data
+saveRDS(DO_lightdark,&quot;./data/DO_lightdark_data_df.RDS&quot;,compress=&quot;xz&quot;)</code></pre>
+<p>The md5 checksum of the output file (<code>DO_lightdark_raw.RDS</code>) is: <code>5b1b79d585d1542bde02a1d737ba0f27</code></p>
+<p>The md5 checksum of the output file (<code>DO_lightdark_data_df.RDS</code>) is: <code>d4bf2224a91c264fc0c301b157e68e6d</code></p>
+</div>
+<div id="importing-open-field-data" class="section level3">
+<h3>Importing open field data</h3>
+<p>(note: original version of file was named <code>DO Open field modified.xlsx</code> with spaces included, but file name was changed to add underscores on 2020-05-01)</p>
+<p>The md5 checksum of the input file (<code>DO_Open_field_modified.xlsx</code>) is: <code>c4e2fd130b0a84dd3e79f855ecd1a74d</code>.</p>
+<pre class="r"><code>DO_openfield_raw = as.data.frame(read_excel(&quot;./data/raw/DO_Open_field_modified.xlsx&quot;),
+                                 stringsAsFactors = FALSE)
+row.names(DO_openfield_raw) = as.character(DO_openfield_raw$Subject)
+DO_openfield_raw = DO_openfield_raw[,(-1 * which(colnames(DO_openfield_raw) == &quot;Subject&quot;))]
+colnames(DO_openfield_raw) = gsub(&quot; &quot;, &quot;_&quot;, colnames(DO_openfield_raw))</code></pre>
+</div>
+<div id="summarizing-open-field-data" class="section level3">
+<h3>Summarizing open field data</h3>
+<p>Deriving the following measures into a data frame:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Measure Name</th>
+<th>Measure Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Perimeter_Dist</code></td>
+<td>Total distance traveled in the perimeter</td>
+</tr>
+<tr class="even">
+<td><code>Corner_Dist</code></td>
+<td>Total distance traveled in the corner</td>
+</tr>
+<tr class="odd">
+<td><code>Center_Dist</code></td>
+<td>Total distance traveled in the center</td>
+</tr>
+<tr class="even">
+<td><code>Total_Dist</code></td>
+<td>Total distance traveled in open field</td>
+</tr>
+<tr class="odd">
+<td><code>P_Perimeter_Dist</code></td>
+<td>Proportion of distance spent in perimeter</td>
+</tr>
+<tr class="even">
+<td><code>P_Corner_Dist</code></td>
+<td>Proportion of distance spent in corner</td>
+</tr>
+<tr class="odd">
+<td><code>P_Center_Dist</code></td>
+<td>Proportion of distance spent in center</td>
+</tr>
+<tr class="even">
+<td><code>Perimeter_Time</code></td>
+<td>Seconds spent ambulating in perimeter</td>
+</tr>
+<tr class="odd">
+<td><code>Corner_Time</code></td>
+<td>Seconds spent ambulating in corner</td>
+</tr>
+<tr class="even">
+<td><code>Center_Time</code></td>
+<td>Seconds spent ambulating in center</td>
+</tr>
+<tr class="odd">
+<td><code>Total_Time</code></td>
+<td>Total seconds spent ambulating in the open field</td>
+</tr>
+<tr class="even">
+<td><code>Rest_Time_Corner</code></td>
+<td>Seconds spent resting in the corner</td>
+</tr>
+<tr class="odd">
+<td><code>Rest_Time_Center</code></td>
+<td>Seconds spent resting in the center</td>
+</tr>
+<tr class="even">
+<td><code>Rest_Time_Perimeter</code></td>
+<td>Seconds spent resting in the perimeter</td>
+</tr>
+<tr class="odd">
+<td><code>Rest_Time_Total</code></td>
+<td>Total seconds spent resting in the open field</td>
+</tr>
+<tr class="even">
+<td><code>P_Corner_Rest_Time</code></td>
+<td>Proportion of rest time spent in corner</td>
+</tr>
+<tr class="odd">
+<td><code>P_Center_Rest_Time</code></td>
+<td>Proportion of rest time spent in center</td>
+</tr>
+<tr class="even">
+<td><code>P_Perimeter_Rest_Time</code></td>
+<td>Proportion of rest time spent in perimeter</td>
+</tr>
+<tr class="odd">
+<td><code>P_Perimeter_Time</code></td>
+<td>Proportion of seconds spent ambulating in perimeter</td>
+</tr>
+<tr class="even">
+<td><code>P_Corner_Time</code></td>
+<td>Proportion of seconds spent ambulating in corner</td>
+</tr>
+<tr class="odd">
+<td><code>P_Center_Time</code></td>
+<td>Proportion of seconds spent ambulating in center</td>
+</tr>
+<tr class="even">
+<td><code>Ambulatory_Counts</code></td>
+<td>Number of ambulatory counts</td>
+</tr>
+<tr class="odd">
+<td><code>Dist_Slope</code></td>
+<td>Slope of open field distance</td>
+</tr>
+<tr class="even">
+<td><code>Dist_Last_Five</code></td>
+<td>Distance travelled in last 5 minutes</td>
+</tr>
+<tr class="odd">
+<td><code>Dist_First_Five</code></td>
+<td>Distance travelled in first 5 minutes</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># Using initial columns for information
+DO_openfield = DO_openfield_raw[,1:19]
+DO_openfield_noinfo = which(colSums(is.na(DO_openfield)) == nrow(DO_openfield))
+DO_openfield = DO_openfield[,(-1 * DO_openfield_noinfo)]
+rm(list = c(&quot;DO_openfield_noinfo&quot;))
+
+# Calculating open field distances
+Perimeter_Dist_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Distance_Bin_\\d{1,2}_Zone_\\w{3,6}_Perimeter$&quot;, colnames(DO_openfield_raw))]
+Corner_Dist_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Distance_Bin_\\d{1,2}_Zone_\\w{3,6}_\\w{4,5}_Corner$&quot;, colnames(DO_openfield_raw))]
+Center_Dist_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Distance_Bin_\\d{1,2}_Zone_Center$&quot;, colnames(DO_openfield_raw))]
+Total_Dist_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Distance_Bin_\\d{1,2}$&quot;, colnames(DO_openfield_raw))]
+
+Total_Dist_slopevals = as.numeric(gsub(&quot;Ambulatory_Distance_Bin_&quot;,&quot;&quot;,Total_Dist_cols))
+
+DO_openfield$Perimeter_Dist = rowSums(as.matrix(DO_openfield_raw[,Perimeter_Dist_cols]))
+DO_openfield$Corner_Dist = rowSums(as.matrix(DO_openfield_raw[,Corner_Dist_cols]))
+DO_openfield$Center_Dist = rowSums(as.matrix(DO_openfield_raw[,Center_Dist_cols]))
+DO_openfield$Total_Dist = rowSums(as.matrix(DO_openfield_raw[,Total_Dist_cols]))
+DO_openfield$P_Perimeter_Dist = DO_openfield$Perimeter_Dist / DO_openfield$Total_Dist
+DO_openfield$P_Corner_Dist = DO_openfield$Corner_Dist / DO_openfield$Total_Dist
+DO_openfield$P_Center_Dist = DO_openfield$Center_Dist / DO_openfield$Total_Dist
+DO_openfield$Dist_Slope = rep(NA, times = nrow(DO_openfield))
+for (i in row.names(DO_openfield)) {
+  DO_lm_i = summary(lm(as.numeric(DO_openfield_raw[i,Total_Dist_cols]) ~ Total_Dist_slopevals))
+  DO_openfield[i,&quot;Dist_Slope&quot;] = DO_lm_i$coefficients[&quot;Total_Dist_slopevals&quot;,&quot;Estimate&quot;]
+}
+DO_openfield$Dist_Last_Five = DO_openfield_raw[row.names(DO_openfield),&quot;Ambulatory_Distance_Bin_12&quot;]
+DO_openfield$Dist_First_Five = DO_openfield_raw[row.names(DO_openfield),&quot;Ambulatory_Distance_Bin_1&quot;]
+
+# Calculating open field times
+Perimeter_Time_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Time_Bin_\\d{1,2}_Zone_\\w{3,6}_Perimeter$&quot;, colnames(DO_openfield_raw))]
+Corner_Time_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Time_Bin_\\d{1,2}_Zone_\\w{3,6}_\\w{4,5}_Corner$&quot;, colnames(DO_openfield_raw))]
+Center_Time_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Time_Bin_\\d{1,2}_Zone_Center$&quot;, colnames(DO_openfield_raw))]
+Total_Time_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Time_Bin_\\d{1,2}$&quot;, colnames(DO_openfield_raw))]
+DO_openfield$Perimeter_Time = rowSums(as.matrix(DO_openfield_raw[,Perimeter_Time_cols]))
+DO_openfield$Corner_Time = rowSums(as.matrix(DO_openfield_raw[,Corner_Time_cols]))
+DO_openfield$Center_Time = rowSums(as.matrix(DO_openfield_raw[,Center_Time_cols]))
+DO_openfield$Total_Time = rowSums(as.matrix(DO_openfield_raw[,Total_Time_cols]))
+DO_openfield$P_Perimeter_Time = DO_openfield$Perimeter_Time / DO_openfield$Total_Time
+DO_openfield$P_Corner_Time = DO_openfield$Corner_Time / DO_openfield$Total_Time
+DO_openfield$P_Center_Time = DO_openfield$Center_Time / DO_openfield$Total_Time
+
+# Calculating open field rest times
+Perimeter_Rest_Time_cols = colnames(DO_openfield_raw)[grep(&quot;^Resting_Time_Bin_\\d{1,2}_Zone_\\w{3,6}_Perimeter$&quot;, colnames(DO_openfield_raw))]
+Corner_Rest_Time_cols = colnames(DO_openfield_raw)[grep(&quot;^Resting_Time_Bin_\\d{1,2}_Zone_\\w{3,6}_\\w{4,5}_Corner$&quot;, colnames(DO_openfield_raw))]
+Center_Rest_Time_cols = colnames(DO_openfield_raw)[grep(&quot;^Resting_Time_Bin_\\d{1,2}_Zone_Center$&quot;, colnames(DO_openfield_raw))]
+Total_Rest_Time_cols = colnames(DO_openfield_raw)[grep(&quot;^Resting_Time_Bin_\\d{1,2}$&quot;, colnames(DO_openfield_raw))]
+DO_openfield$Rest_Time_Perimeter = rowSums(as.matrix(DO_openfield_raw[,Perimeter_Rest_Time_cols]))
+DO_openfield$Rest_Time_Corner = rowSums(as.matrix(DO_openfield_raw[,Corner_Rest_Time_cols]))
+DO_openfield$Rest_Time_Center = rowSums(as.matrix(DO_openfield_raw[,Center_Rest_Time_cols]))
+DO_openfield$Rest_Time_Total = rowSums(as.matrix(DO_openfield_raw[,Total_Rest_Time_cols]))
+DO_openfield$P_Perimeter_Rest_Time = DO_openfield$Rest_Time_Perimeter / DO_openfield$Rest_Time_Total
+DO_openfield$P_Corner_Rest_Time = DO_openfield$Rest_Time_Corner / DO_openfield$Rest_Time_Total
+DO_openfield$P_Center_Rest_Time = DO_openfield$Rest_Time_Center / DO_openfield$Rest_Time_Total
+
+# Calculating ambulatory counts
+Ambulatory_Counts_cols = colnames(DO_openfield_raw)[grep(&quot;^Ambulatory_Counts_Bin_\\d{1,2}$&quot;, colnames(DO_openfield_raw))]
+DO_openfield$Ambulatory_Counts = rowSums(as.matrix(DO_openfield_raw[,Ambulatory_Counts_cols]))
+
+# Removing helper vectors
+rm(list = ls()[grep(&quot;cols$&quot;,ls())])
+
+# Saving raw data
+saveRDS(DO_openfield_raw, &quot;./data/raw/DO_openfield_raw.RDS&quot;, compress = &quot;xz&quot;)
+rm(list = c(&quot;DO_openfield_raw&quot;))
+
+# Saving open field data
+saveRDS(DO_openfield,&quot;./data/DO_openfield_data_df.RDS&quot;,compress=&quot;xz&quot;)</code></pre>
+<p>The md5 checksum of the output file (<code>DO_openfield_raw.RDS</code>) is: <code>7b09275d5bbbbedc75735d634cd2ee70</code>.</p>
+<p>The md5 checksum of the output file (<code>DO_openfield_data_df.RDS</code>) is: <code>1f79aeca4a770a4b968432c275891b1b</code>.</p>
+</div>
+<div id="importing-novel-place-preference-data" class="section level3">
+<h3>Importing novel place preference data</h3>
+<p>The novel place preference behavioral paradigm contains the following phases:</p>
+<ol style="list-style-type: decimal">
+<li>Habituation: the animal spends 5 minutes in the grey zone</li>
+<li>Exposure: the animal is exposed to the non-novel side for 20 minutes</li>
+<li>Rest: the animal spends 5 minutes in the grey zone</li>
+<li>Test: the animal spends 10-20 minutes with access to all three zones</li>
+</ol>
+<p>In these tests, the animals had a 20-minute exposure to all three zones, but the data are summarized at 10 minutes to be compatible with later iterations of the paradigm, which had a 10 minute novelty test phase.</p>
+<p>(note: original version of file was named <code>DO NPP 2_multivariate_file.xlsx</code> with spaces included, but file name was changed to add underscores on 2020-05-01)</p>
+<p>The md5 checksum of the input file (<code>DO_NPP_2_multivariate_file.xlsx</code>) is: <code>2d65b2441e3c6a4dec75197e5a29a5d6</code>.</p>
+<pre class="r"><code>DO_novelplace_raw = as.data.frame(read_excel(&quot;./data/raw/DO_NPP_2_multivariate_file.xlsx&quot;),
+                                  stringsAsFactors = FALSE)</code></pre>
+</div>
+<div id="summarizing-novel-place-preference-data" class="section level3">
+<h3>Summarizing novel place preference data</h3>
+<p>Deriving the following measures into a data frame:</p>
+<table>
+<colgroup>
+<col width="32%" />
+<col width="67%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Measure Name</th>
+<th>Measure Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Box</code></td>
+<td>Box ID used for the animal</td>
+</tr>
+<tr class="even">
+<td><code>ExposureSide</code></td>
+<td>Zone of the apparatus used for the exposure (WHITE or BLACK)</td>
+</tr>
+<tr class="odd">
+<td><code>ZoneTime_WhiteVsBlack_Total</code></td>
+<td>Time spent in test zone relative to exposure zone during full test</td>
+</tr>
+<tr class="even">
+<td><code>ZoneTime_GreyWhiteBlack_Total</code></td>
+<td>Time spent in test zone relative to exposure and grey zones during full test</td>
+</tr>
+<tr class="odd">
+<td><code>Grey_Time_First_Ten</code></td>
+<td>Time spent in grey zone during first ten minutes of test phase</td>
+</tr>
+<tr class="even">
+<td><code>White_Time_First_Ten</code></td>
+<td>Time spent in white zone during first ten minutes of test phase</td>
+</tr>
+<tr class="odd">
+<td><code>Black_Time_First_Ten</code></td>
+<td>Time spent in black zone during first ten minutes of test phase</td>
+</tr>
+<tr class="even">
+<td><code>ZoneTime_WhiteVsBlack_Total_FirstTen</code></td>
+<td>Time spent in test zone relative to exposure zone during first 10 minutes</td>
+</tr>
+<tr class="odd">
+<td><code>ZoneTime_GreyWhiteBlack_Total_FirstTen</code></td>
+<td>Time spent in test zone relative to exposure and grey zones during first 10 minutes</td>
+</tr>
+</tbody>
+</table>
+<p>Note that the newer data use 10-minute NPP data instead of 20-minute.</p>
+<pre class="r"><code># Using initial columns for information
+DO_novelplace = DO_novelplace_raw[,1:12]
+DO_novelplace_noinfo = which(colSums(is.na(DO_novelplace)) == nrow(DO_novelplace))
+DO_novelplace = DO_novelplace[,(-1 * DO_novelplace_noinfo)]
+rm(list = c(&quot;DO_novelplace_noinfo&quot;))
+colnames(DO_novelplace) = gsub(&quot;^Exposure - &quot;,&quot;&quot;,colnames(DO_novelplace))
+colnames(DO_novelplace) = gsub(&quot; &quot;,&quot;_&quot;,colnames(DO_novelplace))
+colnames(DO_novelplace) = gsub(&quot;\\)&quot;,&quot;&quot;,colnames(DO_novelplace))
+colnames(DO_novelplace) = gsub(&quot;\\(&quot;,&quot;&quot;,colnames(DO_novelplace))
+DO_novelplace$ExposureSide = gsub(&quot;^Novelty_Preference_EXPOSURE_&quot;,&quot;&quot;,DO_novelplace$MEDState_Notation_Program_Name)
+DO_novelplace$ZoneTime_WhiteVsBlack_Total = DO_novelplace_raw[,&quot;NoveltyPreference - ZoneTime_WhiteVsBlack_Total&quot;]
+DO_novelplace$ZoneTime_GreyWhiteBlack_Total = DO_novelplace_raw[,&quot;NoveltyPreference - ZoneTime_GreyWhiteBlack_Total&quot;]
+
+NPP_White_zonetime_cols = colnames(DO_novelplace_raw)[grep(&quot;^Test - ZoneTime_WhiteZone_Block\\d{2}$&quot;,colnames(DO_novelplace_raw))]
+names(NPP_White_zonetime_cols) = gsub(&quot;^Test - ZoneTime_WhiteZone_Block(\\d{2})$&quot;,&quot;\\1&quot;,NPP_White_zonetime_cols)
+NPP_White_zonetime_cols = NPP_White_zonetime_cols[which(as.numeric(names(NPP_White_zonetime_cols)) %in% 1:10)]
+DO_novelplace$White_Time_First_Ten = rowSums(as.matrix(DO_novelplace_raw[,NPP_White_zonetime_cols]))
+
+NPP_Black_zonetime_cols = colnames(DO_novelplace_raw)[grep(&quot;^Test - ZoneTime_BlackZone_Block\\d{2}$&quot;,colnames(DO_novelplace_raw))]
+names(NPP_Black_zonetime_cols) = gsub(&quot;^Test - ZoneTime_BlackZone_Block(\\d{2})$&quot;,&quot;\\1&quot;,NPP_Black_zonetime_cols)
+NPP_Black_zonetime_cols = NPP_Black_zonetime_cols[which(as.numeric(names(NPP_Black_zonetime_cols)) %in% 1:10)]
+DO_novelplace$Black_Time_First_Ten = rowSums(as.matrix(DO_novelplace_raw[,NPP_Black_zonetime_cols]))
+
+NPP_Grey_zonetime_cols = colnames(DO_novelplace_raw)[grep(&quot;^Test - ZoneTime_GreyZone_Block\\d{2}$&quot;,colnames(DO_novelplace_raw))]
+names(NPP_Grey_zonetime_cols) = gsub(&quot;^Test - ZoneTime_GreyZone_Block(\\d{2})$&quot;,&quot;\\1&quot;,NPP_Grey_zonetime_cols)
+NPP_Grey_zonetime_cols = NPP_Grey_zonetime_cols[which(as.numeric(names(NPP_Grey_zonetime_cols)) %in% 1:10)]
+DO_novelplace$Grey_Time_First_Ten = rowSums(as.matrix(DO_novelplace_raw[,NPP_Grey_zonetime_cols]))
+
+DO_novelplace$ZoneTime_WhiteVsBlack_Total_FirstTen = ifelse(DO_novelplace$ExposureSide == &quot;WHITE&quot;,
+                                                            DO_novelplace$Black_Time_First_Ten / (DO_novelplace$Black_Time_First_Ten + 
+                                                                                                    DO_novelplace$White_Time_First_Ten),
+                                                            DO_novelplace$White_Time_First_Ten / (DO_novelplace$Black_Time_First_Ten + 
+                                                                                                    DO_novelplace$White_Time_First_Ten))
+DO_novelplace$ZoneTime_GreyWhiteBlack_Total_FirstTen = ifelse(DO_novelplace$ExposureSide == &quot;WHITE&quot;,
+                                                              DO_novelplace$Black_Time_First_Ten / (DO_novelplace$Black_Time_First_Ten + 
+                                                                                                      DO_novelplace$Grey_Time_First_Ten  + 
+                                                                                                      DO_novelplace$White_Time_First_Ten),
+                                                              DO_novelplace$White_Time_First_Ten / (DO_novelplace$Black_Time_First_Ten + 
+                                                                                                      DO_novelplace$Grey_Time_First_Ten + 
+                                                                                                      DO_novelplace$White_Time_First_Ten))
+row.names(DO_novelplace) = DO_novelplace$Subject
+
+# Removing helper vectors
+rm(list = ls()[grep(&quot;cols$&quot;,ls())])
+
+# Saving raw data
+saveRDS(DO_novelplace_raw, &quot;./data/raw/DO_novelplace_raw.RDS&quot;, compress = &quot;xz&quot;)
+rm(list = c(&quot;DO_novelplace_raw&quot;))
+
+# Saving open field data
+saveRDS(DO_novelplace,&quot;./data/DO_novelplace_data_df.RDS&quot;,compress=&quot;xz&quot;)</code></pre>
+<p>The md5 checksum of the output file (<code>DO_novelplace_raw.RDS</code>) is: <code>509be5c8ce771f12ef7429a7e156db5f</code>.</p>
+<p>The md5 checksum of the output file (<code>DO_novelplace_data_df.RDS</code>) is: <code>e781805ec0c620f336e47e12732e186a</code>.</p>
+</div>
+<div id="document-control" class="section level3">
+<h3>Document Control</h3>
+<p>This document was prepared using RMarkdown in RStudio and imported into workflowr on 2020-05-01.</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 3.5.1 (2018-07-02)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS High Sierra 10.13.6
+
+Matrix products: default
+BLAS: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] lubridate_1.7.4 GGally_1.4.0    ggplot2_3.1.1   readxl_1.3.0   
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.1         RColorBrewer_1.1-2 cellranger_1.1.0  
+ [4] compiler_3.5.1     pillar_1.3.1       later_0.8.0       
+ [7] git2r_0.26.1       plyr_1.8.4         workflowr_1.6.2   
+[10] tools_3.5.1        digest_0.6.18      evaluate_0.13     
+[13] tibble_2.1.1       gtable_0.3.0       pkgconfig_2.0.2   
+[16] rlang_0.4.2        yaml_2.2.0         xfun_0.5          
+[19] withr_2.1.2        stringr_1.4.0      dplyr_0.8.0.1     
+[22] knitr_1.22         fs_1.4.1           rprojroot_1.3-2   
+[25] grid_3.5.1         tidyselect_0.2.5   reshape_0.8.8     
+[28] glue_1.3.1         R6_2.4.0           rmarkdown_1.11    
+[31] purrr_0.3.2        magrittr_1.5       whisker_0.3-2     
+[34] backports_1.1.3    scales_1.0.0       promises_1.0.1    
+[37] htmltools_0.3.6    assertthat_0.2.1   colorspace_1.4-1  
+[40] httpuv_1.5.1       stringi_1.4.3      lazyeval_0.2.2    
+[43] munsell_0.5.0      crayon_1.3.4      </code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+http://docs.mathjax.org/en/latest/configuration.html.  This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

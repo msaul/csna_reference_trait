@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Michael C. Saul (michael.saul [at] jax.org)" />
+
+
+<title>DO RTG Expression Interpretation</title>
+
+<script src="site_libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/readable.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+.sourceCode .row {
+  width: 100%;
+}
+.sourceCode {
+  overflow-x: auto;
+}
+.code-folding-btn {
+  margin-right: -30px;
+}
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Diversity Outbred Reference Traits Analysis</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">DO RTG Expression Interpretation</h1>
+<h4 class="author">Michael C. Saul (michael.saul [at] jax.org)</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2022-03-18
+</p>
+<p>
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>rta/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version 1.7.0). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200501code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20200501)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200501code" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200501)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrong4c82da7"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> 4c82da7 </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrong4c82da7" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version 4c82da7. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    code/.Rapp.history
+    Ignored:    data/.Rhistory
+    Ignored:    data/RDS/
+    Ignored:    run/
+
+Untracked files:
+    Untracked:  LICENSE
+    Untracked:  Untitled.R
+    Untracked:  analysis/17_mapping_interpretation_old.Rmd
+    Untracked:  analysis/temp.txt
+    Untracked:  code/DO_eQTL_perms.R
+    Untracked:  code/DO_eQTL_score_calc.R
+    Untracked:  code/STAR_RSEM_416.sh
+    Untracked:  code/eQTL_plotting_DO_striatum_416.R
+    Untracked:  code/ggplot_pub_themes.R
+    Untracked:  data/20_elastic_mv_results.csv
+    Untracked:  data/20_elasticnet_predictions.RDS
+    Untracked:  data/DO_416_DGEList.RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 3).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org 4).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_DGEList_unfiltered.RDS
+    Untracked:  data/DO_416_ERCC_DGEList.RDS
+    Untracked:  data/DO_416_ERCC_cpm.RDS
+    Untracked:  data/DO_416_normrt.RDS
+    Untracked:  data/DO_416_pheno.RDS
+    Untracked:  data/DO_416_pheno_allgenes.RDS
+    Untracked:  data/DO_416_voom (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom.RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org 2).RDS
+    Untracked:  data/DO_416_voom_allgenes (michael.saul@jax.org).RDS
+    Untracked:  data/DO_416_voom_allgenes.RDS
+    Untracked:  data/DO_416_voom_cpresiduals.RDS
+    Untracked:  data/DO_AQ_active_CoV_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_lever_ratio_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_mean_inf_toptable_annotated.RDS
+    Untracked:  data/DO_AQ_rate_toptable_annotated.RDS
+    Untracked:  data/DO_IVSA_acquisition_cancor_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_df.RDS
+    Untracked:  data/DO_IVSA_acquisition_logit_glm.RDS
+    Untracked:  data/DO_IVSA_all_cancor_df.RDS
+    Untracked:  data/DO_IVSA_data.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_ALL.RDS
+    Untracked:  data/DO_IVSA_novelty_cancor_AQ.RDS
+    Untracked:  data/DO_IVSA_novelty_data.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_ACQUISITION_logit_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_ALL_cancor_old.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_AQ_cancor_2021-01-04.RDS
+    Untracked:  data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS
+    Untracked:  data/DO_IVSA_prediction_a2_AQ_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a3_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a4_male_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_prediction_a5_female_ALL_cancor.RDS
+    Untracked:  data/DO_IVSA_raw_data.RDS
+    Untracked:  data/DO_IVSA_transformed_data.RDS
+    Untracked:  data/DO_LIMS_data.RDS
+    Untracked:  data/DO_RTG_a1_new.qtl.RData
+    Untracked:  data/DO_RTG_a1_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a1_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a2_new.qtl.RData
+    Untracked:  data/DO_RTG_a2_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a2_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_a3_new.qtl.RData
+    Untracked:  data/DO_RTG_a3_new_1000x.qtlpermu.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_01.RData
+    Untracked:  data/DO_RTG_a3_new_mapping_1000x_02.RData
+    Untracked:  data/DO_RTG_a4_new.qtl.RData
+    Untracked:  data/DO_RTG_a5_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new.qtl.RData
+    Untracked:  data/DO_RTG_elasticnet_new_mapping_1000x.RData
+    Untracked:  data/DO_RTG_project_df_for_mapping.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_2020-11-06.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_a2.RDS
+    Untracked:  data/DO_RTG_project_df_for_mapping_sexspecific.RDS
+    Untracked:  data/DO_cocaine_measures_data.RDS
+    Untracked:  data/DO_demographic_data_df.RDS
+    Untracked:  data/DO_eigengene_significance.RDS
+    Untracked:  data/DO_eigengenes.RDS
+    Untracked:  data/DO_elasticnet_GEX_pvalue_histograms.RData
+    Untracked:  data/DO_highcor_cpresiduals_datatable.RDS
+    Untracked:  data/DO_holeboard_data_df.RDS
+    Untracked:  data/DO_holeboard_summarized.RDS
+    Untracked:  data/DO_lightdark_data_df.RDS
+    Untracked:  data/DO_mQTL_peaks.RDS
+    Untracked:  data/DO_mQTL_scan1s.RDS
+    Untracked:  data/DO_module_membership.RDS
+    Untracked:  data/DO_novelplace_data_df.RDS
+    Untracked:  data/DO_novelty_COC_cancor.RDS
+    Untracked:  data/DO_novelty_SAL_cancor.RDS
+    Untracked:  data/DO_novelty_data.RDS
+    Untracked:  data/DO_novelty_response_data.RDS
+    Untracked:  data/DO_novelty_response_data_for_RTG.RDS
+    Untracked:  data/DO_novelty_response_data_with_transform.csv
+    Untracked:  data/DO_novelty_saline_cocaine_cancor.RDS
+    Untracked:  data/DO_openfield_data_df.RDS
+    Untracked:  data/DO_paraclique_data.el
+    Untracked:  data/DO_paraclique_eigengenes.RDS
+    Untracked:  data/DO_paraclique_significance_elasticnet.RDS
+    Untracked:  data/DO_paracliques.RDS
+    Untracked:  data/DO_paracliques_significance.RDS
+    Untracked:  data/DO_ploidy_calls.RDS
+    Untracked:  data/DO_pmap.RDS
+    Untracked:  data/DO_pvalue_histograms.RData
+    Untracked:  data/DO_rtg_a1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_a3_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m1_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m2_toptable_annotated.RDS
+    Untracked:  data/DO_rtg_m3_toptable_annotated.RDS
+    Untracked:  data/DO_saline.qtl.RData
+    Untracked:  data/DO_saline_measures_data.RDS
+    Untracked:  data/DO_sensi_cocaine.qtl.RData
+    Untracked:  data/DO_str_2016_eQTL.RData
+    Untracked:  data/DO_str_2016_gm4qtl2.zip
+    Untracked:  data/DO_str_2016_gm4qtl2_intensities.fst
+    Untracked:  data/DO_voom_cpresiduals_NArm.RDS
+    Untracked:  data/DO_wgcna.RDS
+    Untracked:  data/IVSA_RTG_a3_blup.pdf
+    Untracked:  data/IVSA_h2_2019-11-18.tsv
+    Untracked:  data/IVSA_metadata_sheet.RDS
+    Untracked:  data/ME16_edges.tsv
+    Untracked:  data/Mus_musculus.GRCm38.94.parsed.RDS
+    Untracked:  data/Paraclique_19_MF_AMIGO.txt
+    Untracked:  data/RTG_QTL_peaks.RDS
+    Untracked:  data/RTG_figure.RDS
+    Untracked:  data/SENS_RTG/
+    Untracked:  data/Tyr2_genotypes.RDS
+    Untracked:  data/Tyr_genotypes.RDS
+    Untracked:  data/blup_chr7_DO_RTG_a3.RDS
+    Untracked:  data/cc_variants/
+    Untracked:  data/chr18_QTL_results.RDS
+    Untracked:  data/chr4_QTL_results.RDS
+    Untracked:  data/chr7_a3_QTL_results.RDS
+    Untracked:  data/cis/
+    Untracked:  data/eQTL_annotated_peaks.RDS
+    Untracked:  data/eQTL_plots.RData
+    Untracked:  data/figures/
+    Untracked:  data/founders_key/
+    Untracked:  data/gigamuga/
+    Untracked:  data/gwas/
+    Untracked:  data/info/
+    Untracked:  data/m2G.a2.RTG.chr4snp.RData
+    Untracked:  data/mapping/
+    Untracked:  data/mapping_from_hao/
+    Untracked:  data/mpd_measures_saline.txt
+    Untracked:  data/mpd_measures_saline_cocaine.txt
+    Untracked:  data/perms/
+    Untracked:  data/qtl2/
+    Untracked:  data/raw/
+    Untracked:  data/resources/
+    Untracked:  data/tads_loops/
+    Untracked:  data/transcripts/
+    Untracked:  data/variants/
+    Untracked:  logs/
+    Untracked:  new_RTG_a3.jpeg
+    Untracked:  output/RTG_out/
+    Untracked:  output/docs_backup_2020-07-30.tar.gz
+    Untracked:  output/elastic_net_out/
+    Untracked:  rstudio_rta.sif
+    Untracked:  singularity/
+    Untracked:  tmp/
+    Untracked:  var/
+
+Unstaged changes:
+    Deleted:    .Rprofile
+    Modified:   .gitignore
+    Modified:   README.md
+    Modified:   analysis/_site.yml
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were made to the R Markdown (<code>analysis/14_DO_expression_interpretation.Rmd</code>) and HTML (<code>docs/14_DO_expression_interpretation.html</code>) files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view the files as they were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+4c82da7
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-18
+</td>
+<td>
+Committing change to RTG a3
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+839203c
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-18
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+4cb1fff
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2022-03-18
+</td>
+<td>
+Committing reanalysis with voom+limma results
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+e97cdd4
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-08
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+f1a42cd
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-02-09
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+105a158
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-01-18
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+b08bb0d
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-01-06
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+b8a72a4
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-01-06
+</td>
+<td>
+Redoing with 0.10 q-value
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+039a0fc
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-01-06
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+a2d9eb7
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-01-05
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+799f0c2
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-01-04
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+19671a8
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-01-04
+</td>
+<td>
+Reworking interpretation script to match newest canonical correlation
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Rolling back to working version.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+<td>
+Rolling back to working version.
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+3e0a790
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-03
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+7e500b3
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-03
+</td>
+<td>
+Tweak of gene interpretation
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+d9b0ff7
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-03
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+d0a7353
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-03
+</td>
+<td>
+Initial commit of gene interpretation
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<div id="motivation" class="section level2">
+<h2>Motivation</h2>
+<div id="purpose-of-analysis" class="section level3">
+<h3>Purpose of analysis</h3>
+<p>This script is used to correlate RTG calculated traits to expression.</p>
+</div>
+<div id="r-libraries" class="section level3">
+<h3>R libraries</h3>
+<p>Calling R libraries necessary for this analysis.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;limma&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;edgeR&quot;</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;ggplot2&quot;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;biomaRt&quot;</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;statmod&quot;</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">&quot;qvalue&quot;</span>)</span></code></pre></div>
+</div>
+<div id="getting-publication-themes" class="section level3">
+<h3>Getting publication themes</h3>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">&quot;./code/ggplot_pub_themes.R&quot;</span>)</span></code></pre></div>
+</div>
+<div id="norm_rank_transform-function" class="section level3">
+<h3><code>norm_rank_transform()</code> function</h3>
+<p>Getting a normal rank transformation function that can handle <code>NA</code> values.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>norm_rank_transform <span class="ot">=</span> <span class="cf">function</span>(x, <span class="at">c =</span> (<span class="dv">0</span>)) {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">is.numeric</span>(x) <span class="sc">&amp;</span> <span class="fu">is.vector</span>(x))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  x_noNA <span class="ot">=</span> <span class="fu">which</span>(<span class="sc">!</span><span class="fu">is.na</span>(x))</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  N <span class="ot">=</span> <span class="fu">length</span>(x_noNA)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  x[x_noNA] <span class="ot">=</span> <span class="fu">qnorm</span>((<span class="fu">rank</span>(x[x_noNA], <span class="at">ties.method =</span> <span class="st">&quot;average&quot;</span>) <span class="sc">-</span> c) <span class="sc">/</span> (N <span class="sc">-</span> (<span class="dv">2</span> <span class="sc">*</span> c) <span class="sc">+</span> <span class="dv">1</span>))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(x)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="importing-data" class="section level3">
+<h3>Importing data</h3>
+<p>Importing data.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>DO_pheno       <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_416_pheno.RDS&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>DO_dge         <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_416_DGEList.RDS&quot;</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>DO_RTG_analysis_1 <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS&quot;</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>DO_RTG_analysis_2 <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_IVSA_prediction_a2_AQ_cancor.RDS&quot;</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>DO_RTG_analysis_3 <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_IVSA_prediction_a3_ALL_cancor.RDS&quot;</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>DO_pheno<span class="sc">$</span>RTG_a1 <span class="ot">=</span> DO_RTG_analysis_1[<span class="fu">row.names</span>(DO_pheno)]</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>DO_pheno<span class="sc">$</span>RTG_a2 <span class="ot">=</span> DO_RTG_analysis_2[<span class="fu">row.names</span>(DO_pheno),<span class="st">&quot;IVSA_novelty_cancor&quot;</span>]</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>DO_pheno<span class="sc">$</span>RTG_a3 <span class="ot">=</span> DO_RTG_analysis_3[<span class="fu">row.names</span>(DO_pheno),<span class="st">&quot;IVSA_novelty_cancor&quot;</span>]</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>has_RTG_a1_express <span class="ot">=</span> <span class="fu">row.names</span>(DO_pheno[<span class="fu">which</span>((<span class="sc">!</span><span class="fu">is.na</span>(DO_pheno[,<span class="st">&quot;RTG_a1&quot;</span>])) <span class="sc">&amp;</span> (DO_pheno<span class="sc">$</span>Sex <span class="sc">==</span> <span class="st">&quot;M&quot;</span> <span class="sc">|</span> DO_pheno<span class="sc">$</span>Sex <span class="sc">==</span> <span class="st">&quot;F&quot;</span>)),])</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>has_RTG_a2_express <span class="ot">=</span> <span class="fu">row.names</span>(DO_pheno[<span class="fu">which</span>((<span class="sc">!</span><span class="fu">is.na</span>(DO_pheno[,<span class="st">&quot;RTG_a2&quot;</span>])) <span class="sc">&amp;</span> (DO_pheno<span class="sc">$</span>Sex <span class="sc">==</span> <span class="st">&quot;M&quot;</span> <span class="sc">|</span> DO_pheno<span class="sc">$</span>Sex <span class="sc">==</span> <span class="st">&quot;F&quot;</span>)),])</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>has_RTG_a3_express <span class="ot">=</span> <span class="fu">row.names</span>(DO_pheno[<span class="fu">which</span>((<span class="sc">!</span><span class="fu">is.na</span>(DO_pheno[,<span class="st">&quot;RTG_a3&quot;</span>])) <span class="sc">&amp;</span> (DO_pheno<span class="sc">$</span>Sex <span class="sc">==</span> <span class="st">&quot;M&quot;</span> <span class="sc">|</span> DO_pheno<span class="sc">$</span>Sex <span class="sc">==</span> <span class="st">&quot;F&quot;</span>)),])</span></code></pre></div>
+<p>Getting top tables for RTG analyses 1-3.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>DO_RTG_a1_toptable <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_rtg_a1_toptable_annotated.RDS&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>DO_RTG_a2_toptable <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_rtg_a2_toptable_annotated.RDS&quot;</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>DO_RTG_a3_toptable <span class="ot">=</span> <span class="fu">readRDS</span>(<span class="st">&quot;./data/DO_rtg_a3_toptable_annotated.RDS&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="gene-expression-interpretation" class="section level2">
+<h2>Gene Expression Interpretation</h2>
+<div id="top-tables" class="section level3">
+<h3>Top tables</h3>
+<p>Looking at top genes in analyses 1-3.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>DO_RTG_a1_toptable[<span class="fu">which</span>(DO_RTG_a1_toptable<span class="sc">$</span>qvalue <span class="sc">&lt;</span> <span class="fl">0.1</span>),]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["mgi_symbol"],"name":[1],"type":["chr"],"align":["left"]},{"label":["mgi_description"],"name":[2],"type":["chr"],"align":["left"]},{"label":["mgi_id"],"name":[3],"type":["chr"],"align":["left"]},{"label":["chromosome_name"],"name":[4],"type":["chr"],"align":["left"]},{"label":["start_position"],"name":[5],"type":["int"],"align":["right"]},{"label":["end_position"],"name":[6],"type":["int"],"align":["right"]},{"label":["strand"],"name":[7],"type":["int"],"align":["right"]},{"label":["band"],"name":[8],"type":["chr"],"align":["left"]},{"label":["ensembl_gene_id"],"name":[9],"type":["chr"],"align":["left"]},{"label":["logFC"],"name":[10],"type":["dbl"],"align":["right"]},{"label":["AveExpr"],"name":[11],"type":["dbl"],"align":["right"]},{"label":["t"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["P.Value"],"name":[13],"type":["dbl"],"align":["right"]},{"label":["adj.P.Val"],"name":[14],"type":["dbl"],"align":["right"]},{"label":["B"],"name":[15],"type":["dbl"],"align":["right"]},{"label":["qvalue"],"name":[16],"type":["dbl"],"align":["right"]}],"data":[{"1":"Pcdha6","2":"protocadherin alpha 6","3":"MGI:1298367","4":"18","5":"36967631","6":"37187657","7":"1","8":"B2","9":"ENSMUSG00000103707","10":"0.3989946","11":"3.7798748","12":"5.678412","13":"2.696955e-08","14":"0.00049775","15":"8.48289537","16":"0.0004105208","_rn_":"ENSMUSG00000103707"},{"1":"Tmem178b","2":"transmembrane protein 178B","3":"MGI:3647581","4":"6","5":"39873271","6":"40255150","7":"1","8":"B1","9":"ENSMUSG00000057716","10":"0.1987125","11":"7.2149291","12":"4.936135","13":"1.192989e-06","14":"0.01100890","15":"5.14423843","16":"0.0090796231","_rn_":"ENSMUSG00000057716"},{"1":"Gpr17","2":"G protein-coupled receptor 17","3":"MGI:3584514","4":"18","5":"31942997","6":"31949636","7":"-1","8":"B1","9":"ENSMUSG00000052229","10":"0.4206558","11":"4.8548377","12":"4.638091","13":"4.838564e-06","14":"0.02284524","15":"3.86087219","16":"0.0188416757","_rn_":"ENSMUSG00000052229"},{"1":"Zbtb39","2":"zinc finger and BTB domain containing 39","3":"MGI:2443316","4":"10","5":"127739538","6":"127747349","7":"1","8":"D3","9":"ENSMUSG00000044617","10":"-0.1886316","11":"4.2229152","12":"-4.598191","13":"5.804415e-06","14":"0.02284524","15":"3.68253977","16":"0.0188416757","_rn_":"ENSMUSG00000044617"},{"1":"Pcdhga3","2":"protocadherin gamma subfamily A, 3","3":"MGI:1935215","4":"18","5":"37674307","6":"37841873","7":"1","8":"B3","9":"ENSMUSG00000104346","10":"-0.4148282","11":"4.3717690","12":"-4.523509","13":"8.132491e-06","14":"0.02284524","15":"3.38354582","16":"0.0188416757","_rn_":"ENSMUSG00000104346"},{"1":"Mylip","2":"myosin regulatory light chain interacting protein","3":"MGI:2388271","4":"13","5":"45389742","6":"45412022","7":"1","8":"A5","9":"ENSMUSG00000038175","10":"0.2877893","11":"3.0702971","12":"4.526952","13":"8.007807e-06","14":"0.02284524","15":"3.27447088","16":"0.0188416757","_rn_":"ENSMUSG00000038175"},{"1":"Mkrn1","2":"makorin, ring finger protein, 1","3":"MGI:1859353","4":"6","5":"39397804","6":"39420462","7":"-1","8":"B1","9":"ENSMUSG00000029922","10":"0.1728139","11":"6.5986557","12":"4.478230","13":"9.955600e-06","14":"0.02284524","15":"3.17710582","16":"0.0188416757","_rn_":"ENSMUSG00000029922"},{"1":"Prelid3a","2":"PRELI domain containing 3A","3":"MGI:2442865","4":"18","5":"67464849","6":"67480581","7":"1","8":"E1","9":"ENSMUSG00000024530","10":"-0.3001300","11":"4.4452748","12":"-4.452896","13":"1.114039e-05","14":"0.02284524","15":"3.09969116","16":"0.0188416757","_rn_":"ENSMUSG00000024530"},{"1":"Sult1a1","2":"sulfotransferase family 1A, phenol-preferring, member 1","3":"MGI:102896","4":"7","5":"126672865","6":"126676432","7":"-1","8":"F3","9":"ENSMUSG00000030711","10":"-0.5995109","11":"1.8480401","12":"-4.483424","13":"9.728069e-06","14":"0.02284524","15":"2.79233174","16":"0.0188416757","_rn_":"ENSMUSG00000030711"},{"1":"Bicd2","2":"BICD cargo adaptor 2","3":"MGI:1924145","4":"13","5":"49341585","6":"49387026","7":"1","8":"A5","9":"ENSMUSG00000037933","10":"0.1513280","11":"6.0956418","12":"4.321809","13":"1.976723e-05","14":"0.03648239","15":"2.55276036","16":"0.0300889631","_rn_":"ENSMUSG00000037933"},{"1":"Cobl","2":"cordon-bleu WH2 repeat","3":"MGI:105056","4":"11","5":"12236608","6":"12464960","7":"-1","8":"A1","9":"ENSMUSG00000020173","10":"0.2857947","11":"7.1077267","12":"4.294419","13":"2.224390e-05","14":"0.03732122","15":"2.42594975","16":"0.0307807831","_rn_":"ENSMUSG00000020173"},{"1":"Pofut1","2":"protein O-fucosyltransferase 1","3":"MGI:2153207","4":"2","5":"153241533","6":"153270247","7":"1","8":"H1","9":"ENSMUSG00000046020","10":"-0.3628711","11":"4.8567951","12":"-4.130953","13":"4.442082e-05","14":"0.06468765","15":"1.84477715","16":"0.0533513300","_rn_":"ENSMUSG00000046020"},{"1":"Sec23a","2":"SEC23 homolog A, COPII coat complex component","3":"MGI:1349635","4":"12","5":"58958383","6":"59012017","7":"-1","8":"C1","9":"ENSMUSG00000020986","10":"0.1360354","11":"6.3237516","12":"4.106989","13":"4.906952e-05","14":"0.06468765","15":"1.71567712","16":"0.0533513300","_rn_":"ENSMUSG00000020986"},{"1":"Utp6","2":"UTP6 small subunit processome component","3":"MGI:2445193","4":"11","5":"79932321","6":"79962390","7":"-1","8":"B5","9":"ENSMUSG00000035575","10":"0.2967054","11":"4.9747288","12":"4.029125","13":"6.758328e-05","14":"0.07795731","15":"1.46508726","16":"0.0642955225","_rn_":"ENSMUSG00000035575"},{"1":"Gm43502","2":"predicted gene 43502","3":"MGI:5663639","4":"5","5":"27218185","6":"27220780","7":"1","8":"B1","9":"ENSMUSG00000106537","10":"-0.4183723","11":"3.5153366","12":"-4.010590","13":"7.288059e-05","14":"0.07912260","15":"1.40171486","16":"0.0652566008","_rn_":"ENSMUSG00000106537"},{"1":"Ube2b","2":"ubiquitin-conjugating enzyme E2B","3":"MGI:102944","4":"11","5":"51985497","6":"52000762","7":"-1","8":"B1.3","9":"ENSMUSG00000020390","10":"0.1784990","11":"6.6909402","12":"3.993781","13":"7.802312e-05","14":"0.07999971","15":"1.28370360","16":"0.0659799948","_rn_":"ENSMUSG00000020390"},{"1":"Gm43776","2":"predicted gene 43776","3":"MGI:5663913","4":"5","5":"27195955","6":"27198868","7":"1","8":"B1","9":"ENSMUSG00000105946","10":"-0.3363389","11":"3.8610142","12":"-3.950994","13":"9.271284e-05","14":"0.08519825","15":"1.19922709","16":"0.0702675083","_rn_":"ENSMUSG00000105946"},{"1":"Slc25a27","2":"solute carrier family 25, member 27","3":"MGI:1921261","4":"17","5":"43641891","6":"43667214","7":"-1","8":"B3","9":"ENSMUSG00000023912","10":"0.2825563","11":"5.2234750","12":"3.937415","13":"9.789892e-05","14":"0.08519825","15":"1.11559709","16":"0.0702675083","_rn_":"ENSMUSG00000023912"},{"1":"Vopp1","2":"vesicular, overexpressed in cancer, prosurvival protein 1","3":"MGI:2141658","4":"6","5":"57727807","6":"57825159","7":"-1","8":"B3","9":"ENSMUSG00000037788","10":"0.2624973","11":"5.9172102","12":"3.928237","13":"1.015584e-04","14":"0.08519825","15":"1.05735173","16":"0.0702675083","_rn_":"ENSMUSG00000037788"},{"1":"Gm37397","2":"predicted gene, 37397","3":"MGI:5610625","4":"6","5":"57684739","6":"57687580","7":"-1","8":"B3","9":"ENSMUSG00000104204","10":"-0.7496448","11":"0.6360409","12":"-4.108088","13":"4.884648e-05","14":"0.06468765","15":"1.05214123","16":"0.0533513300","_rn_":"ENSMUSG00000104204"},{"1":"Nod2","2":"nucleotide-binding oligomerization domain containing 2","3":"MGI:2429397","4":"8","5":"88647315","6":"88688474","7":"1","8":"C3","9":"ENSMUSG00000055994","10":"-0.6210911","11":"1.8733618","12":"-3.967884","13":"8.662563e-05","14":"0.08414540","15":"1.01745404","16":"0.0693991696","_rn_":"ENSMUSG00000055994"},{"1":"Nme1","2":"NME/NM23 nucleoside diphosphate kinase 1","3":"MGI:97355","4":"11","5":"93956979","6":"93968521","7":"-1","8":"D","9":"ENSMUSG00000037601","10":"0.3491298","11":"5.2449576","12":"3.863050","13":"1.315404e-04","14":"0.10063504","15":"0.85149831","16":"0.0829990490","_rn_":"ENSMUSG00000037601"},{"1":"Srpk1","2":"serine/arginine-rich protein specific kinase 1","3":"MGI:106908","4":"17","5":"28587648","6":"28622709","7":"-1","8":"A3.3","9":"ENSMUSG00000004865","10":"0.2965010","11":"6.7771827","12":"3.853993","13":"1.363175e-04","14":"0.10063504","15":"0.76540890","16":"0.0829990490","_rn_":"ENSMUSG00000004865"},{"1":"Ctso","2":"cathepsin O","3":"MGI:2139628","4":"3","5":"81932601","6":"81956725","7":"1","8":"E3","9":"ENSMUSG00000028015","10":"-0.2237464","11":"4.5315968","12":"-3.810778","13":"1.614311e-04","14":"0.11459123","15":"0.69670723","16":"0.0945094538","_rn_":"ENSMUSG00000028015"},{"1":"Gm10335","2":"predicted gene 10335","3":"MGI:3641693","4":"10","5":"14523078","6":"14523545","7":"1","8":"A2","9":"ENSMUSG00000071532","10":"-2.4267178","11":"0.2200320","12":"-4.036981","13":"6.552504e-05","14":"0.07795731","15":"0.60851153","16":"0.0642955225","_rn_":"ENSMUSG00000071532"},{"1":"Ppp1r14c","2":"protein phosphatase 1, regulatory inhibitor subunit 14C","3":"MGI:1923392","4":"10","5":"3366057","6":"3464975","7":"1","8":"A1","9":"ENSMUSG00000040653","10":"0.3783039","11":"2.2676069","12":"3.775974","13":"1.847818e-04","14":"0.11759771","15":"0.49148864","16":"0.0969890639","_rn_":"ENSMUSG00000040653"},{"1":"Pde4c","2":"phosphodiesterase 4C, cAMP specific","3":"MGI:99556","4":"8","5":"70723720","6":"70751186","7":"1","8":"B3.3","9":"ENSMUSG00000031842","10":"-0.6269341","11":"0.1720209","12":"-3.887025","13":"1.196485e-04","14":"0.09601010","15":"0.20530569","16":"0.0791846167","_rn_":"ENSMUSG00000031842"},{"1":"1700028E10Rik","2":"RIKEN cDNA 1700028E10 gene","3":"MGI:1916713","4":"5","5":"151368675","6":"151432118","7":"1","8":"G3","9":"ENSMUSG00000097321","10":"-0.7130199","11":"0.3819366","12":"-3.793821","13":"1.724366e-04","14":"0.11516029","15":"0.05786722","16":"0.0949787905","_rn_":"ENSMUSG00000097321"},{"1":"Mmp23","2":"matrix metallopeptidase 23","3":"MGI:1347361","4":"4","5":"155650655","6":"155653384","7":"-1","8":"E2","9":"ENSMUSG00000029061","10":"0.7706867","11":"-0.3343255","12":"3.790442","13":"1.747122e-04","14":"0.11516029","15":"-0.23597956","16":"0.0949787905","_rn_":"ENSMUSG00000029061"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>DO_RTG_a2_toptable[<span class="fu">which</span>(DO_RTG_a2_toptable<span class="sc">$</span>qvalue <span class="sc">&lt;</span> <span class="fl">0.1</span>),]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["mgi_symbol"],"name":[1],"type":["chr"],"align":["left"]},{"label":["mgi_description"],"name":[2],"type":["chr"],"align":["left"]},{"label":["mgi_id"],"name":[3],"type":["chr"],"align":["left"]},{"label":["chromosome_name"],"name":[4],"type":["chr"],"align":["left"]},{"label":["start_position"],"name":[5],"type":["int"],"align":["right"]},{"label":["end_position"],"name":[6],"type":["int"],"align":["right"]},{"label":["strand"],"name":[7],"type":["int"],"align":["right"]},{"label":["band"],"name":[8],"type":["chr"],"align":["left"]},{"label":["ensembl_gene_id"],"name":[9],"type":["chr"],"align":["left"]},{"label":["logFC"],"name":[10],"type":["dbl"],"align":["right"]},{"label":["AveExpr"],"name":[11],"type":["dbl"],"align":["right"]},{"label":["t"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["P.Value"],"name":[13],"type":["dbl"],"align":["right"]},{"label":["adj.P.Val"],"name":[14],"type":["dbl"],"align":["right"]},{"label":["B"],"name":[15],"type":["dbl"],"align":["right"]},{"label":["qvalue"],"name":[16],"type":["dbl"],"align":["right"]}],"data":[{"1":"Pcdha6","2":"protocadherin alpha 6","3":"MGI:1298367","4":"18","5":"36967631","6":"37187657","7":"1","8":"B2","9":"ENSMUSG00000103707","10":"1.1916622","11":"3.779874845","12":"5.268593","13":"2.303366e-07","14":"0.004251092","15":"6.597769029","16":"0.003434116","_rn_":"ENSMUSG00000103707"},{"1":"Tmem178b","2":"transmembrane protein 178B","3":"MGI:3647581","4":"6","5":"39873271","6":"40255150","7":"1","8":"B1","9":"ENSMUSG00000057716","10":"0.6454265","11":"7.214929099","12":"5.080470","13":"5.904137e-07","14":"0.005448337","15":"5.789148209","16":"0.004401275","_rn_":"ENSMUSG00000057716"},{"1":"Gpr17","2":"G protein-coupled receptor 17","3":"MGI:3584514","4":"18","5":"31942997","6":"31949636","7":"-1","8":"B1","9":"ENSMUSG00000052229","10":"1.4132040","11":"4.854837694","12":"4.800713","13":"2.273797e-06","14":"0.013988398","15":"4.553301301","16":"0.011300105","_rn_":"ENSMUSG00000052229"},{"1":"Bicd2","2":"BICD cargo adaptor 2","3":"MGI:1924145","4":"13","5":"49341585","6":"49387026","7":"1","8":"A5","9":"ENSMUSG00000037933","10":"0.5181755","11":"6.095641769","12":"4.523907","13":"8.118000e-06","14":"0.037456450","15":"3.352726012","16":"0.030258061","_rn_":"ENSMUSG00000037933"},{"1":"Pofut1","2":"protein O-fucosyltransferase 1","3":"MGI:2153207","4":"2","5":"153241533","6":"153270247","7":"1","8":"H1","9":"ENSMUSG00000046020","10":"-1.2369702","11":"4.856795108","12":"-4.355630","13":"1.707189e-05","14":"0.048416877","15":"2.701321693","16":"0.039112111","_rn_":"ENSMUSG00000046020"},{"1":"Pofut2","2":"protein O-fucosyltransferase 2","3":"MGI:1916863","4":"10","5":"77259218","6":"77269575","7":"1","8":"C1","9":"ENSMUSG00000020260","10":"0.8071483","11":"3.920665013","12":"4.318218","13":"2.007634e-05","14":"0.048416877","15":"2.567336891","16":"0.039112111","_rn_":"ENSMUSG00000020260"},{"1":"Prelid3a","2":"PRELI domain containing 3A","3":"MGI:2442865","4":"18","5":"67464849","6":"67480581","7":"1","8":"E1","9":"ENSMUSG00000024530","10":"-0.9362381","11":"4.445274808","12":"-4.307935","13":"2.098694e-05","14":"0.048416877","15":"2.524554493","16":"0.039112111","_rn_":"ENSMUSG00000024530"},{"1":"Gm43502","2":"predicted gene 43502","3":"MGI:5663639","4":"5","5":"27218185","6":"27220780","7":"1","8":"B1","9":"ENSMUSG00000106537","10":"-1.4493588","11":"3.515336575","12":"-4.267171","13":"2.500028e-05","14":"0.051267250","15":"2.358289469","16":"0.041414699","_rn_":"ENSMUSG00000106537"},{"1":"Sult1a1","2":"sulfotransferase family 1A, phenol-preferring, member 1","3":"MGI:102896","4":"7","5":"126672865","6":"126676432","7":"-1","8":"F3","9":"ENSMUSG00000030711","10":"-1.9266481","11":"1.848040064","12":"-4.328816","13":"1.917738e-05","14":"0.048416877","15":"2.341468319","16":"0.039112111","_rn_":"ENSMUSG00000030711"},{"1":"Obscn","2":"obscurin, cytoskeletal calmodulin and titin-interacting RhoGEF","3":"MGI:2681862","4":"11","5":"58994256","6":"59136402","7":"-1","8":"B1.3","9":"ENSMUSG00000061462","10":"-3.2962560","11":"6.552353362","12":"-4.151836","13":"4.078405e-05","14":"0.069648243","15":"1.852997704","16":"0.056263229","_rn_":"ENSMUSG00000061462"},{"1":"Utp6","2":"UTP6 small subunit processome component","3":"MGI:2445193","4":"11","5":"79932321","6":"79962390","7":"-1","8":"B5","9":"ENSMUSG00000035575","10":"1.0170938","11":"4.974728771","12":"4.109842","13":"4.849272e-05","14":"0.069648243","15":"1.746216573","16":"0.056263229","_rn_":"ENSMUSG00000035575"},{"1":"Gm43776","2":"predicted gene 43776","3":"MGI:5663913","4":"5","5":"27195955","6":"27198868","7":"1","8":"B1","9":"ENSMUSG00000105946","10":"-1.1629054","11":"3.861014213","12":"-4.014501","13":"7.173100e-05","14":"0.077405661","15":"1.427165940","16":"0.062529825","_rn_":"ENSMUSG00000105946"},{"1":"3222401L13Rik","2":"RIKEN cDNA 3222401L13 gene","3":"MGI:2444186","4":"18","5":"37655451","6":"37661742","7":"1","8":"B3","9":"ENSMUSG00000073590","10":"-2.4113134","11":"1.506068225","12":"-4.089126","13":"5.283243e-05","14":"0.069648243","15":"1.425888606","16":"0.056263229","_rn_":"ENSMUSG00000073590"},{"1":"Cobl","2":"cordon-bleu WH2 repeat","3":"MGI:105056","4":"11","5":"12236608","6":"12464960","7":"-1","8":"A1","9":"ENSMUSG00000020173","10":"0.8174780","11":"7.107726716","12":"4.010642","13":"7.286527e-05","14":"0.077405661","15":"1.305867140","16":"0.062529825","_rn_":"ENSMUSG00000020173"},{"1":"Srpk1","2":"serine/arginine-rich protein specific kinase 1","3":"MGI:106908","4":"17","5":"28587648","6":"28622709","7":"-1","8":"A3.3","9":"ENSMUSG00000004865","10":"0.9890281","11":"6.777182669","12":"4.003675","13":"7.496176e-05","14":"0.077405661","15":"1.279676133","16":"0.062529825","_rn_":"ENSMUSG00000004865"},{"1":"Gm17190","2":"predicted gene 17190","3":"MGI:4938017","4":"13","5":"96082054","6":"96083231","7":"1","8":"D1","9":"ENSMUSG00000099115","10":"-2.9467463","11":"0.958653407","12":"-4.095928","13":"5.136879e-05","14":"0.069648243","15":"1.276510904","16":"0.056263229","_rn_":"ENSMUSG00000099115"},{"1":"Mylip","2":"myosin regulatory light chain interacting protein","3":"MGI:2388271","4":"13","5":"45389742","6":"45412022","7":"1","8":"A5","9":"ENSMUSG00000038175","10":"0.8530846","11":"3.070297073","12":"3.976783","13":"8.357298e-05","14":"0.077405661","15":"1.274903360","16":"0.062529825","_rn_":"ENSMUSG00000038175"},{"1":"A530041M06Rik","2":"RIKEN cDNA A530041M06 gene","3":"MGI:3026943","4":"3","5":"104499320","6":"104501607","7":"-1","8":"F2.2","9":"ENSMUSG00000104973","10":"-1.0360470","11":"2.520806195","12":"-3.975871","13":"8.388130e-05","14":"0.077405661","15":"1.226964716","16":"0.062529825","_rn_":"ENSMUSG00000104973"},{"1":"Gm44240","2":"predicted gene, 44240","3":"MGI:5690632","4":"6","5":"80048676","6":"80051329","7":"1","8":"C3","9":"ENSMUSG00000107498","10":"-1.2432598","11":"4.350684036","12":"-3.931446","13":"1.002651e-04","14":"0.079822931","15":"1.113354174","16":"0.064482543","_rn_":"ENSMUSG00000107498"},{"1":"Serpinf1","2":"serine (or cysteine) peptidase inhibitor, clade F, member 1","3":"MGI:108080","4":"11","5":"75409769","6":"75422701","7":"-1","8":"B5","9":"ENSMUSG00000000753","10":"3.1303936","11":"1.416356932","12":"3.996798","13":"7.708955e-05","14":"0.077405661","15":"1.078468185","16":"0.062529825","_rn_":"ENSMUSG00000000753"},{"1":"Pcdhga3","2":"protocadherin gamma subfamily A, 3","3":"MGI:1935215","4":"18","5":"37674307","6":"37841873","7":"1","8":"B3","9":"ENSMUSG00000104346","10":"-1.1763368","11":"4.371768956","12":"-3.914873","13":"1.071199e-04","14":"0.079822931","15":"1.051595275","16":"0.064482543","_rn_":"ENSMUSG00000104346"},{"1":"Gm10335","2":"predicted gene 10335","3":"MGI:3641693","4":"10","5":"14523078","6":"14523545","7":"1","8":"A2","9":"ENSMUSG00000071532","10":"-7.9350228","11":"0.220032034","12":"-4.128745","13":"4.488597e-05","14":"0.069648243","15":"1.041732071","16":"0.056263229","_rn_":"ENSMUSG00000071532"},{"1":"Dph7","2":"diphthamine biosynethesis 7","3":"MGI:1914478","4":"2","5":"24962400","6":"24972163","7":"1","8":"A3","9":"ENSMUSG00000026975","10":"-0.7714916","11":"3.614839757","12":"-3.885884","13":"1.201904e-04","14":"0.079822931","15":"0.970753957","16":"0.064482543","_rn_":"ENSMUSG00000026975"},{"1":"Zkscan6","2":"zinc finger with KRAB and SCAN domains 6","3":"MGI:1289293","4":"11","5":"65807175","6":"65829239","7":"1","8":"B3","9":"ENSMUSG00000018347","10":"0.8502927","11":"3.016475208","12":"3.870568","13":"1.276919e-04","14":"0.079822931","15":"0.907228477","16":"0.064482543","_rn_":"ENSMUSG00000018347"},{"1":"Zbtb39","2":"zinc finger and BTB domain containing 39","3":"MGI:2443316","4":"10","5":"127739538","6":"127747349","7":"1","8":"D3","9":"ENSMUSG00000044617","10":"-0.5276910","11":"4.222915194","12":"-3.868921","13":"1.285242e-04","14":"0.079822931","15":"0.895022017","16":"0.064482543","_rn_":"ENSMUSG00000044617"},{"1":"Ctso","2":"cathepsin O","3":"MGI:2139628","4":"3","5":"81932601","6":"81956725","7":"1","8":"E3","9":"ENSMUSG00000028015","10":"-0.7497929","11":"4.531596754","12":"-3.843932","13":"1.418032e-04","14":"0.079822931","15":"0.795375012","16":"0.064482543","_rn_":"ENSMUSG00000028015"},{"1":"Ddx41","2":"DEAD (Asp-Glu-Ala-Asp) box polypeptide 41","3":"MGI:1920185","4":"13","5":"55530410","6":"55536658","7":"-1","8":"B1","9":"ENSMUSG00000021494","10":"0.6576347","11":"4.036308603","12":"3.834662","13":"1.470513e-04","14":"0.079822931","15":"0.783826310","16":"0.064482543","_rn_":"ENSMUSG00000021494"},{"1":"Sec23a","2":"SEC23 homolog A, COPII coat complex component","3":"MGI:1349635","4":"12","5":"58958383","6":"59012017","7":"-1","8":"C1","9":"ENSMUSG00000020986","10":"0.4219175","11":"6.323751579","12":"3.855019","13":"1.357590e-04","14":"0.079822931","15":"0.751704550","16":"0.064482543","_rn_":"ENSMUSG00000020986"},{"1":"Gm38146","2":"predicted gene, 38146","3":"MGI:5611374","4":"1","5":"177134161","6":"177135453","7":"-1","8":"H4","9":"ENSMUSG00000103163","10":"-1.1506421","11":"1.585622448","12":"-3.876907","13":"1.245347e-04","14":"0.079822931","15":"0.749173557","16":"0.064482543","_rn_":"ENSMUSG00000103163"},{"1":"4930480K02Rik","2":"RIKEN cDNA 4930480K02 gene","3":"MGI:1922185","4":"6","5":"137145876","6":"137146929","7":"-1","8":"G1","9":"ENSMUSG00000107567","10":"-1.7591101","11":"1.173412918","12":"-3.892163","13":"1.172372e-04","14":"0.079822931","15":"0.680193402","16":"0.064482543","_rn_":"ENSMUSG00000107567"},{"1":"Tamm41","2":"TAM41 mitochondrial translocator assembly and maintenance homolog","3":"MGI:1916221","4":"6","5":"115004381","6":"115037876","7":"-1","8":"E3","9":"ENSMUSG00000030316","10":"-0.9766663","11":"2.647620260","12":"-3.791720","13":"1.738481e-04","14":"0.089126149","15":"0.619132543","16":"0.071997867","_rn_":"ENSMUSG00000030316"},{"1":"Gm21663","2":"predicted gene, 21663","3":"MGI:5435018","4":"5","5":"25935791","6":"25942381","7":"-1","8":"B1","9":"ENSMUSG00000104824","10":"-4.7149300","11":"1.142736405","12":"-3.865453","13":"1.303660e-04","14":"0.079822931","15":"0.556191535","16":"0.064482543","_rn_":"ENSMUSG00000104824"},{"1":"Gm43281","2":"predicted gene 43281","3":"MGI:5663418","4":"5","5":"66916008","6":"66918711","7":"1","8":"C3.1","9":"ENSMUSG00000106749","10":"-1.1478439","11":"2.578279579","12":"-3.759467","13":"1.969401e-04","14":"0.095321367","15":"0.507332885","16":"0.077002486","_rn_":"ENSMUSG00000106749"},{"1":"H2-DMa","2":"histocompatibility 2, class II, locus DMa","3":"MGI:95921","4":"17","5":"34135182","6":"34139101","7":"1","8":"B1","9":"ENSMUSG00000037649","10":"-1.2845415","11":"3.195200048","12":"-3.748787","13":"2.052033e-04","14":"0.095321367","15":"0.499897290","16":"0.077002486","_rn_":"ENSMUSG00000037649"},{"1":"Vopp1","2":"vesicular, overexpressed in cancer, prosurvival protein 1","3":"MGI:2141658","4":"6","5":"57727807","6":"57825159","7":"-1","8":"B3","9":"ENSMUSG00000037788","10":"0.8157087","11":"5.917210167","12":"3.779077","13":"1.825777e-04","14":"0.091071731","15":"0.489304383","16":"0.073569546","_rn_":"ENSMUSG00000037788"},{"1":"Slc25a27","2":"solute carrier family 25, member 27","3":"MGI:1921261","4":"17","5":"43641891","6":"43667214","7":"-1","8":"B3","9":"ENSMUSG00000023912","10":"0.8463454","11":"5.223475007","12":"3.743777","13":"2.091916e-04","14":"0.095321367","15":"0.400177611","16":"0.077002486","_rn_":"ENSMUSG00000023912"},{"1":"2900005J15Rik","2":"RIKEN cDNA 2900005J15 gene","3":"MGI:1914511","4":"5","5":"25100983","6":"25110109","7":"1","8":"A3","9":"ENSMUSG00000043833","10":"-2.0699480","11":"0.368955543","12":"-3.874329","13":"1.258094e-04","14":"0.079822931","15":"0.386882323","16":"0.064482543","_rn_":"ENSMUSG00000043833"},{"1":"Gm37397","2":"predicted gene, 37397","3":"MGI:5610625","4":"6","5":"57684739","6":"57687580","7":"-1","8":"B3","9":"ENSMUSG00000104204","10":"-2.2292227","11":"0.636040863","12":"-3.836181","13":"1.461787e-04","14":"0.079822931","15":"0.369448421","16":"0.064482543","_rn_":"ENSMUSG00000104204"},{"1":"Zscan18","2":"zinc finger and SCAN domain containing 18","3":"MGI:3643810","4":"7","5":"12768090","6":"12803635","7":"-1","8":"A1","9":"ENSMUSG00000070822","10":"-0.8645659","11":"4.104342685","12":"-3.703619","13":"2.439046e-04","14":"0.102306913","15":"0.332917919","16":"0.082645549","_rn_":"ENSMUSG00000070822"},{"1":"Ets2","2":"E26 avian leukemia oncogene 2, 3' domain","3":"MGI:95456","4":"16","5":"95702075","6":"95721051","7":"1","8":"C4","9":"ENSMUSG00000022895","10":"-0.6779947","11":"6.242832746","12":"-3.734664","13":"2.166336e-04","14":"0.095321367","15":"0.325285904","16":"0.077002486","_rn_":"ENSMUSG00000022895"},{"1":"Mkrn1","2":"makorin, ring finger protein, 1","3":"MGI:1859353","4":"6","5":"39397804","6":"39420462","7":"-1","8":"B1","9":"ENSMUSG00000029922","10":"0.4703456","11":"6.598655686","12":"3.732535","13":"2.184084e-04","14":"0.095321367","15":"0.308209266","16":"0.077002486","_rn_":"ENSMUSG00000029922"},{"1":"Zmat3","2":"zinc finger matrin type 3","3":"MGI:1195270","4":"3","5":"32334792","6":"32366014","7":"-1","8":"A3","9":"ENSMUSG00000027663","10":"0.4745307","11":"7.557812580","12":"3.728174","13":"2.220860e-04","14":"0.095321367","15":"0.277429269","16":"0.077002486","_rn_":"ENSMUSG00000027663"},{"1":"Gm3294","2":"predicted gene 3294","3":"MGI:3781472","4":"6","5":"28981634","6":"29028922","7":"1","8":"A3.3","9":"ENSMUSG00000092090","10":"1.1164823","11":"3.855566280","12":"3.628318","13":"3.240783e-04","14":"0.122697684","15":"0.090047611","16":"0.099117617","_rn_":"ENSMUSG00000092090"},{"1":"Etv6","2":"ets variant 6","3":"MGI:109336","4":"6","5":"134035700","6":"134270158","7":"1","8":"G1","9":"ENSMUSG00000030199","10":"0.9751662","11":"4.317517229","12":"3.633414","13":"3.179536e-04","14":"0.122697684","15":"0.081858604","16":"0.099117617","_rn_":"ENSMUSG00000030199"},{"1":"A930030B08Rik","2":"RIKEN cDNA A930030B08 gene","3":"MGI:1924443","4":"7","5":"99900192","6":"99904156","7":"-1","8":"E2","9":"ENSMUSG00000108985","10":"-2.0239142","11":"0.001541382","12":"-3.805830","13":"1.645724e-04","14":"0.086781381","15":"0.058129850","16":"0.070103717","_rn_":"ENSMUSG00000108985"},{"1":"Minpp1","2":"multiple inositol polyphosphate histidine phosphatase 1","3":"MGI:1336159","4":"19","5":"32485769","6":"32515370","7":"1","8":"C1","9":"ENSMUSG00000024896","10":"-0.6448151","11":"4.823568607","12":"-3.625434","13":"3.275951e-04","14":"0.122697684","15":"0.027872558","16":"0.099117617","_rn_":"ENSMUSG00000024896"},{"1":"B230322F03Rik","2":"RIKEN cDNA B230322F03 gene","3":"MGI:3704291","4":"7","5":"35555367","6":"35556935","7":"1","8":"B2","9":"ENSMUSG00000097509","10":"-2.3640053","11":"-0.587286115","12":"-3.871368","13":"1.272893e-04","14":"0.079822931","15":"0.006421333","16":"0.064482543","_rn_":"ENSMUSG00000097509"},{"1":"Rph3al","2":"rabphilin 3A-like (without C2 domains)","3":"MGI:1923492","4":"11","5":"75830999","6":"75938429","7":"-1","8":"B5","9":"ENSMUSG00000020847","10":"-1.4591335","11":"2.201239457","12":"-3.600174","13":"3.599555e-04","14":"0.123652566","15":"-0.029697955","16":"0.099888989","_rn_":"ENSMUSG00000020847"},{"1":"Brms1l","2":"breast cancer metastasis-suppressor 1-like","3":"MGI:1196337","4":"12","5":"55836324","6":"55869736","7":"1","8":"C1","9":"ENSMUSG00000012076","10":"0.5635978","11":"5.637230559","12":"3.617233","13":"3.377885e-04","14":"0.122697684","15":"-0.048607735","16":"0.099117617","_rn_":"ENSMUSG00000012076"},{"1":"Nras","2":"neuroblastoma ras oncogene","3":"MGI:97376","4":"3","5":"103058285","6":"103067914","7":"1","8":"F2.2","9":"ENSMUSG00000027852","10":"0.4930845","11":"5.665204208","12":"3.619070","13":"3.354799e-04","14":"0.122697684","15":"-0.050311436","16":"0.099117617","_rn_":"ENSMUSG00000027852"},{"1":"Muc6","2":"mucin 6, gastric","3":"MGI:2663233","4":"7","5":"141633456","6":"141655319","7":"-1","8":"F5","9":"ENSMUSG00000048191","10":"-0.9215789","11":"4.612696491","12":"-3.598805","13":"3.617923e-04","14":"0.123652566","15":"-0.052171727","16":"0.099888989","_rn_":"ENSMUSG00000048191"},{"1":"Xrn1","2":"5'-3' exoribonuclease 1","3":"MGI:891964","4":"9","5":"95954760","6":"96057803","7":"1","8":"E3.3","9":"ENSMUSG00000032410","10":"-0.6054385","11":"6.673300119","12":"-3.616231","13":"3.390541e-04","14":"0.122697684","15":"-0.098916256","16":"0.099117617","_rn_":"ENSMUSG00000032410"},{"1":"Ube2b","2":"ubiquitin-conjugating enzyme E2B","3":"MGI:102944","4":"11","5":"51985497","6":"52000762","7":"-1","8":"B1.3","9":"ENSMUSG00000020390","10":"0.5378289","11":"6.690940181","12":"3.601554","13":"3.581126e-04","14":"0.123652566","15":"-0.142091845","16":"0.099888989","_rn_":"ENSMUSG00000020390"},{"1":"1700028E10Rik","2":"RIKEN cDNA 1700028E10 gene","3":"MGI:1916713","4":"5","5":"151368675","6":"151432118","7":"1","8":"G3","9":"ENSMUSG00000097321","10":"-2.2362068","11":"0.381936606","12":"-3.677520","13":"2.692998e-04","14":"0.110448825","15":"-0.149101778","16":"0.089222746","_rn_":"ENSMUSG00000097321"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>DO_RTG_a3_toptable[<span class="fu">which</span>(DO_RTG_a3_toptable<span class="sc">$</span>qvalue <span class="sc">&lt;</span> <span class="fl">0.1</span>),]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["mgi_symbol"],"name":[1],"type":["chr"],"align":["left"]},{"label":["mgi_description"],"name":[2],"type":["chr"],"align":["left"]},{"label":["mgi_id"],"name":[3],"type":["chr"],"align":["left"]},{"label":["chromosome_name"],"name":[4],"type":["chr"],"align":["left"]},{"label":["start_position"],"name":[5],"type":["int"],"align":["right"]},{"label":["end_position"],"name":[6],"type":["int"],"align":["right"]},{"label":["strand"],"name":[7],"type":["int"],"align":["right"]},{"label":["band"],"name":[8],"type":["chr"],"align":["left"]},{"label":["ensembl_gene_id"],"name":[9],"type":["chr"],"align":["left"]},{"label":["logFC"],"name":[10],"type":["dbl"],"align":["right"]},{"label":["AveExpr"],"name":[11],"type":["dbl"],"align":["right"]},{"label":["t"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["P.Value"],"name":[13],"type":["dbl"],"align":["right"]},{"label":["adj.P.Val"],"name":[14],"type":["dbl"],"align":["right"]},{"label":["B"],"name":[15],"type":["dbl"],"align":["right"]},{"label":["qvalue"],"name":[16],"type":["dbl"],"align":["right"]}],"data":[{"1":"Gpr17","2":"G protein-coupled receptor 17","3":"MGI:3584514","4":"18","5":"31942997","6":"31949636","7":"-1","8":"B1","9":"ENSMUSG00000052229","10":"1.2027564","11":"4.8562956","12":"4.791576","13":"2.369380e-06","14":"0.01897839","15":"4.49199022","16":"0.01581462","_rn_":"ENSMUSG00000052229"},{"1":"Zfp90","2":"zinc finger protein 90","3":"MGI:104786","4":"8","5":"106415327","6":"106426598","7":"1","8":"D3","9":"ENSMUSG00000031907","10":"-0.9569489","11":"3.2071560","12":"-4.747212","13":"2.916678e-06","14":"0.01897839","15":"4.07280455","16":"0.01581462","_rn_":"ENSMUSG00000031907"},{"1":"Ackr1","2":"atypical chemokine receptor 1 (Duffy blood group)","3":"MGI:1097689","4":"1","5":"173331886","6":"173333750","7":"-1","8":"H3","9":"ENSMUSG00000037872","10":"1.1803752","11":"3.8239360","12":"4.696206","13":"3.696785e-06","14":"0.01897839","15":"4.00316314","16":"0.01581462","_rn_":"ENSMUSG00000037872"},{"1":"Hip1r","2":"huntingtin interacting protein 1 related","3":"MGI:1352504","4":"5","5":"123973628","6":"124005558","7":"1","8":"F","9":"ENSMUSG00000000915","10":"0.8178450","11":"5.7575696","12":"4.624453","13":"5.141523e-06","14":"0.01897839","15":"3.80531302","16":"0.01581462","_rn_":"ENSMUSG00000000915"},{"1":"Pcdha6","2":"protocadherin alpha 6","3":"MGI:1298367","4":"18","5":"36967631","6":"37187657","7":"1","8":"B2","9":"ENSMUSG00000103707","10":"0.9216260","11":"3.7799752","12":"4.644437","13":"4.692142e-06","14":"0.01897839","15":"3.78715845","16":"0.01581462","_rn_":"ENSMUSG00000103707"},{"1":"Cobl","2":"cordon-bleu WH2 repeat","3":"MGI:105056","4":"11","5":"12236608","6":"12464960","7":"-1","8":"A1","9":"ENSMUSG00000020173","10":"0.8320478","11":"7.1083099","12":"4.558289","13":"6.943809e-06","14":"0.02135916","15":"3.52631057","16":"0.01779850","_rn_":"ENSMUSG00000020173"},{"1":"Dhx16","2":"DEAH (Asp-Glu-Ala-His) box polypeptide 16","3":"MGI:1916442","4":"17","5":"35879819","6":"35892670","7":"1","8":"B1","9":"ENSMUSG00000024422","10":"0.7856413","11":"4.4329041","12":"4.341054","13":"1.816414e-05","14":"0.04789106","15":"2.64590080","16":"0.03990742","_rn_":"ENSMUSG00000024422"},{"1":"Mylip","2":"myosin regulatory light chain interacting protein","3":"MGI:2388271","4":"13","5":"45389742","6":"45412022","7":"1","8":"A5","9":"ENSMUSG00000038175","10":"0.7443324","11":"3.0707348","12":"4.246725","13":"2.724772e-05","14":"0.06286048","15":"2.13829451","16":"0.05238138","_rn_":"ENSMUSG00000038175"},{"1":"Gm43502","2":"predicted gene 43502","3":"MGI:5663639","4":"5","5":"27218185","6":"27220780","7":"1","8":"B1","9":"ENSMUSG00000106537","10":"-1.1857412","11":"3.5155447","12":"-4.112958","13":"4.782024e-05","14":"0.09806337","15":"1.73336443","16":"0.08171580","_rn_":"ENSMUSG00000106537"},{"1":"Gm44241","2":"predicted gene, 44241","3":"MGI:5690633","4":"6","5":"80319192","6":"80320853","7":"1","8":"C3","9":"ENSMUSG00000107840","10":"-1.1023341","11":"3.3937452","12":"-3.997907","13":"7.665792e-05","14":"0.10708854","15":"1.31034174","16":"0.08923644","_rn_":"ENSMUSG00000107840"},{"1":"Pcdhga3","2":"protocadherin gamma subfamily A, 3","3":"MGI:1935215","4":"18","5":"37674307","6":"37841873","7":"1","8":"B3","9":"ENSMUSG00000104346","10":"-1.0039772","11":"4.3705020","12":"-3.940728","13":"9.652300e-05","14":"0.10708854","15":"1.16378634","16":"0.08923644","_rn_":"ENSMUSG00000104346"},{"1":"Kpna4","2":"karyopherin (importin) alpha 4","3":"MGI:1100848","4":"3","5":"69067149","6":"69127113","7":"-1","8":"E1","9":"ENSMUSG00000027782","10":"-0.3702323","11":"6.4566443","12":"-3.912778","13":"1.079235e-04","14":"0.10708854","15":"1.03211774","16":"0.08923644","_rn_":"ENSMUSG00000027782"},{"1":"Pkia","2":"protein kinase inhibitor, alpha","3":"MGI:104747","4":"3","5":"7366669","6":"7445366","7":"1","8":"A1","9":"ENSMUSG00000027499","10":"-0.6156785","11":"7.2208142","12":"-3.898049","13":"1.144333e-04","14":"0.10708854","15":"0.96948471","16":"0.08923644","_rn_":"ENSMUSG00000027499"},{"1":"Gm43776","2":"predicted gene 43776","3":"MGI:5663913","4":"5","5":"27195955","6":"27198868","7":"1","8":"B1","9":"ENSMUSG00000105946","10":"-0.9310426","11":"3.8606306","12":"-3.881924","13":"1.219860e-04","14":"0.10708854","15":"0.94620025","16":"0.08923644","_rn_":"ENSMUSG00000105946"},{"1":"1700080N15Rik","2":"RIKEN cDNA 1700080N15 gene","3":"MGI:1920739","4":"2","5":"4132063","6":"4141141","7":"-1","8":"A1","9":"ENSMUSG00000084859","10":"-1.3085239","11":"1.4533823","12":"-4.018513","13":"7.050240e-05","14":"0.10708854","15":"0.90906312","16":"0.08923644","_rn_":"ENSMUSG00000084859"},{"1":"Vopp1","2":"vesicular, overexpressed in cancer, prosurvival protein 1","3":"MGI:2141658","4":"6","5":"57727807","6":"57825159","7":"-1","8":"B3","9":"ENSMUSG00000037788","10":"0.7244780","11":"5.9184962","12":"3.873094","13":"1.263190e-04","14":"0.10708854","15":"0.89752887","16":"0.08923644","_rn_":"ENSMUSG00000037788"},{"1":"Prelid3a","2":"PRELI domain containing 3A","3":"MGI:2442865","4":"18","5":"67464849","6":"67480581","7":"1","8":"E1","9":"ENSMUSG00000024530","10":"-0.7667987","11":"4.4446708","12":"-3.864689","13":"1.305787e-04","14":"0.10708854","15":"0.89750871","16":"0.08923644","_rn_":"ENSMUSG00000024530"},{"1":"Pex6","2":"peroxisomal biogenesis factor 6","3":"MGI:2385054","4":"17","5":"46711463","6":"46725541","7":"1","8":"C","9":"ENSMUSG00000002763","10":"0.6263466","11":"4.5805981","12":"3.864454","13":"1.306999e-04","14":"0.10708854","15":"0.89605391","16":"0.08923644","_rn_":"ENSMUSG00000002763"},{"1":"Gm38056","2":"predicted gene, 38056","3":"MGI:5611284","4":"1","5":"55440904","6":"55445930","7":"1","8":"C1.2","9":"ENSMUSG00000102145","10":"-0.9683070","11":"4.8352828","12":"-3.864947","13":"1.304477e-04","14":"0.10708854","15":"0.89402966","16":"0.08923644","_rn_":"ENSMUSG00000102145"},{"1":"Cage1","2":"cancer antigen 1","3":"MGI:1918463","4":"13","5":"38006052","6":"38037069","7":"-1","8":"A3.3","9":"ENSMUSG00000044566","10":"-1.3387672","11":"1.7611313","12":"-3.960888","13":"8.901900e-05","14":"0.10708854","15":"0.82117570","16":"0.08923644","_rn_":"ENSMUSG00000044566"},{"1":"Adcy4","2":"adenylate cyclase 4","3":"MGI:99674","4":"14","5":"55769057","6":"55784095","7":"-1","8":"C3","9":"ENSMUSG00000022220","10":"2.1055111","11":"1.3108022","12":"4.003749","13":"7.486275e-05","14":"0.10708854","15":"0.77743155","16":"0.08923644","_rn_":"ENSMUSG00000022220"},{"1":"Tmem178b","2":"transmembrane protein 178B","3":"MGI:3647581","4":"6","5":"39873271","6":"40255150","7":"1","8":"B1","9":"ENSMUSG00000057716","10":"0.4374695","11":"7.2154759","12":"3.830859","13":"1.491374e-04","14":"0.11172965","15":"0.73837847","16":"0.09310386","_rn_":"ENSMUSG00000057716"},{"1":"Gm21988","2":"predicted gene 21988","3":"MGI:5439457","4":"11","5":"70235206","6":"70239830","7":"-1","8":"B3","9":"ENSMUSG00000040904","10":"1.1271543","11":"1.4653209","12":"3.957237","13":"9.033579e-05","14":"0.10708854","15":"0.71526164","16":"0.08923644","_rn_":"ENSMUSG00000040904"},{"1":"Pofut2","2":"protein O-fucosyltransferase 2","3":"MGI:1916863","4":"10","5":"77259218","6":"77269575","7":"1","8":"C1","9":"ENSMUSG00000020260","10":"0.5885744","11":"3.9207198","12":"3.796488","13":"1.705275e-04","14":"0.11172965","15":"0.65886982","16":"0.09310386","_rn_":"ENSMUSG00000020260"},{"1":"Gm45262","2":"predicted gene 45262","3":"MGI:5791098","4":"8","5":"55043059","6":"55044521","7":"1","8":"B1.3","9":"ENSMUSG00000109942","10":"-1.1268479","11":"2.1103162","12":"-3.859160","13":"1.334545e-04","14":"0.10708854","15":"0.60340907","16":"0.08923644","_rn_":"ENSMUSG00000109942"},{"1":"Nme1","2":"NME/NM23 nucleoside diphosphate kinase 1","3":"MGI:97355","4":"11","5":"93956979","6":"93968521","7":"-1","8":"D","9":"ENSMUSG00000037601","10":"0.9646033","11":"5.2457826","12":"3.779378","13":"1.822362e-04","14":"0.11172965","15":"0.58659993","16":"0.09310386","_rn_":"ENSMUSG00000037601"},{"1":"Sybu","2":"syntabulin (syntaxin-interacting)","3":"MGI:2442392","4":"15","5":"44671856","6":"44788063","7":"-1","8":"B3.2","9":"ENSMUSG00000022340","10":"0.5810453","11":"6.3029128","12":"3.783361","13":"1.794373e-04","14":"0.11172965","15":"0.57210694","16":"0.09310386","_rn_":"ENSMUSG00000022340"},{"1":"Bicd2","2":"BICD cargo adaptor 2","3":"MGI:1924145","4":"13","5":"49341585","6":"49387026","7":"1","8":"A5","9":"ENSMUSG00000037933","10":"0.3823197","11":"6.0965972","12":"3.778410","13":"1.829099e-04","14":"0.11172965","15":"0.56083116","16":"0.09310386","_rn_":"ENSMUSG00000037933"},{"1":"Pnkp","2":"polynucleotide kinase 3'- phosphatase","3":"MGI:1891698","4":"7","5":"44857139","6":"44862992","7":"1","8":"B3","9":"ENSMUSG00000002963","10":"1.0325219","11":"2.8362141","12":"3.773237","13":"1.866065e-04","14":"0.11172965","15":"0.49266072","16":"0.09310386","_rn_":"ENSMUSG00000002963"},{"1":"Tm7sf2","2":"transmembrane 7 superfamily member 2","3":"MGI:1920416","4":"19","5":"6062821","6":"6077197","7":"-1","8":"A","9":"ENSMUSG00000024799","10":"0.5959614","11":"4.4690277","12":"3.722049","13":"2.271847e-04","14":"0.11647001","15":"0.40993915","16":"0.09705398","_rn_":"ENSMUSG00000024799"},{"1":"Kdm3b","2":"KDM3B lysine (K)-specific demethylase 3B","3":"MGI:1923356","4":"18","5":"34777047","6":"34838660","7":"1","8":"B1","9":"ENSMUSG00000038773","10":"-0.3507339","11":"6.6627748","12":"-3.733152","13":"2.177335e-04","14":"0.11647001","15":"0.39693332","16":"0.09705398","_rn_":"ENSMUSG00000038773"},{"1":"A530041M06Rik","2":"RIKEN cDNA A530041M06 gene","3":"MGI:3026943","4":"3","5":"104499320","6":"104501607","7":"-1","8":"F2.2","9":"ENSMUSG00000104973","10":"-0.8384627","11":"2.5203648","12":"-3.723626","13":"2.258192e-04","14":"0.11647001","15":"0.29009364","16":"0.09705398","_rn_":"ENSMUSG00000104973"},{"1":"Gm37850","2":"predicted gene, 37850","3":"MGI:5611078","4":"9","5":"107762808","6":"107763587","7":"1","8":"F1","9":"ENSMUSG00000102899","10":"-1.0669629","11":"0.9363815","12":"-3.771768","13":"1.876690e-04","14":"0.11172965","15":"-0.02589904","16":"0.09310386","_rn_":"ENSMUSG00000102899"},{"1":"Hsd3b3","2":"hydroxy-delta-5-steroid dehydrogenase, 3 beta- and steroid delta-isomerase 3","3":"MGI:96235","4":"3","5":"98741523","6":"98763127","7":"-1","8":"F2.2","9":"ENSMUSG00000062410","10":"-2.2611756","11":"0.5847961","12":"-3.731196","13":"2.193712e-04","14":"0.11647001","15":"-0.25471807","16":"0.09705398","_rn_":"ENSMUSG00000062410"},{"1":"Gm10335","2":"predicted gene 10335","3":"MGI:3641693","4":"10","5":"14523078","6":"14523545","7":"1","8":"A2","9":"ENSMUSG00000071532","10":"-6.3160963","11":"0.2212710","12":"-3.788380","13":"1.761352e-04","14":"0.11172965","15":"-0.32200180","16":"0.09310386","_rn_":"ENSMUSG00000071532"},{"1":"Gm17995","2":"predicted gene, 17995","3":"MGI:5010180","4":"8","5":"88721079","6":"88721608","7":"-1","8":"C3","9":"ENSMUSG00000109970","10":"-1.7341793","11":"-0.3573168","12":"-3.755946","13":"1.994802e-04","14":"0.11505021","15":"-0.57872525","16":"0.09587087","_rn_":"ENSMUSG00000109970"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<p>Particularly interesting genes from this perspective include <em>Gpr17</em>, which is significant in both analysis 1 and analysis 2. Because the interpretation of analysis 1 is the most straightforward, plotting the correlation of <em>Gpr17</em> expression and analysis 1.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>Gpr17_ensembl_id <span class="ot">=</span> <span class="st">&quot;ENSMUSG00000052229&quot;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>DO_pheno<span class="sc">$</span>Gpr17 <span class="ot">=</span> <span class="fu">cpm</span>(DO_dge)[Gpr17_ensembl_id,<span class="fu">row.names</span>(DO_pheno)]</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>Gpr17_lm <span class="ot">=</span> <span class="fu">lm</span>(RTG_a3 <span class="sc">~</span> Gpr17, <span class="at">data =</span> DO_pheno[has_RTG_a3_express,])</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>Gpr17_cor <span class="ot">=</span> <span class="fu">cor</span>(DO_pheno[has_RTG_a1_express,<span class="st">&quot;Gpr17&quot;</span>],</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>                DO_pheno[has_RTG_a1_express,<span class="st">&quot;RTG_a3&quot;</span>])</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>Gpr17_xlab_title <span class="ot">=</span> <span class="fu">expression</span>(<span class="fu">paste</span>(<span class="fu">italic</span>(<span class="st">&quot;Gpr17&quot;</span>), <span class="st">&quot; Striatum Expression&quot;</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>))</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>Gpr17_bivariate_plot <span class="ot">=</span> <span class="fu">ggplot</span>(<span class="at">data =</span> DO_pheno[has_RTG_a3_express,], <span class="fu">aes</span>(<span class="at">x =</span> Gpr17, <span class="at">y =</span> RTG_a3, <span class="at">color =</span> Sex)) <span class="sc">+</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> pt_to_mm <span class="sc">*</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#3399CC&quot;</span>,<span class="st">&quot;#66CC66&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="fu">aes</span>(<span class="at">intercept =</span> Gpr17_lm<span class="sc">$</span>coefficients[<span class="dv">1</span>], </span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>                  <span class="at">slope =</span> Gpr17_lm<span class="sc">$</span>coefficients[<span class="dv">2</span>]),</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">&quot;#000000&quot;</span>, <span class="at">size =</span> (pt_to_mm <span class="sc">*</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Reference Trait Analysis: Analysis 3 (All IVSA Traits)&quot;</span>) <span class="sc">+</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(Gpr17_xlab_title) <span class="sc">+</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_classic</span>()</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>Gpr17_bivariate_plot</span></code></pre></div>
+<p><img src="figure/14_DO_expression_interpretation.Rmd/unnamed-chunk-9-1.png" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-9-1">
+Past versions of unnamed-chunk-9-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-9-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+e97cdd4
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-12-08
+</td>
+</tr>
+<tr>
+<td>
+799f0c2
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2021-01-04
+</td>
+</tr>
+<tr>
+<td>
+2e38c65
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-07-30
+</td>
+</tr>
+<tr>
+<td>
+d9b0ff7
+</td>
+<td>
+Michael C. Saul
+</td>
+<td>
+2020-06-03
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Saving the <em>Gpr17</em> bivariate plot.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="at">file =</span> <span class="st">&quot;./data/figures/Gpr17_bivariate_a1_plot.pdf&quot;</span>,</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>       <span class="at">plot =</span> Gpr17_bivariate_plot <span class="sc">+</span> pubtheme_classic,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>       <span class="at">width =</span> <span class="dv">3</span>, <span class="at">height =</span> <span class="dv">3</span>, <span class="at">units =</span> <span class="st">&quot;in&quot;</span>)</span></code></pre></div>
+</div>
+<div id="looking-at-three-way-intersection" class="section level3">
+<h3>Looking at three-way intersection</h3>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>a1_q_0p10 <span class="ot">=</span> DO_RTG_a1_toptable[<span class="fu">which</span>(DO_RTG_a1_toptable<span class="sc">$</span>qvalue <span class="sc">&lt;</span> <span class="fl">0.10</span>),<span class="st">&quot;ensembl_gene_id&quot;</span>]</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>a2_q_0p10 <span class="ot">=</span> DO_RTG_a2_toptable[<span class="fu">which</span>(DO_RTG_a2_toptable<span class="sc">$</span>qvalue <span class="sc">&lt;</span> <span class="fl">0.10</span>),<span class="st">&quot;ensembl_gene_id&quot;</span>]</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>a3_q_0p10 <span class="ot">=</span> DO_RTG_a3_toptable[<span class="fu">which</span>(DO_RTG_a3_toptable<span class="sc">$</span>qvalue <span class="sc">&lt;</span> <span class="fl">0.10</span>),<span class="st">&quot;ensembl_gene_id&quot;</span>]</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>threeway_intersect_q_0p10 <span class="ot">=</span> <span class="fu">intersect</span>(<span class="fu">intersect</span>(a1_q_0p10,a2_q_0p10),a3_q_0p10)</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>DO_RTG_a3_toptable[threeway_intersect_q_0p10,]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["mgi_symbol"],"name":[1],"type":["chr"],"align":["left"]},{"label":["mgi_description"],"name":[2],"type":["chr"],"align":["left"]},{"label":["mgi_id"],"name":[3],"type":["chr"],"align":["left"]},{"label":["chromosome_name"],"name":[4],"type":["chr"],"align":["left"]},{"label":["start_position"],"name":[5],"type":["int"],"align":["right"]},{"label":["end_position"],"name":[6],"type":["int"],"align":["right"]},{"label":["strand"],"name":[7],"type":["int"],"align":["right"]},{"label":["band"],"name":[8],"type":["chr"],"align":["left"]},{"label":["ensembl_gene_id"],"name":[9],"type":["chr"],"align":["left"]},{"label":["logFC"],"name":[10],"type":["dbl"],"align":["right"]},{"label":["AveExpr"],"name":[11],"type":["dbl"],"align":["right"]},{"label":["t"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["P.Value"],"name":[13],"type":["dbl"],"align":["right"]},{"label":["adj.P.Val"],"name":[14],"type":["dbl"],"align":["right"]},{"label":["B"],"name":[15],"type":["dbl"],"align":["right"]},{"label":["qvalue"],"name":[16],"type":["dbl"],"align":["right"]}],"data":[{"1":"Pcdha6","2":"protocadherin alpha 6","3":"MGI:1298367","4":"18","5":"36967631","6":"37187657","7":"1","8":"B2","9":"ENSMUSG00000103707","10":"0.9216260","11":"3.779975","12":"4.644437","13":"4.692142e-06","14":"0.01897839","15":"3.7871584","16":"0.01581462","_rn_":"ENSMUSG00000103707"},{"1":"Tmem178b","2":"transmembrane protein 178B","3":"MGI:3647581","4":"6","5":"39873271","6":"40255150","7":"1","8":"B1","9":"ENSMUSG00000057716","10":"0.4374695","11":"7.215476","12":"3.830859","13":"1.491374e-04","14":"0.11172965","15":"0.7383785","16":"0.09310386","_rn_":"ENSMUSG00000057716"},{"1":"Gpr17","2":"G protein-coupled receptor 17","3":"MGI:3584514","4":"18","5":"31942997","6":"31949636","7":"-1","8":"B1","9":"ENSMUSG00000052229","10":"1.2027564","11":"4.856296","12":"4.791576","13":"2.369380e-06","14":"0.01897839","15":"4.4919902","16":"0.01581462","_rn_":"ENSMUSG00000052229"},{"1":"Pcdhga3","2":"protocadherin gamma subfamily A, 3","3":"MGI:1935215","4":"18","5":"37674307","6":"37841873","7":"1","8":"B3","9":"ENSMUSG00000104346","10":"-1.0039772","11":"4.370502","12":"-3.940728","13":"9.652300e-05","14":"0.10708854","15":"1.1637863","16":"0.08923644","_rn_":"ENSMUSG00000104346"},{"1":"Mylip","2":"myosin regulatory light chain interacting protein","3":"MGI:2388271","4":"13","5":"45389742","6":"45412022","7":"1","8":"A5","9":"ENSMUSG00000038175","10":"0.7443324","11":"3.070735","12":"4.246725","13":"2.724772e-05","14":"0.06286048","15":"2.1382945","16":"0.05238138","_rn_":"ENSMUSG00000038175"},{"1":"Prelid3a","2":"PRELI domain containing 3A","3":"MGI:2442865","4":"18","5":"67464849","6":"67480581","7":"1","8":"E1","9":"ENSMUSG00000024530","10":"-0.7667987","11":"4.444671","12":"-3.864689","13":"1.305787e-04","14":"0.10708854","15":"0.8975087","16":"0.08923644","_rn_":"ENSMUSG00000024530"},{"1":"Bicd2","2":"BICD cargo adaptor 2","3":"MGI:1924145","4":"13","5":"49341585","6":"49387026","7":"1","8":"A5","9":"ENSMUSG00000037933","10":"0.3823197","11":"6.096597","12":"3.778410","13":"1.829099e-04","14":"0.11172965","15":"0.5608312","16":"0.09310386","_rn_":"ENSMUSG00000037933"},{"1":"Cobl","2":"cordon-bleu WH2 repeat","3":"MGI:105056","4":"11","5":"12236608","6":"12464960","7":"-1","8":"A1","9":"ENSMUSG00000020173","10":"0.8320478","11":"7.108310","12":"4.558289","13":"6.943809e-06","14":"0.02135916","15":"3.5263106","16":"0.01779850","_rn_":"ENSMUSG00000020173"},{"1":"Gm43502","2":"predicted gene 43502","3":"MGI:5663639","4":"5","5":"27218185","6":"27220780","7":"1","8":"B1","9":"ENSMUSG00000106537","10":"-1.1857412","11":"3.515545","12":"-4.112958","13":"4.782024e-05","14":"0.09806337","15":"1.7333644","16":"0.08171580","_rn_":"ENSMUSG00000106537"},{"1":"Gm43776","2":"predicted gene 43776","3":"MGI:5663913","4":"5","5":"27195955","6":"27198868","7":"1","8":"B1","9":"ENSMUSG00000105946","10":"-0.9310426","11":"3.860631","12":"-3.881924","13":"1.219860e-04","14":"0.10708854","15":"0.9462003","16":"0.08923644","_rn_":"ENSMUSG00000105946"},{"1":"Vopp1","2":"vesicular, overexpressed in cancer, prosurvival protein 1","3":"MGI:2141658","4":"6","5":"57727807","6":"57825159","7":"-1","8":"B3","9":"ENSMUSG00000037788","10":"0.7244780","11":"5.918496","12":"3.873094","13":"1.263190e-04","14":"0.10708854","15":"0.8975289","16":"0.08923644","_rn_":"ENSMUSG00000037788"},{"1":"Gm10335","2":"predicted gene 10335","3":"MGI:3641693","4":"10","5":"14523078","6":"14523545","7":"1","8":"A2","9":"ENSMUSG00000071532","10":"-6.3160963","11":"0.221271","12":"-3.788380","13":"1.761352e-04","14":"0.11172965","15":"-0.3220018","16":"0.09310386","_rn_":"ENSMUSG00000071532"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+<div id="output" class="section level3">
+<h3>Output</h3>
+<p>The output data are saved in <code>./data/</code>.</p>
+</div>
+<div id="document-control" class="section level3">
+<h3>Document Control</h3>
+<p>This document was prepared using RMarkdown in RStudio.</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
+<pre><code>R version 4.1.2 (2021-11-01)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 20.04.3 LTS
+
+Matrix products: default
+BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.8.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] qvalue_2.26.0  statmod_1.4.36 biomaRt_2.50.2 ggplot2_3.3.5  edgeR_3.36.0  
+[6] limma_3.50.0  
+
+loaded via a namespace (and not attached):
+ [1] Biobase_2.54.0         httr_1.4.2             jsonlite_1.7.3        
+ [4] splines_4.1.2          bit64_4.0.5            assertthat_0.2.1      
+ [7] highr_0.9              stats4_4.1.2           BiocFileCache_2.2.1   
+[10] blob_1.2.2             GenomeInfoDbData_1.2.7 yaml_2.2.2            
+[13] progress_1.2.2         pillar_1.6.5           RSQLite_2.2.9         
+[16] lattice_0.20-45        glue_1.6.1             digest_0.6.29         
+[19] promises_1.2.0.1       XVector_0.34.0         colorspace_2.0-2      
+[22] cowplot_1.1.1          plyr_1.8.6             htmltools_0.5.2       
+[25] httpuv_1.6.5           XML_3.99-0.8           pkgconfig_2.0.3       
+[28] zlibbioc_1.40.0        purrr_0.3.4            scales_1.1.1          
+[31] whisker_0.4            later_1.3.0            git2r_0.29.0          
+[34] tibble_3.1.6           KEGGREST_1.34.0        farver_2.1.0          
+[37] generics_0.1.1         IRanges_2.28.0         ellipsis_0.3.2        
+[40] cachem_1.0.6           withr_2.4.3            BiocGenerics_0.40.0   
+[43] cli_3.1.1              magrittr_2.0.2         crayon_1.4.2          
+[46] memoise_2.0.1          evaluate_0.14          fs_1.5.2              
+[49] fansi_1.0.2            xml2_1.3.3             tools_4.1.2           
+[52] prettyunits_1.1.1      hms_1.1.1              lifecycle_1.0.1       
+[55] stringr_1.4.0          S4Vectors_0.32.3       munsell_0.5.0         
+[58] locfit_1.5-9.4         AnnotationDbi_1.56.2   Biostrings_2.62.0     
+[61] compiler_4.1.2         jquerylib_0.1.4        GenomeInfoDb_1.30.1   
+[64] rlang_1.0.0            grid_4.1.2             RCurl_1.98-1.5        
+[67] rstudioapi_0.13        rappdirs_0.3.3         labeling_0.4.2        
+[70] bitops_1.0-7           rmarkdown_2.11         gtable_0.3.0          
+[73] DBI_1.1.2              curl_4.3.2             reshape2_1.4.4        
+[76] R6_2.5.1               knitr_1.37             dplyr_1.0.7           
+[79] fastmap_1.1.0          bit_4.0.4              utf8_1.2.2            
+[82] filelock_1.0.2         workflowr_1.7.0        rprojroot_2.0.2       
+[85] stringi_1.7.6          Rcpp_1.0.8             vctrs_0.3.8           
+[88] png_0.1-7              dbplyr_2.1.1           tidyselect_1.1.1      
+[91] xfun_0.29             </code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
