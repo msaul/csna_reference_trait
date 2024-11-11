@@ -1,0 +1,828 @@
+---
+title: "DO Expression: eQTL Prep"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This analysis is performed to prepare the data for downstream use in eQTL analysis.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("limma")
+library("edgeR")
+library("cowplot")
+library("ggbeeswarm")
+library("gplots")
+library("RColorBrewer")
+library("data.table")
+library("biomaRt")
+library("MASS")
+library("qtl2")
+library("qtl2convert")
+library("tools")
+library("fst")
+library("lubridate")
+library("broman")
+```
+
+### Getting `norm_rank_transform` function
+
+```{r norm_rank_transform, warning=FALSE}
+norm_rank_transform = function(x, c = 0) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+### Importing data
+
+#### Importing expression data
+
+```{r import_data}
+DO_voom = readRDS("./data/DO_416_voom.RDS")
+DO_pheno = readRDS("./data/DO_416_pheno.RDS")
+DO_demodata = readRDS("./data/DO_demographic_data_df.RDS")
+DO_MUGA_ploidy = readRDS("./data/DO_ploidy_calls.RDS")
+DO_pheno$MUGA_sex = DO_MUGA_ploidy[row.names(DO_pheno),"sex"]
+DO_pheno$MUGA_ploidy = DO_MUGA_ploidy[row.names(DO_pheno),"class"]
+DO_pheno$DOB = DO_demodata[row.names(DO_pheno),"DOB"]
+rm(list = c("DO_demodata"))
+```
+
+### Getting choroid plexus residuals
+
+Calculating expression results with choroid plexus contamination regressed out.
+
+```{r calc_cpresiduals}
+DO_voom_cpresid = matrix(nrow = nrow(DO_voom$E), ncol = ncol(DO_voom$E))
+row.names(DO_voom_cpresid) = row.names(DO_voom$E)
+colnames(DO_voom_cpresid) = colnames(DO_voom$E)
+
+for (i in row.names(DO_voom_cpresid)) {
+  DO_voom_cpresid[i,] = resid(lm(DO_voom$E[i,] ~ DO_pheno$choroid_plexus_covariate))
+}
+DO_voom = DO_voom_cpresid
+rm(list = c("DO_voom_cpresid"))
+```
+
+### Getting expression annotation information
+
+Downloading expresison annotation information from Ensembl using `biomaRt`.
+
+```{r download_biomaRt}
+maRt = useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+               host = "oct2018.archive.ensembl.org",
+               dataset = "mmusculus_gene_ensembl")
+maRt_filter = "ensembl_gene_id"
+maRt_attributes = c("mgi_symbol","mgi_description","mgi_id","chromosome_name","start_position",
+                    "end_position","strand","band","ensembl_gene_id")
+eQTL_maRt = getBM(maRt_attributes, maRt_filter, row.names(DO_voom), maRt)
+row.names(eQTL_maRt) = eQTL_maRt$ensembl_gene_id
+eQTL_maRt$marker_start = ifelse(sign(eQTL_maRt$strand) == 1,
+                                eQTL_maRt$start_position,
+                                eQTL_maRt$end_position)
+```
+
+#### Importing SNP data for the GigaMUGA chipset.
+
+```{r import_snp_data}
+# The GigaMUGA consensus file was found at the following location on the JAX filesystem:
+# /projects/churchill-lab/resource_data/muga_reference/gigamuga_consensus_alleles.csv
+# The file on the server has the following MD5 checksum:
+# cfb5e353f959cab0451619a3eaa8a796
+cat(ifelse(md5sum("./data/resources/gigamuga_consensus_alleles.csv") == "cfb5e353f959cab0451619a3eaa8a796",
+           "The md5 checksum of the v38 GigaMUGA consensus allele file MATCHES the Churchill Lab's file.",
+           "The md5 checksum of the v38 GigaMUGA consensus allele file DOES NOT MATCH the Churchill Lab's file."))
+gigamuga_consensus_alleles = read.table("./data/resources/gigamuga_consensus_alleles.csv",
+                                        sep = ",", header = TRUE, stringsAsFactors = FALSE)
+load(url("ftp://ftp.jax.org/MUGA/GM_snps.Rdata"))
+load(url("http://csbio.unc.edu/MUGA/snps.gigamuga.Rdata"))
+```
+
+Refining the GigaMUGA consensus allele file
+
+```{r mung_gigamuga_consensus}
+colnames(gigamuga_consensus_alleles) = c("Marker","ChrB38","PosB38",
+                                         "allele_129","allele_AJ","allele_B6","allele_CAST",
+                                         "allele_NOD","allele_NZO","allele_PWK","allele_WSB")
+gigamuga_allele_cols = grep("^allele", colnames(gigamuga_consensus_alleles))
+gigamuga_consensus_alleles$ChrB38 = paste("chr",gigamuga_consensus_alleles$ChrB38,sep="")
+gigamuga_informative_alleles = gigamuga_consensus_alleles[which(gigamuga_consensus_alleles$ChrB38 != "chrNA"),]
+gigamuga_informative_alleles = gigamuga_informative_alleles[which(rowSums(gigamuga_informative_alleles[,gigamuga_allele_cols] == "N") != 8),]
+alleles_129 = gigamuga_informative_alleles[,"allele_129"]
+gigamuga_informative_alleles = gigamuga_informative_alleles[which(rowSums(gigamuga_informative_alleles[,gigamuga_allele_cols] == alleles_129) != 8),]
+rownames(gigamuga_informative_alleles) = as.character(gigamuga_informative_alleles[,"Marker"])
+```
+
+Getting list of all data up to this point.
+
+```{r list_loaded_data}
+loaded_data = ls()
+```
+
+#### Converting genotype and phenotype data to the correct format for R/qtl2
+
+Converting GigaMUGA SNP data from GeneSeek format to R/qtl2 using code from the `geneseek2qtl.R` script by the Broman lab.
+
+```{r convert_to_qtl2}
+# convert GeneSeek FinalReport files to format for R/qtl2
+#
+# - creates one genotype CSV file for each chromosome
+#
+# - also creates 2 files containing the two channels of SNP intensities for markers on the X and Y chr
+#   (these are useful for verifying the sex of the mice)
+
+# file containing allele codes for GigaMUGA data
+#   - from GM_processed_files.zip, https://doi.org/10.6084/m9.figshare.5404759
+codefile <- "cat ./data/resources/GM/GM_allelecodes.csv"
+
+# input files with GigaMUGA genotypes
+#  - can be a single file or a vector of multiple files
+#  - if samples appear in multiple files, the genotypes in later files
+#    will be used in place of genotypes in earlier files
+#  - files can be gzipped (".gz" extension)
+ifiles <- c("unzip -cq ./data/gigamuga/Jackson_Lab_Bubier_MURGIGV01_20160908/Jackson_Lab_Bubier_MURGIGV01_20160908_FinalReport.zip",
+            "unzip -cq ./data/gigamuga/Jackson_Lab_Bubier_MURGIGV01_20161227/Jackson_Lab_Bubier_MURGIGV01_20161227_FinalReport.zip",
+            "unzip -cq ./data/gigamuga/Jackson_Lab_Bubier_MURGIGV01_20170904/Jackson_Lab_Bubier_MURGIGV01_20170904_FinalReport.zip",
+            "unzip -cq ./data/gigamuga/Jackson_Lab_Bubier_MURGIGIV01_20171001/Jackson_Lab_Bubier_MURGIGV01_20171001_FinalReport.zip",
+            "unzip -cq ./data/gigamuga/Jackson_Lab_Bubier_MURGIGV01_20180518/Jackson_Lab_Bubier_MURGIGV01_20180518_FinalReport.zip")
+
+# Getting the dates as we will assume later dates with the same ID are reruns of the same data from bad microarrays to deduplicate
+ifiles_dates = ymd(gsub("^.*MURGIGV01_(\\d{4})(\\d{2})(\\d{2})_FinalReport\\.zip$","\\1-\\2-\\3",ifiles))
+
+# file "stem" for output files
+# output files will be like "gm4qtl2_geno19.csv"
+ostem <- "./data/qtl2/DO_str_2016_gm4qtl2_"
+
+##############################
+# define a couple of functions
+##############################
+# version of data.table::fread() where data.table=FALSE is the default
+myfread <- function(filename, data.table=FALSE, ...) data.table::fread(filename, data.table=data.table,...)
+
+# cbind, replacing matching columns with second set and adding unique ones
+cbind_smother <-
+  function(mat1, mat2)
+  {
+    cn1 <- colnames(mat1)
+    cn2 <- colnames(mat2)
+    m <- (cn2 %in% cn1)
+    if(any(m)) {
+      mat1[,cn2[m]] <- mat2[,cn2[m],drop=FALSE]
+      if(any(!m)) {
+        mat1 <- cbind(mat1, mat2[,cn2[!m],drop=FALSE])
+      }
+    }
+    else {
+      mat1 <- cbind(mat1, mat2)
+    }
+    
+    mat1
+  }
+##############################
+
+
+
+# read genotype codes
+codes <- data.table::fread(cmd = codefile, skip = "marker", data.table = FALSE)
+
+full_geno <- NULL
+cXint <- cYint <- NULL
+
+for(i in 1:length(ifiles)) {
+  ifile = ifiles[i]
+  cat(" -File:", ifile, "\n")
+  
+  
+  cat(" -Reading data\n")
+  g <- data.table::fread(cmd = ifile, skip = "SNP Name", data.table = FALSE)
+  # subset to the markers in the codes object
+  g <- g[g[,"SNP Name"] %in% codes[,"marker"],]
+  g$`Sample ID` = paste0(g$`Sample ID`,"_file",as.character(ifiles_dates)[i])
+  
+  # NOTE: may need to revise the IDs in the 2nd column
+  samples <- unique(g[,"Sample ID"])
+  
+  # matrix to contain the genotypes
+  geno <- matrix(nrow=nrow(codes), ncol=length(samples))
+  dimnames(geno) <- list(codes[,"marker"], samples)
+  
+  # fill in matrix
+  cat(" -Reorganizing data\n")
+  for(i in seq(along=samples)) {
+    if(i==round(i,-1)) cat(" --Sample", i, "of", length(samples), "\n")
+    wh <- (g[,"Sample ID"]==samples[i])
+    geno[g[wh,"SNP Name"],i] <- paste0(g[wh,"Allele1 - Forward"], g[wh,"Allele2 - Forward"])
+  }
+  
+  cat(" -Encode genotypes\n")
+  geno <- qtl2convert::encode_geno(geno, as.matrix(codes[,c("A","B")]))
+  
+  if(is.null(full_geno)) {
+    full_geno <- geno
+  } else {
+    # if any columns in both, use those from second set
+    full_geno <- cbind_smother(full_geno, geno)
+  }
+  
+  # grab X and Y intensities
+  cat(" -Grab X and Y intensities\n")
+  gX <- g[g[,"SNP Name"] %in% codes[codes$chr=="X","marker"],]
+  gY <- g[g[,"SNP Name"] %in% codes[codes$chr=="Y","marker"],]
+  cX <- matrix(nrow=sum(codes$chr=="X"),
+               ncol=length(samples))
+  dimnames(cX) <- list(codes[codes$chr=="X","marker"], samples)
+  cY <- matrix(nrow=sum(codes$chr=="Y"),
+               ncol=length(samples))
+  dimnames(cY) <- list(codes[codes$chr=="Y","marker"], samples)
+  for(i in seq(along=samples)) {
+    if(i==round(i,-1))  {cat(" --Sample", i, "of", length(samples), "\n")
+    wh <- (gX[,"Sample ID"]==samples[i])
+    cX[gX[wh,"SNP Name"],i] <- (gX$X[wh] + gX$Y[wh])/2
+    
+    wh <- (gY[,"Sample ID"]==samples[i])
+    cY[gY[wh,"SNP Name"],i] <- (gY$X[wh] + gY$Y[wh])/2
+  }
+  if(is.null(cXint)) {
+    cXint <- cX
+    cYint <- cY
+  } else {
+    # if any columns in both, use those from second set
+    cXint <- cbind_smother(cXint, cX)
+    cYint <- cbind_smother(cYint, cY)
+  }
+  
+  } 
+}
+```
+
+```{r open_data}
+# simple version of data.table::fread()
+myfread2 <- function(filename) data.table::fread(cmd = filename, data.table=FALSE, skip=9)
+
+# data at https://doi.org/10.6084/m9.figshare.7359542.v1
+#     also see https://github.com/rqtl/qtl2data/tree/master/DO_Svenson291
+zip_files <- ifiles
+
+# unzip, and read the data
+dat <- vector("list", length(zip_files))
+for(i in seq_along(zip_files)) {
+  zipfile <- zip_files[i]
+  dat[[i]] <- myfread2(zipfile)
+}
+
+# Duplicate items exist in multiple files. Resolving these duplicates.
+datlen = 1:length(dat)
+lenobjdat = rep(NA, times = length(datlen))
+filedate = c()
+for (i in datlen) {
+  lenobjdat[i] = nrow(dat[[i]])
+  filedate = c(filedate, rep(as.character(ifiles_dates[i]), times = lenobjdat[i] ))
+}
+
+# rbind the results together, saving selected columns
+dat <- do.call("rbind", dat)[,c("SNP Name", "Sample ID", "X", "Y")]
+dat$`Sample ID` = paste0(dat$`Sample ID`, "_file", filedate)
+
+# create matrices that are snps x samples
+snps <- unique(dat[,"SNP Name"])
+samples <- unique(dat[,"Sample ID"])
+X <- Y <- matrix(ncol=length(samples), nrow=length(snps))
+dimnames(X) <- dimnames(Y) <- list(snps, samples)
+for(i in seq(along=samples)) {
+  message(i, " of ", length(samples))
+  tmp <- dat[dat[,"Sample ID"]==samples[i],]
+  X[,samples[i]] <- tmp[,"X"]
+  Y[,samples[i]] <- tmp[,"Y"]
+}
+
+# bring together in one matrix
+result <- cbind(snp=rep(snps, 2),
+                channel=rep(c("X", "Y"), each=length(snps)),
+                as.data.frame(rbind(X, Y)))
+rownames(result) <- 1:nrow(result)
+
+# bring SNP rows together
+result <- result[as.numeric(t(cbind(seq_along(snps), seq_along(snps)+length(snps)))),]
+rownames(result) <- 1:nrow(result)
+```
+
+Making phenotype and covariate tables and writing these data out to csv files.
+
+```{r write_out_covariates}
+pheno_full = data.frame(row.names = colnames(full_geno),
+                        id = colnames(full_geno),
+                        sample = gsub("^(\\d{4,5})_.*$","\\1",colnames(full_geno)),
+                        stringsAsFactors = FALSE)
+
+has_genotype_exprs                = row.names(DO_pheno)[which((row.names(DO_pheno) %in% pheno_full$sample))]
+pheno_full = pheno_full[which(pheno_full$sample %in% has_genotype_exprs),]
+
+DO_pheno_has_exprs_geno           = cbind(pheno_full, DO_pheno[pheno_full$sample,])
+DO_pheno_has_exprs_geno           = DO_pheno_has_exprs_geno[which(DO_pheno_has_exprs_geno$notkept_cols == "kept"),]
+DO_pheno_has_exprs_geno           = DO_pheno_has_exprs_geno[which(DO_pheno_has_exprs_geno$MUGA_ploidy == "female" | 
+                                                                    DO_pheno_has_exprs_geno$MUGA_ploidy == "male" ),]
+DO_pheno_has_exprs_geno           = DO_pheno_has_exprs_geno[,c("id","sample","MUGA_sex","Generation","choroid_plexus_covariate","DOB")]
+colnames(DO_pheno_has_exprs_geno) = c("id","subject","sex","ngen","choroid_plexus_covariate","dob")
+DO_pheno_has_exprs_geno$ngen = as.numeric(gsub("G","",DO_pheno_has_exprs_geno$ngen))
+DO_pheno_has_exprs_geno[which(DO_pheno_has_exprs_geno$sex == "female"),"sex"] = "F"
+DO_pheno_has_exprs_geno[which(DO_pheno_has_exprs_geno$sex == "male"),"sex"] = "M"
+
+qtl2convert::write2csv(DO_pheno_has_exprs_geno, 
+                       paste0(ostem, "covar.csv"),
+                       paste(ostem, "Phenotypes"),
+                       overwrite = TRUE)
+
+DO_voom_has_exprs_geno            = t(DO_voom)
+DO_voom_has_exprs_geno            = DO_voom_has_exprs_geno[DO_pheno_has_exprs_geno$subject,]
+row.names(DO_voom_has_exprs_geno) = row.names(DO_pheno_has_exprs_geno)
+DO_voom_has_exprs_geno            = as.data.frame(DO_voom_has_exprs_geno)
+DO_voom_cols                      = colnames(DO_voom_has_exprs_geno)
+DO_voom_has_exprs_geno$id         = as.character(row.names(DO_voom_has_exprs_geno))
+DO_voom_has_exprs_geno            = DO_voom_has_exprs_geno[,c("id",DO_voom_cols)]
+qtl2convert::write2csv(DO_voom_has_exprs_geno, 
+                       paste0(ostem, "pheno.csv"),
+                       paste(ostem, "Phenotypes"),
+                       overwrite = TRUE)
+```
+
+**Note that the phenotype data now include duplicated information for genotype data that are duplicated.**
+
+Writing out intensity data for these same files.
+
+```{r}
+result = result[,which(colnames(result) %in% row.names(DO_pheno_has_exprs_geno))]
+# write to fst file, maximally compressed
+write.fst(result, "./data/DO_str_2016_gm4qtl2_intensities.fst", compress=100)
+```
+
+Getting genotype data for just these chromosomes.
+
+```{r}
+cXint     = cXint[,row.names(DO_pheno_has_exprs_geno)]
+cYint     = cYint[,row.names(DO_pheno_has_exprs_geno)]
+full_geno = full_geno[,row.names(DO_pheno_has_exprs_geno)]
+```
+
+Writing out genotype data.
+
+```{r}
+# write X and Y intensities
+cat(" -Writing X and Y intensities\n")
+qtl2convert::write2csv(cbind(marker=rownames(cXint), cXint),
+                       paste0(ostem, "chrXint.csv"),
+                       paste(ostem, "X chr intensities"),
+                       overwrite=TRUE)
+qtl2convert::write2csv(cbind(marker=rownames(cYint), cYint),
+                       paste0(ostem, "chrYint.csv"),
+                       paste(ostem, "Y chr intensities"),
+                       overwrite=TRUE)
+
+# write data to chromosome-specific files
+cat(" -Writing genotypes\n")
+for(chr in c(1:19,"X","Y","M")) {
+  mar <- codes[codes$chr==chr,"marker"]
+  g <- full_geno[mar,]
+  qtl2convert::write2csv(cbind(marker=rownames(g), g),
+                         paste0(ostem, "geno", chr, ".csv"),
+                         paste0(ostem, "_genotypes_for_chr ", chr),
+                         overwrite=TRUE)
+}
+```
+
+Making control file (code taken from Karl Broman's code on the `qtl2` documentation).
+
+```{r}
+chr <- c(1:19, "X")
+write_control_file("./data/qtl2/DO_str_2016_gm4qtl2.json",
+                   crosstype="do",
+                   description="DO Striatum 416 eQTL Data",
+                   founder_geno_file=paste0("GM/GM_foundergeno", chr, ".csv"),
+                   founder_geno_transposed=TRUE,
+                   gmap_file=paste0("GM/GM_gmap", chr, ".csv"),
+                   pmap_file=paste0("GM/GM_pmap", chr, ".csv"),
+                   geno_file=paste0("DO_str_2016_gm4qtl2_geno", chr, ".csv"),
+                   geno_transposed=TRUE,
+                   geno_codes=list(A=1, H=2, B=3),
+                   xchr="X",
+                   pheno_file="DO_str_2016_gm4qtl2_pheno.csv",
+                   covar_file="DO_str_2016_gm4qtl2_covar.csv",
+                   sex_covar="sex",
+                   sex_codes=list(F="Female", M="Male"),
+                   crossinfo_covar="ngen",
+                   overwrite=TRUE)
+```
+
+Zipping the data files
+
+```{r}
+zip_datafiles("./data/qtl2/DO_str_2016_gm4qtl2.json",
+              zip_file = "./data/DO_str_2016_gm4qtl2.zip",
+              overwrite = TRUE)
+```
+
+The md5 checksums for the output files are:
+
+file                                | md5 checksum
+------------------------------------|-----------------------------------------------------------------------------
+`DO_str_2016_gm4qtl2.zip`               | ``r tools::md5sum("./data/DO_str_2016_gm4qtl2.zip")``
+
+Removing objects generated during the conversion to `qtl2` format.
+
+```{r}
+rm(list = ls()[-1 * which(ls() %in% loaded_data)])
+rm(list = c("DO_pheno","DO_voom","DO_MUGA_ploidy"))
+```
+
+#### Importing data for R/qtl2
+
+Reading in the cross data.
+
+```{r}
+DO_str_2016_cross = read_cross2("./data/DO_str_2016_gm4qtl2.zip")
+```
+
+## DO eQTL Analysis
+
+### Cleaning up the cross data: percent missing, sex aneuploidies, and duplicate samples
+
+Using the procedures from the [R/qtl2 vignette on DO diagnostics](https://kbroman.org/qtl2/assets/vignettes/do_diagnostics.html).
+
+```{r}
+DO_str_2016_cross = drop_nullmarkers(DO_str_2016_cross)
+```
+
+We have already done a systematic examination for X chromosome aneuploidies and sex mismatches and resolved or excluded those data from this analysis.
+
+Looking for duplicated samples in the dataset.
+
+```{r}
+cg = compare_geno(DO_str_2016_cross, cores = 0)
+summary(cg)
+```
+
+There are many samples with identical or near-identical genotypes. Some of these are reruns of the same chip that might've failed QC (note: this is a known issue from above). Plotting percent missing as an initial step in resolving this problem.
+
+```{r}
+percent_missing = n_missing(DO_str_2016_cross, "ind", "prop") * 100
+percent_missing = data.frame(id = names(percent_missing),
+                             order = as.numeric(order(names(percent_missing))),
+                             percent = percent_missing,
+                             gtrthan3 = ifelse(percent_missing > 3, "YES","no"),
+                             stringsAsFactors = FALSE)
+ggplot(data = percent_missing, aes(x = order, y = percent, color = gtrthan3)) +
+  geom_point() +
+  scale_y_log10(limits = c(0.001,100)) +
+  scale_color_manual(values = c("#555555","#CC3333"))
+```
+
+`r length(gsub("^(\\d{4,5}).*","\\1",percent_missing[which(percent_missing$gtrthan3 == "YES"),"id"]))` points have greater than 3% missing markers. `r length(unique(gsub("^(\\d{4,5}).*","\\1",percent_missing[which(percent_missing$gtrthan3 == "YES"),"id"])))` (all) of those are unique. Excluding the bad files from the `cg` repeated files set.
+
+```{r}
+duplicated_cg = unique(c(summary(cg)$ind1, summary(cg)$ind2))
+exclude_cg = duplicated_cg[which(duplicated_cg %in% percent_missing[which(percent_missing$gtrthan3 == "YES"),"id"])]
+DO_str_2016_cross = DO_str_2016_cross[paste0("-",exclude_cg),]
+cg = compare_geno(DO_str_2016_cross, cores = 0)
+summary(cg)
+```
+
+For the remaining genotypes, taking the one at a later date for the ones not excluded by the initial QC deduplication. Assuming that later date means there was a reason for regenotyping the animal.
+
+```{r}
+duplicated_cg = unique(c(summary(cg)$ind1, summary(cg)$ind2))
+duplicated_cg = data.frame(id = duplicated_cg,
+                           subject = gsub("^(\\d{4,5}).*$","\\1",duplicated_cg),
+                           date = ymd(gsub("^.*file(\\d{4}-\\d{2}-\\d{2})$","\\1",duplicated_cg)),
+                           dup_subject = rep(FALSE, times = length(duplicated_cg)),
+                           stringsAsFactors = FALSE)
+dup_subjects = unique(duplicated_cg[which(duplicated(duplicated_cg$subject)),"subject"])
+
+exclude_cg = c()
+unresolved_cg = c()
+for (i in dup_subjects) {
+  dup_subjects_rows_i = which(duplicated_cg$subject == i)
+  dup_dates_i = duplicated_cg[dup_subjects_rows_i,"date"]
+  if (length(which(duplicated(dup_dates_i))) != 0) {
+    unresolved_cg = c(unresolved_cg, duplicated_cg[dup_subjects_rows_i,"id"])
+  } else {
+    exclude_cg = c(exclude_cg, duplicated_cg[dup_subjects_rows_i[which(dup_dates_i != max(dup_dates_i))],"id"])
+  }
+}
+cat("IDs ", paste(unresolved_cg, sep = "", collapse = ", "), " cannot be resolved by date.\n", sep = "")
+```
+
+Excluding what appears to be the second file from the file that cannot be resolved. Rerunning duplication analysis.
+
+```{r}
+# exclude_cg = c(exclude_cg, "8166_200840140018_R01C01_file2016-12-27")
+DO_str_2016_cross = DO_str_2016_cross[paste0("-",exclude_cg),]
+cg = compare_geno(DO_str_2016_cross, cores = 0)
+summary(cg)
+```
+
+The rest of these files have different subject IDs. After spot-checking GBRS data on a couple of these, it appears to be an error on the genotyping. Excluding these data as it is impossible to reconcile them with the behavioral data associated with these animals.
+
+```{r}
+exclude_cg = unique(c(summary(cg)$ind1, summary(cg)$ind2))
+DO_str_2016_cross = DO_str_2016_cross[paste0("-",exclude_cg),]
+```
+
+Finally, looking at duplications with high percent missing numbers that may not have been caught in the deduplication analysis above.
+
+```{r}
+covar_duplicate_subjects = DO_str_2016_cross$covar[which(duplicated(DO_str_2016_cross$covar$subject)),"subject"]
+covar_duplicate_ids = row.names(DO_str_2016_cross$covar[which(DO_str_2016_cross$covar$subject %in% covar_duplicate_subjects),])
+percent_missing[covar_duplicate_ids,]
+```
+
+Excluding those files with very different percent missing numbers and both files when the numbers aren't very different.
+
+```{r}
+exclude_id = c("7649_file2016-09-08","7747_file2016-09-08","8042_200735410008_R11C02_file2016-09-08",
+               "8066_file2016-09-08","8663_200840140080_R08C01_file2016-12-27","8663_200840140005_R10C02_file2016-12-27")
+DO_str_2016_cross = DO_str_2016_cross[paste0("-",exclude_id),]
+cat(ifelse(length(unique(DO_str_2016_cross$covar$subject)) == length(DO_str_2016_cross$covar$subject),
+           "Deduplication successful.\n", "Deduplication NOT successful.\n"), sep = "")
+```
+
+There are a total of `r nrow(DO_str_2016_cross$covar)` data points that will be included.
+
+#### Markers with missing data
+
+Finding markers with lots of missing data.
+
+```{r}
+pmis_mar <- n_missing(DO_str_2016_cross, "marker", "proportion") * 100
+par(mar=c(5.1,0.6,0.6, 0.6))
+hist(pmis_mar, breaks=seq(0, 100, length=201),
+     main="", yaxt="n", ylab="", xlab="Percent missing genotypes")
+rug(pmis_mar)
+```
+
+As in Broman's vignette, excluding markers with > 15% missing genotypes.
+
+```{r}
+exclude_missing = names(pmis_mar[which(pmis_mar > 15)])
+DO_str_2016_cross = drop_markers(DO_str_2016_cross, exclude_missing)
+```
+
+### Getting number of cores to use
+
+```{r}
+n_cores = 2
+```
+
+### Calculating genotype and allele probabilities
+
+```{r}
+DO_str_2016_gprobs = calc_genoprob(DO_str_2016_cross, error_prob=0.002, map_function="c-f", cores=n_cores)
+DO_str_2016_aprobs = genoprob_to_alleleprob(DO_str_2016_gprobs, cores=n_cores)
+```
+
+### Calculating kinship matrix
+
+```{r}
+DO_str_2016_kinship = calc_kinship(DO_str_2016_aprobs, "loco", cores=n_cores)
+```
+
+Displaying kinship matrix for chromosome 1.
+
+```{r}
+image(1:nrow(DO_str_2016_kinship[[1]]), 1:ncol(DO_str_2016_kinship[[1]]), DO_str_2016_kinship[[1]][,ncol(DO_str_2016_kinship[[1]]):1], xlab = "Samples", 
+      ylab = "Samples", yaxt = "n", main = "Kinship between samples (chr1)", 
+      breaks = 0:100/100, col = colorRampPalette(brewer.pal(n = 9, name = "YlGn"))(length(0:100/100) - 1))
+```
+
+### QCing the data for crossovers.
+
+```{r}
+m <- maxmarg(DO_str_2016_gprobs, minprob=0.5, cores=0)
+nxo <- count_xo(m, cores=0)
+totxo <- rowSums(nxo)
+```
+
+Plotting crossovers by mouse ID and generation
+
+```{r}
+DO_str_2016_XOs = DO_str_2016_cross$covar
+DO_str_2016_XOs$totxo = totxo[row.names(DO_str_2016_XOs)]
+DO_str_2016_XOs$order_subject = rank(as.numeric(DO_str_2016_XOs$subject))
+DO_str_2016_XOs$ngen = factor(paste0("generation ", DO_str_2016_XOs$ngen),
+                              levels = c("generation 21", "generation 22", "generation 23"),
+                              ordered = TRUE)
+
+ggplot(data = DO_str_2016_XOs, aes(x = order_subject, y = totxo, color = ngen)) +
+  geom_point() +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  xlab("Subject Order (by JMCRS ID)") +
+  ylab("Number of Crossovers") +
+  scale_color_manual(values = c("#3399CC","#FFCC33","#CC3333"))
+```
+
+One of these points has an absurdly low number for crossovers, but the rest appear to obey the effect of more crossovers per generation. Dropping the very low number of crossovers sample as this appears to be problematic.
+
+```{r}
+DO_str_2016_cross = DO_str_2016_cross[paste0("-",row.names(DO_str_2016_XOs[which(DO_str_2016_XOs$totxo < 200),])),]
+```
+
+### QCing samples for minor allele frequency outliers
+
+Examining the minor allele frequencies.
+
+```{r}
+g <- do.call("cbind", DO_str_2016_cross$geno[1:19])
+fg <- do.call("cbind", DO_str_2016_cross$founder_geno[1:19])
+g <- g[,colSums(fg==0)==0]
+fg <- fg[,colSums(fg==0)==0]
+fgn <- colSums(fg==3)
+
+gf_ind <- vector("list", 4)
+for(i in 1:4) {
+  gf_ind[[i]] <- t(apply(g[,fgn==i], 1, function(a) table(factor(a, 1:3))/sum(a != 0)))
+}
+
+par(mfrow=c(2,2), mar=c(0.6, 0.6, 2.6, 0.6))
+for(i in 1:4) {
+  triplot(c("AA", "AB", "BB"), main=paste0("MAF = ", i, "/8"))
+  tripoints(gf_ind[[i]], pch=21, bg="lightblue")
+  tripoints(c((1-i/8)^2, 2*i/8*(1-i/8), (i/8)^2), pch=21, bg="violetred")
+  
+  if(i>=3) { # label mouse with lowest het
+    wh <- which(gf_ind[[i]][,2] == min(gf_ind[[i]][,2]))
+    tritext(gf_ind[[i]][wh,,drop=FALSE] + c(0.02, -0.02, 0),
+            names(wh), adj=c(0, 1))
+  }
+  
+  # label other mice
+  if(i==1) {
+    lab <- rownames(gf_ind[[i]])[gf_ind[[i]][,2]>0.3]
+  }
+  else if(i==2) {
+    lab <- rownames(gf_ind[[i]])[gf_ind[[i]][,2]>0.48]
+  }
+  else if(i==3) {
+    lab <- rownames(gf_ind[[i]])[gf_ind[[i]][,2]>0.51]
+  }
+  else if(i==4) {
+    lab <- rownames(gf_ind[[i]])[gf_ind[[i]][,2]>0.6]
+  }
+  
+  for(ind in lab) {
+    if(grepl("^F", ind) && i != 3) {
+      tritext(gf_ind[[i]][ind,,drop=FALSE] + c(-0.01, 0, +0.01), ind, adj=c(1,0.5))
+    } else {
+      tritext(gf_ind[[i]][ind,,drop=FALSE] + c(0.01, 0, -0.01), ind, adj=c(0,0.5))
+    }
+  }
+}
+```
+
+For no sample do the MAFs appear to have systematic problems. There are a couple of samples that appear to be outliers in a couple of the MAF conditions, but these look appropriate for DO mice. Not dropping any samples based upon this criterion.
+
+### Examining genotyping errors
+
+First, using error LOD scores.
+
+```{r}
+e <- calc_errorlod(DO_str_2016_cross, DO_str_2016_gprobs, cores=0)
+
+e <- do.call("cbind", e)
+errors_ind <- rowSums(e>2)/n_typed(DO_str_2016_cross)*100
+lab <- paste0(gsub("^(\\d{4,5})_.*$","\\1",names(errors_ind)), " (", myround(percent_missing[names(errors_ind),"percent"],1), "% missing)")
+
+error_df = data.frame(index = seq_along(errors_ind),
+                      label = lab,
+                      error = errors_ind,
+                      stringsAsFactors = FALSE)
+
+ggplot(data = error_df, aes(x = index, y = error, label = label)) +
+  geom_point() +
+  geom_label()
+```
+
+There are `r length(which(error_df$error > 1))` samples with error LODs > 2 in at least 1% of samples. This does not look very bad. We needn't necessarily remove samples based upon this criterion.
+
+```{r}
+snpg <- predict_snpgeno(DO_str_2016_cross, m, cores=0)
+snpg <- do.call("cbind", snpg)
+
+gobs <- do.call("cbind", DO_str_2016_cross$geno)
+gobs[gobs==0] <- NA
+
+par(pty="s")
+err_direct <- rowMeans(snpg != gobs, na.rm=TRUE)*100
+errors_ind_0 <- rowSums(e > 0)/n_typed(DO_str_2016_cross)*100
+par(mar=c(4.1,4.1,0.6, 0.6), mfrow = c(2,1))
+grayplot(errors_ind_0, err_direct,
+         xlab="Percent errors (error LOD > 0)",
+         ylab="Percent errors (obs vs predicted)",
+         xlim=c(0, 21.2), ylim=c(0, 21.2))
+abline(0,1,lty=2, col="gray60")
+grayplot(errors_ind_0, err_direct,
+         xlab="Percent errors (error LOD > 0)",
+         ylab="Percent errors (obs vs predicted)",
+         xlim=c(0, 3), ylim=c(0, 3))
+abline(0,1,lty=2, col="gray60")
+```
+
+The highest of proportion of errors doesn't appear to go much over 1.5%. These samples can likely be maintained, but the markers with high amounts of errors might need to be censored.
+
+### Marker QC: MAF
+
+QCing markers by comparing their realized genotype frequencies to those expected under the theoretical MAFs.
+
+```{r}
+gf_mar <- t(apply(g, 2, function(a) table(factor(a, 1:3))/sum(a != 0)))
+gn_mar <- t(apply(g, 2, function(a) table(factor(a, 1:3))))
+
+
+par(mfrow=c(2,2), mar=c(0.6, 0.6, 2.6, 0.6))
+for(i in 1:4) {
+  triplot(c("AA", "AB", "BB"), main=paste0("MAF = ", i, "/8"))
+  z <- gf_mar[fgn==i,]
+  z <- z[rowSums(is.na(z)) < 3,]
+  tripoints(z, pch=21, bg="gray80", cex=0.6)
+  tripoints(c((1-i/8)^2, 2*i/8*(1-i/8), (i/8)^2), pch=21, bg="violetred")
+}
+```
+
+On the $MAF = 1/8$ plot, no evidence of the WSB R2D2, which was flushed by this generation of DO. There are a number of genotypes that appear unusual. However, these plots appear better behaved than the ones in Broman's vignette.
+
+Using the genotype LOD scores to identify markers needing exclusion.
+
+```{r}
+errors_mar <- colSums(e>2)/n_typed(DO_str_2016_cross, "marker")*100
+errors_mar_df = data.frame(marker = names(errors_mar),
+                           gtr_than_5 = ifelse(errors_mar > 5, "YES", "no"),
+                           errors = errors_mar,
+                           missing = pmis_mar[names(errors_mar)],
+                           stringsAsFactors = FALSE)
+
+ggplot(data = errors_mar_df, aes(x = missing, y = errors, color = gtr_than_5)) +
+  geom_point(alpha = 0.5) +
+  xlab("Proportion missing") +
+  ylab("Proportion genotyping errors") +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+There are many markers with more than 5% errant genotypes. For these `r length(which(errors_mar_df$gtr_than_5 == "YES"))` markers (`r 100*length(which(errors_mar_df$gtr_than_5 == "YES")) / nrow(errors_mar_df)`) percent of the total markers), will exclude them.
+
+```{r}
+DO_str_2016_cross = drop_markers(DO_str_2016_cross, errors_mar_df[which(errors_mar_df$gtr_than_5 == "YES"),"marker"])
+```
+
+### Recalculating genotype and allele probabilities and kinship
+
+Now that markers have been excluded, recalculating genotype and allele probabilities and kinship.
+
+```{r}
+DO_str_2016_gprobs = calc_genoprob(DO_str_2016_cross, error_prob=0.002, map_function="c-f", cores=n_cores)
+DO_str_2016_aprobs = genoprob_to_alleleprob(DO_str_2016_gprobs, cores=n_cores)
+DO_str_2016_kinship = calc_kinship(DO_str_2016_aprobs, "loco", cores=n_cores)
+```
+
+Displaying kinship matrix for chromosome 1.
+
+```{r}
+image(1:nrow(DO_str_2016_kinship[[1]]), 1:ncol(DO_str_2016_kinship[[1]]), DO_str_2016_kinship[[1]][,ncol(DO_str_2016_kinship[[1]]):1], xlab = "Samples", 
+      ylab = "Samples", yaxt = "n", main = "Kinship between samples (chr1)", 
+      breaks = 0:100/100, col = colorRampPalette(brewer.pal(n = 9, name = "YlGn"))(length(0:100/100) - 1))
+```
+
+### Saving all data as RData file
+
+```{r}
+save(list = c("DO_str_2016_cross",
+              "DO_str_2016_aprobs",
+              "DO_str_2016_kinship",
+              "eQTL_maRt"), file = "./data/DO_str_2016_eQTL.RData",
+     compress = "gzip")
+```
+
+The md5 checksums for the output files are:
+
+file                                | md5 checksum
+------------------------------------|-----------------------------------------------------------------------------
+`DO_str_2016_eQTL.RData`               | ``r tools::md5sum("./data/DO_str_2016_eQTL.RData")``
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio. It was converted to workflowr on 2020-05-04.

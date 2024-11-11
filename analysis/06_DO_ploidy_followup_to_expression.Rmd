@@ -1,0 +1,257 @@
+---
+title: "DO Aneuploidy: Followup to Expression"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This analysis is performed to follow up X and Y chromosome aneuploidy suggestion from DO striatum expression analysis.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+# Using the argyle library from the following GitHub repository: andrewparkermorgan/argyle
+library("argyle")
+library("tools")
+library("cowplot")
+library("ggplot2")
+```
+
+# Data Import
+
+## Pre-data import
+
+### Getting `norm_rank_transform` function that can handle `NA` values.
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "random") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+## Importing data
+
+### Importing SNP data for the GigaMUGA chipset.
+
+```{r}
+# The GigaMUGA consensus file was found at the following location on the JAX filesystem:
+# /projects/churchill-lab/resource_data/muga_reference/gigamuga_consensus_alleles.csv
+# The file on the server has the following MD5 checksum:
+# cfb5e353f959cab0451619a3eaa8a796
+cat(ifelse(md5sum("./data/resources/gigamuga_consensus_alleles.csv") == "cfb5e353f959cab0451619a3eaa8a796",
+           "The md5 checksum of the v38 GigaMUGA consensus allele file MATCHES the Churchill Lab's file.",
+           "The md5 checksum of the v38 GigaMUGA consensus allele file DOES NOT MATCH the Churchill Lab's file."))
+gigamuga_consensus_alleles = read.table("./data/resources/gigamuga_consensus_alleles.csv",
+                                        sep = ",", header = TRUE, stringsAsFactors = FALSE)
+load(url("ftp://ftp.jax.org/MUGA/GM_snps.Rdata"))
+load(url("http://csbio.unc.edu/MUGA/snps.gigamuga.Rdata"))
+```
+
+Refining the GigaMUGA consensus allele file
+
+```{r}
+colnames(gigamuga_consensus_alleles) = c("Marker","ChrB38","PosB38",
+                                         "allele_129","allele_AJ","allele_B6","allele_CAST",
+                                         "allele_NOD","allele_NZO","allele_PWK","allele_WSB")
+gigamuga_allele_cols = grep("^allele", colnames(gigamuga_consensus_alleles))
+gigamuga_consensus_alleles$ChrB38 = paste("chr",gigamuga_consensus_alleles$ChrB38,sep="")
+gigamuga_informative_alleles = gigamuga_consensus_alleles[which(gigamuga_consensus_alleles$ChrB38 != "chrNA"),]
+gigamuga_informative_alleles = gigamuga_informative_alleles[which(rowSums(gigamuga_informative_alleles[,gigamuga_allele_cols] == "N") != 8),]
+alleles_129 = gigamuga_informative_alleles[,"allele_129"]
+gigamuga_informative_alleles = gigamuga_informative_alleles[which(rowSums(gigamuga_informative_alleles[,gigamuga_allele_cols] == alleles_129) != 8),]
+rownames(gigamuga_informative_alleles) = as.character(gigamuga_informative_alleles[,"Marker"])
+```
+
+### Importing the GigaMUGA data using `argyle`
+
+```{r}
+# Using input file from Vivek downloaded off of cluster.
+gigamuga_input = read.table(file = "./data/gigamuga/gigamuga_input_20181120.txt", 
+                            sep = "\t", stringsAsFactors = FALSE, header = TRUE)
+
+# Changing directory IDs to local IDs.
+gigamuga_input$dir = gsub("^/fastscratch/vmp/csna/", 
+                          "./data/gigamuga/",
+                          gigamuga_input$dir)
+gigamuga_input$id = gsub("^./data/gigamuga/",
+                         "",
+                         gigamuga_input$dir)
+gigamuga_input$id = gsub("/$",
+                         "",
+                         gigamuga_input$id)
+
+# Looping through genotype files to get intensities
+for (i in 1:nrow(gigamuga_input)) {
+  geno_i = read.beadstudio(prefix = gigamuga_input[i,"prefix"], 
+                           snps = snps, 
+                           in.path = gigamuga_input[i,"dir"])
+  # This line saves each file.
+  # saveRDS(geno_i, file = paste("./data/genotypes/geno_",gigamuga_input[i,"id"],".RDS",sep=""))
+  
+  assign(paste("samples_in_",gigamuga_input[i,"id"],sep=""), colnames(geno_i))
+  
+  sex_predict_xy_i = predict.sex(geno_i, method = "xy", platform = "giga")
+  sex_predict_ycalls_i = predict.sex(geno_i, method = "ycalls", platform = "giga")
+  
+  # Subsetting to only genomic loci
+  geno_chr_i = geno_i[which(as.character(attr(geno_i,"map")[,"chr"]) %in% paste("chr",c(1:19,"X","Y","M"),sep="")),]
+  
+  # Getting raw genotypes as a matrix
+  geno_mat_i = matrix(as.vector(geno_chr_i), ncol = dim(geno_chr_i)[2], nrow = dim(geno_chr_i)[1], byrow = FALSE,
+                      dimnames = list(row.names(geno_chr_i), colnames(geno_chr_i)))
+  geno_0_i = which(geno_mat_i == "A" | geno_mat_i == "T", arr.ind = TRUE)
+  geno_1_i = which(geno_mat_i == "H", arr.ind = TRUE)
+  geno_2_i = which(geno_mat_i == "C" | geno_mat_i == "G", arr.ind = TRUE)
+  geno_NA_i = which(geno_mat_i == "N" | is.na(geno_mat_i), arr.ind = TRUE)
+  
+  # Getting raw intensity
+  intensity_x_i = as.matrix(intensity(geno_chr_i)$x)
+  intensity_y_i = as.matrix(intensity(geno_chr_i)$y)
+  
+  # Calculating R for each marker, intensity of x plus intensity of y
+  R_i = intensity_x_i + intensity_y_i
+  
+  # Calculating theta for each marker, ((2 / pi) * atan2(y, x))
+  theta_i = (2 / pi) * atan2(intensity_y_i, intensity_x_i)
+  
+  # Calculating clusters data frame for tQN calculations
+  blank_df_i = matrix(rep(NA, times = nrow(geno_mat_i) * ncol(geno_mat_i)), 
+                      ncol = ncol(geno_mat_i), nrow = nrow(geno_mat_i), byrow = FALSE,
+                      dimnames = list(row.names(geno_mat_i), colnames(geno_mat_i)))
+  clusters_df_i = data.frame(row.names = row.names(blank_df_i),
+                             A.R = rep(NA, times = nrow(blank_df_i)),
+                             A.T = rep(NA, times = nrow(blank_df_i)),
+                             B.R = rep(NA, times = nrow(blank_df_i)),
+                             B.T = rep(NA, times = nrow(blank_df_i)),
+                             H.R = rep(NA, times = nrow(blank_df_i)),
+                             H.T = rep(NA, times = nrow(blank_df_i)))
+  
+  # Getting mean R for A
+  A.R_i = blank_df_i
+  A.R_i[geno_0_i] = R_i[geno_0_i]
+  clusters_df_i$A.R = rowMeans(A.R_i, na.rm = TRUE)
+  
+  # Getting mean theta for A
+  A.T_i = blank_df_i
+  A.T_i[geno_0_i] = theta_i[geno_0_i]
+  clusters_df_i$A.T = rowMeans(A.T_i, na.rm = TRUE)
+  
+  # Getting mean R for B
+  B.R_i = blank_df_i
+  B.R_i[geno_2_i] = R_i[geno_2_i]
+  clusters_df_i$B.R = rowMeans(B.R_i, na.rm = TRUE)
+  
+  # Getting mean theta for B
+  B.T_i = blank_df_i
+  B.T_i[geno_2_i] = theta_i[geno_2_i]
+  clusters_df_i$B.T = rowMeans(B.T_i, na.rm = TRUE)
+  
+  # Getting mean R for A
+  H.R_i = blank_df_i
+  H.R_i[geno_1_i] = R_i[geno_1_i]
+  clusters_df_i$H.R = rowMeans(H.R_i, na.rm = TRUE)
+  
+  # Getting mean theta for H
+  H.T_i = blank_df_i
+  H.T_i[geno_1_i] = theta_i[geno_1_i]
+  clusters_df_i$H.T = rowMeans(H.T_i, na.rm = TRUE)
+  
+  # Calculating tQN
+  geno_chr_i = tQN(geno_chr_i, clusters = clusters_df_i, xynorm = FALSE, adjust.lrr = FALSE)
+  
+  geno_lrr_i = attr(geno_chr_i, "lrr")
+  geno_baf_i = attr(geno_chr_i, "baf")
+  
+  if (i == 1) {
+    geno_matrix = geno_mat_i
+    intensity_x_matrix = intensity_x_i
+    intensity_y_matrix = intensity_y_i
+    R_matrix = R_i
+    theta_matrix = theta_i
+    lrr_matrix = geno_lrr_i
+    baf_matrix = geno_baf_i
+    sex_predict_xy = sex_predict_xy_i
+    sex_predict_ycalls = sex_predict_ycalls_i
+  } else {
+    geno_matrix = cbind(geno_matrix, geno_mat_i)
+    intensity_x_matrix = cbind(intensity_x_matrix, intensity_x_i)
+    intensity_y_matrix = cbind(intensity_y_matrix, intensity_y_i)
+    R_matrix = cbind(R_matrix, R_i)
+    theta_matrix = cbind(theta_matrix, theta_i)
+    lrr_matrix = cbind(lrr_matrix, geno_lrr_i)
+    baf_matrix = cbind(baf_matrix, geno_baf_i)
+    sex_predict_xy = rbind(sex_predict_xy, sex_predict_xy_i)
+    sex_predict_ycalls = rbind(sex_predict_ycalls, sex_predict_ycalls_i)
+  }
+  rm(list = ls()[grep("_i$",ls())])
+}
+```
+
+### Evaluating X and Y chromosome content
+
+```{r}
+# Y chromosome content: normalized intensity (R rank-normal transformed) will be low for
+# samples not containing a Y chromosome.
+R_norm_matrix = apply(R_matrix, MARGIN = 2, FUN = norm_rank_transform)
+R_norm_chrY = R_norm_matrix[which(row.names(R_norm_matrix) %in% snps[which(snps$chr == "chrY"),"marker"]),]
+R_norm_meanY = apply(R_norm_chrY, MARGIN = 2, FUN = mean)
+
+# Getting X chromosome ploidy using number of heterozygous loci on X
+geno_chrX = geno_matrix[which(row.names(geno_matrix) %in% snps[which(snps$chr == "chrX"),"marker"]),]
+het_chrX = which(geno_chrX == "H", arr.ind = TRUE)
+ishet_chrX = matrix(rep(FALSE, times = nrow(geno_chrX) * ncol(geno_chrX)),
+                    nrow = nrow(geno_chrX), ncol = ncol(geno_chrX), 
+                    dimnames = list(row.names(geno_chrX), colnames(geno_chrX)))
+ishet_chrX[het_chrX] = TRUE
+nhet_chrX = apply(ishet_chrX, MARGIN = 2, FUN = sum)
+ploidy = data.frame(row.names = row.names(sex_predict_ycalls),
+                    mean.R.chrY = R_norm_meanY[row.names(sex_predict_ycalls)],
+                    has.chrY = ifelse(sex_predict_ycalls$predicted == 1, TRUE, FALSE),
+                    nhet.chrX = nhet_chrX[row.names(sex_predict_ycalls)])
+ploidy$chrX.ploidy = ifelse(ploidy$nhet.chrX < 150, "haploid", "diploid")
+ploidy[which(ploidy$nhet.chrX > 150 & ploidy$has.chrY),"chrX.ploidy"] = "possible_partial_xdup"
+ploidy$sex = ifelse(ploidy$has.chrY, "male", "female")
+ploidy$class = ploidy$sex
+ploidy[which(ploidy$class == "male" & ploidy$chrX.ploidy == "possible_partial_xdup"),"class"] = "male_partial_X_dup"
+ploidy[which(ploidy$class == "female" & ploidy$chrX.ploidy == "haploid"),"class"] = "female_X0"
+ploidy_plot = ggplot(data = ploidy, aes(x = nhet.chrX, y = mean.R.chrY, color = class)) + 
+  geom_point() + 
+  scale_x_log10() +
+  xlab("chrX Het. Calls (log10 scale)") +
+  ylab("Mean Rank-Normal R: chrY") +
+  theme_cowplot() +
+  theme(legend.position = "none") + 
+  scale_color_manual(values = c("#3399CC", "#66CC66", "#CC33CC", "#FFCC33"))
+ploidy_plot
+```
+
+Saving ploidy calls as a file.
+
+```{r}
+saveRDS(ploidy, file = "./data/DO_ploidy_calls.RDS")
+```
+
+The md5 checksums for the output files are:
+
+file                                | md5 checksum
+------------------------------------|-----------------------------------------------------------------------------
+`DO_ploidy_calls.RDS`               | ``r tools::md5sum("./data/DO_ploidy_calls.RDS")``
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio and was integrated into workflowr on 2020-05-04.

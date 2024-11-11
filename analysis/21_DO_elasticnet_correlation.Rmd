@@ -1,0 +1,407 @@
+---
+title: "DO Elastic Net to Expression Analysis"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to correlate elastic net predictions from Robyn Ball to expression.
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("limma")
+library("edgeR")
+library("ggplot2")
+library("biomaRt")
+library("statmod")
+library("qvalue")
+library("msaul")
+library("WGCNA")
+```
+
+### `norm_rank_transform()` function
+
+Getting a normal rank transformation function that can handle `NA` values.
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+### Importing data
+
+Importing data.
+
+```{r}
+DO_pheno       = readRDS("./data/DO_416_pheno.RDS")
+DO_dge         = readRDS("./data/DO_416_DGEList.RDS")
+DO_elasticnet  = readRDS("./data/20_elasticnet_predictions.RDS")
+```
+
+### Reconciling predictions and expression data
+
+```{r}
+DO_pheno$pred_AQ_lever_ratio = DO_elasticnet[row.names(DO_pheno),"AQ_lever_ratio"]
+DO_pheno$pred_AQ_mean_inf    = DO_elasticnet[row.names(DO_pheno),"AQ_mean_inf"]
+DO_pheno$pred_AQ_active_CoV  = DO_elasticnet[row.names(DO_pheno),"AQ_active_CoV"]
+DO_pheno$pred_AQ_rate        = DO_elasticnet[row.names(DO_pheno),"AQ_rate"]
+
+has_AQ_lever_ratio_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"pred_AQ_lever_ratio"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+has_AQ_mean_inf_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"pred_AQ_mean_inf"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+has_AQ_active_CoV_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"pred_AQ_active_CoV"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+has_AQ_rate_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"pred_AQ_rate"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+
+paste("There are ",length(has_AQ_lever_ratio_express)," samples with both predicted lever ratio and expression data.",sep="")
+paste("There are ",length(has_AQ_mean_inf_express)," samples with both predicted mean infusion and expression data.",sep="")
+paste("There are ",length(has_AQ_active_CoV_express)," samples with both preditcted CoV of IEI and expression data.",sep="")
+paste("There are ",length(has_AQ_rate_express)," samples with both predicted rate of acquisition and expression data.",sep="")
+```
+
+## Gene Expression Analysis
+
+### `pred_AQ_lever_ratio` analysis: setup
+
+Getting factors for `pred_AQ_lever_ratio`.
+
+```{r}
+# Model factors for overall eigentraits
+DO_AQ_lever_ratio_Generation = DO_pheno[has_AQ_lever_ratio_express,"Generation"]
+DO_AQ_lever_ratio_ChoroidPlexus = DO_pheno[has_AQ_lever_ratio_express,"choroid_plexus_covariate"]
+DO_AQ_lever_ratio_Sex = DO_pheno[has_AQ_lever_ratio_express,"Sex"]
+DO_AQ_lever_ratio_Predict = DO_pheno[has_AQ_lever_ratio_express,"pred_AQ_lever_ratio"]
+
+# Gene expression list for rtg trait
+DO_AQ_lever_ratio_dge = DO_dge[,has_AQ_lever_ratio_express]
+```
+
+Writing model matrix for this correlation.
+
+```{r}
+DO_AQ_lever_ratio_modmat = model.matrix(~ DO_AQ_lever_ratio_ChoroidPlexus +
+                                          DO_AQ_lever_ratio_Sex + 
+                                          DO_AQ_lever_ratio_Generation +
+                                          DO_AQ_lever_ratio_Predict)
+colnames(DO_AQ_lever_ratio_modmat) = gsub("DO_AQ_lever_ratio_","",colnames(DO_AQ_lever_ratio_modmat))
+colnames(DO_AQ_lever_ratio_modmat)
+```
+
+Fitting the model for the `DO_AQ_lever_ratio_modmat`.
+
+```{r}
+DO_AQ_lever_ratio_dge = estimateGLMRobustDisp(DO_AQ_lever_ratio_dge, design = DO_AQ_lever_ratio_modmat)
+DO_AQ_lever_ratio_glmFit = glmFit(DO_AQ_lever_ratio_dge, design = DO_AQ_lever_ratio_modmat)
+```
+
+Summarizing the genes correlated with predicted IVSA data using `DO_AQ_lever_ratio_modmat`.
+
+```{r}
+DO_AQ_lever_ratio_toptable = as.data.frame(topTags(glmLRT(DO_AQ_lever_ratio_glmFit,
+                                                          coef = grep("^Predict$", colnames(DO_AQ_lever_ratio_modmat))),
+                                           n = nrow(DO_AQ_lever_ratio_dge)))
+DO_AQ_lever_ratio_toptable$qvalue = qvalue(DO_AQ_lever_ratio_toptable$PValue)$qvalues
+paste(length(which(DO_AQ_lever_ratio_toptable$qvalue < 0.01)), " genes correlated with lever ratio prediction at q < 0.01.", sep = "")
+paste(length(which(DO_AQ_lever_ratio_toptable$qvalue < 0.05)), " genes correlated with lever ratio prediction at q < 0.05.", sep = "")
+paste(length(which(DO_AQ_lever_ratio_toptable$qvalue < 0.10)), " genes correlated with lever ratio prediction at q < 0.10.", sep = "")
+paste(length(which(DO_AQ_lever_ratio_toptable$qvalue < 0.20)), " genes correlated with lever ratio prediction at q < 0.20.", sep = "")
+```
+
+Plotting lever ratio p-value histogram.
+
+```{r}
+DO_AQ_lever_ratio_hist = ggplot(data = DO_AQ_lever_ratio_toptable, aes(x = PValue)) +
+  geom_histogram(fill = "#66CC66", bins = 50) +
+  theme_classic()
+DO_AQ_lever_ratio_hist
+```
+
+### `pred_AQ_mean_inf` analysis: setup
+
+Getting factors for `pred_AQ_mean_inf`.
+
+```{r}
+# Model factors
+DO_AQ_mean_inf_Generation = DO_pheno[has_AQ_mean_inf_express,"Generation"]
+DO_AQ_mean_inf_ChoroidPlexus = DO_pheno[has_AQ_mean_inf_express,"choroid_plexus_covariate"]
+DO_AQ_mean_inf_Sex = DO_pheno[has_AQ_mean_inf_express,"Sex"]
+DO_AQ_mean_inf_Predict = DO_pheno[has_AQ_mean_inf_express,"pred_AQ_mean_inf"]
+
+# Gene expression list for trait
+DO_AQ_mean_inf_dge = DO_dge[,has_AQ_mean_inf_express]
+```
+
+Writing model matrix for this correlation.
+
+```{r}
+DO_AQ_mean_inf_modmat = model.matrix(~ DO_AQ_mean_inf_ChoroidPlexus +
+                                          DO_AQ_mean_inf_Sex + 
+                                          DO_AQ_mean_inf_Generation +
+                                          DO_AQ_mean_inf_Predict)
+colnames(DO_AQ_mean_inf_modmat) = gsub("DO_AQ_mean_inf_","",colnames(DO_AQ_mean_inf_modmat))
+colnames(DO_AQ_mean_inf_modmat)
+```
+
+Fitting the model for the `DO_AQ_mean_inf_modmat`.
+
+```{r}
+DO_AQ_mean_inf_dge = estimateGLMRobustDisp(DO_AQ_mean_inf_dge, design = DO_AQ_mean_inf_modmat)
+DO_AQ_mean_inf_glmFit = glmFit(DO_AQ_mean_inf_dge, design = DO_AQ_mean_inf_modmat)
+```
+
+Summarizing the genes correlated with predicted IVSA data using `DO_AQ_mean_inf_modmat`.
+
+```{r}
+DO_AQ_mean_inf_toptable = as.data.frame(topTags(glmLRT(DO_AQ_mean_inf_glmFit,
+                                                          coef = grep("^Predict$", colnames(DO_AQ_mean_inf_modmat))),
+                                           n = nrow(DO_AQ_mean_inf_dge)))
+DO_AQ_mean_inf_toptable$qvalue = qvalue(DO_AQ_mean_inf_toptable$PValue)$qvalues
+paste(length(which(DO_AQ_mean_inf_toptable$qvalue < 0.01)), " genes correlated with mean infusion prediction at q < 0.01.", sep = "")
+paste(length(which(DO_AQ_mean_inf_toptable$qvalue < 0.05)), " genes correlated with mean infusion prediction at q < 0.05.", sep = "")
+paste(length(which(DO_AQ_mean_inf_toptable$qvalue < 0.10)), " genes correlated with mean infusion prediction at q < 0.10.", sep = "")
+paste(length(which(DO_AQ_mean_inf_toptable$qvalue < 0.20)), " genes correlated with mean infusion prediction at q < 0.20.", sep = "")
+```
+
+Plotting mean infusion p-value histogram.
+
+```{r}
+DO_AQ_mean_inf_hist = ggplot(data = DO_AQ_mean_inf_toptable, aes(x = PValue)) +
+  geom_histogram(fill = "#66CC66", bins = 50) +
+  theme_classic()
+DO_AQ_mean_inf_hist
+```
+
+### `pred_AQ_active_CoV` analysis: setup
+
+Getting factors for `pred_AQ_active_CoV`.
+
+```{r}
+# Model factors for overall eigentraits
+DO_AQ_active_CoV_Generation = DO_pheno[has_AQ_active_CoV_express,"Generation"]
+DO_AQ_active_CoV_ChoroidPlexus = DO_pheno[has_AQ_active_CoV_express,"choroid_plexus_covariate"]
+DO_AQ_active_CoV_Sex = DO_pheno[has_AQ_active_CoV_express,"Sex"]
+DO_AQ_active_CoV_Predict = DO_pheno[has_AQ_active_CoV_express,"pred_AQ_active_CoV"]
+
+# Gene expression list for rtg trait
+DO_AQ_active_CoV_dge = DO_dge[,has_AQ_active_CoV_express]
+```
+
+Writing model matrix for this correlation.
+
+```{r}
+DO_AQ_active_CoV_modmat = model.matrix(~ DO_AQ_active_CoV_ChoroidPlexus +
+                                          DO_AQ_active_CoV_Sex + 
+                                          DO_AQ_active_CoV_Generation +
+                                          DO_AQ_active_CoV_Predict)
+colnames(DO_AQ_active_CoV_modmat) = gsub("DO_AQ_active_CoV_","",colnames(DO_AQ_active_CoV_modmat))
+colnames(DO_AQ_active_CoV_modmat)
+```
+
+Fitting the model for the `DO_AQ_active_CoV_modmat`.
+
+```{r}
+DO_AQ_active_CoV_dge = estimateGLMRobustDisp(DO_AQ_active_CoV_dge, design = DO_AQ_active_CoV_modmat)
+DO_AQ_active_CoV_glmFit = glmFit(DO_AQ_active_CoV_dge, design = DO_AQ_active_CoV_modmat)
+```
+
+Summarizing the genes correlated with predicted IVSA data using `DO_AQ_active_CoV_modmat`.
+
+```{r}
+DO_AQ_active_CoV_toptable = as.data.frame(topTags(glmLRT(DO_AQ_active_CoV_glmFit,
+                                                          coef = grep("^Predict$", colnames(DO_AQ_active_CoV_modmat))),
+                                           n = nrow(DO_AQ_active_CoV_dge)))
+DO_AQ_active_CoV_toptable$qvalue = qvalue(DO_AQ_active_CoV_toptable$PValue)$qvalues
+paste(length(which(DO_AQ_active_CoV_toptable$qvalue < 0.01)), " genes correlated with IEI CoV prediction at q < 0.01.", sep = "")
+paste(length(which(DO_AQ_active_CoV_toptable$qvalue < 0.05)), " genes correlated with IEI CoV prediction at q < 0.05.", sep = "")
+paste(length(which(DO_AQ_active_CoV_toptable$qvalue < 0.10)), " genes correlated with IEI CoV prediction at q < 0.10.", sep = "")
+paste(length(which(DO_AQ_active_CoV_toptable$qvalue < 0.20)), " genes correlated with IEI CoV prediction at q < 0.20.", sep = "")
+```
+
+Plotting lever ratio p-value histogram.
+
+```{r}
+DO_AQ_active_CoV_hist = ggplot(data = DO_AQ_active_CoV_toptable, aes(x = PValue)) +
+  geom_histogram(fill = "#66CC66", bins = 50) +
+  theme_classic()
+DO_AQ_active_CoV_hist
+```
+
+### `pred_AQ_rate` analysis: setup
+
+Getting factors for `pred_AQ_rate`.
+
+```{r}
+# Model factors for overall eigentraits
+DO_AQ_rate_Generation = DO_pheno[has_AQ_rate_express,"Generation"]
+DO_AQ_rate_ChoroidPlexus = DO_pheno[has_AQ_rate_express,"choroid_plexus_covariate"]
+DO_AQ_rate_Sex = DO_pheno[has_AQ_rate_express,"Sex"]
+DO_AQ_rate_Predict = DO_pheno[has_AQ_rate_express,"pred_AQ_rate"]
+
+# Gene expression list for rtg trait
+DO_AQ_rate_dge = DO_dge[,has_AQ_rate_express]
+```
+
+Writing model matrix for this correlation.
+
+```{r}
+DO_AQ_rate_modmat = model.matrix(~ DO_AQ_rate_ChoroidPlexus +
+                                          DO_AQ_rate_Sex + 
+                                          DO_AQ_rate_Generation +
+                                          DO_AQ_rate_Predict)
+colnames(DO_AQ_rate_modmat) = gsub("DO_AQ_rate_","",colnames(DO_AQ_rate_modmat))
+colnames(DO_AQ_rate_modmat)
+```
+
+Fitting the model for the `DO_AQ_rate_modmat`.
+
+```{r}
+DO_AQ_rate_dge = estimateGLMRobustDisp(DO_AQ_rate_dge, design = DO_AQ_rate_modmat)
+DO_AQ_rate_glmFit = glmFit(DO_AQ_rate_dge, design = DO_AQ_rate_modmat)
+```
+
+Summarizing the genes correlated with predicted IVSA data using `DO_AQ_rate_modmat`.
+
+```{r}
+DO_AQ_rate_toptable = as.data.frame(topTags(glmLRT(DO_AQ_rate_glmFit,
+                                                          coef = grep("^Predict$", colnames(DO_AQ_rate_modmat))),
+                                           n = nrow(DO_AQ_rate_dge)))
+DO_AQ_rate_toptable$qvalue = qvalue(DO_AQ_rate_toptable$PValue)$qvalues
+paste(length(which(DO_AQ_rate_toptable$qvalue < 0.01)), " genes correlated with acquisition rate prediction at q < 0.01.", sep = "")
+paste(length(which(DO_AQ_rate_toptable$qvalue < 0.05)), " genes correlated with acquisition rate prediction at q < 0.05.", sep = "")
+paste(length(which(DO_AQ_rate_toptable$qvalue < 0.10)), " genes correlated with acquisition rate prediction at q < 0.10.", sep = "")
+paste(length(which(DO_AQ_rate_toptable$qvalue < 0.20)), " genes correlated with acquisition rate prediction at q < 0.20.", sep = "")
+```
+
+Plotting acquisition rate p-value histogram.
+
+```{r}
+DO_AQ_rate_hist = ggplot(data = DO_AQ_rate_toptable, aes(x = PValue)) +
+  geom_histogram(fill = "#66CC66", bins = 50) +
+  theme_classic()
+DO_AQ_rate_hist
+```
+
+### Annotating toptables
+
+Using `biomaRt` to annotate the toptables.
+
+```{r}
+DO_AQ_lever_ratio_genes = row.names(DO_AQ_lever_ratio_toptable)
+DO_AQ_mean_inf_genes = row.names(DO_AQ_mean_inf_toptable)
+DO_AQ_active_CoV_genes = row.names(DO_AQ_active_CoV_toptable)
+DO_AQ_rate_genes = row.names(DO_AQ_rate_toptable)
+
+DO_elasticnet_genes = unique(c(DO_AQ_lever_ratio_genes,
+                               DO_AQ_mean_inf_genes,
+                               DO_AQ_active_CoV_genes,
+                               DO_AQ_rate_genes))
+                      
+maRt = useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+               host = "oct2018.archive.ensembl.org",
+               dataset = "mmusculus_gene_ensembl")
+maRt_filter = "ensembl_gene_id"
+maRt_attributes = c("mgi_symbol","mgi_description","mgi_id","chromosome_name","start_position",
+                    "end_position","strand","band","ensembl_gene_id")
+
+maRt_annotation_raw = getBM(maRt_attributes, maRt_filter, DO_elasticnet_genes, maRt)
+row.names(maRt_annotation_raw) = as.character(maRt_annotation_raw$ensembl_gene_id)
+
+# AQ_lever_ratio
+DO_AQ_lever_ratio_toptable_annotated = cbind(maRt_annotation_raw[DO_AQ_lever_ratio_genes,],
+                                             DO_AQ_lever_ratio_toptable)
+DO_AQ_lever_ratio_toptable_annotated$ensembl_gene_id = DO_AQ_lever_ratio_genes; row.names(DO_AQ_lever_ratio_toptable_annotated) = DO_AQ_lever_ratio_genes
+
+# AQ_mean_inf
+DO_AQ_mean_inf_toptable_annotated = cbind(maRt_annotation_raw[DO_AQ_mean_inf_genes,],
+                                          DO_AQ_mean_inf_toptable)
+DO_AQ_mean_inf_toptable_annotated$ensembl_gene_id = DO_AQ_mean_inf_genes; row.names(DO_AQ_mean_inf_toptable_annotated) = DO_AQ_mean_inf_genes
+
+# AQ_active_CoV
+DO_AQ_active_CoV_toptable_annotated = cbind(maRt_annotation_raw[DO_AQ_active_CoV_genes,],
+                                          DO_AQ_active_CoV_toptable)
+DO_AQ_active_CoV_toptable_annotated$ensembl_gene_id = DO_AQ_active_CoV_genes; row.names(DO_AQ_active_CoV_toptable_annotated) = DO_AQ_active_CoV_genes
+
+# AQ_rate
+DO_AQ_rate_toptable_annotated = cbind(maRt_annotation_raw[DO_AQ_rate_genes,],
+                                          DO_AQ_rate_toptable)
+DO_AQ_rate_toptable_annotated$ensembl_gene_id = DO_AQ_rate_genes; row.names(DO_AQ_rate_toptable_annotated) = DO_AQ_rate_genes
+```
+
+### Paraclique Analysis
+
+Evaluating relationship between elastic net regression predictions and paraclique analyses.
+
+```{r}
+# Loading paracliques
+DO_paraclique_eigengenes = readRDS("./data/DO_paraclique_eigengenes.RDS")
+DO_paracliques = readRDS("./data/DO_paracliques.RDS")
+
+DO_phenotypes = colnames(DO_pheno)[grep("AQ", colnames(DO_pheno))]
+
+DO_paraclique_significance = data.frame(matrix(nrow = (ncol(DO_paraclique_eigengenes) - 1), ncol = 1 + (2 * 4)))
+row.names(DO_paraclique_significance) = colnames(DO_paraclique_eigengenes)[-1]
+colnames(DO_paraclique_significance) = c("paraclique",
+                                         paste(DO_phenotypes,"_bicor_p",sep=""),
+                                         paste(DO_phenotypes,"_overlap_p",sep=""))
+DO_paraclique_significance$paraclique = colnames(DO_paraclique_eigengenes)[-1]
+
+for (i in 1:nrow(DO_paraclique_significance)) {
+  paraclique_i = DO_paraclique_significance[i,"paraclique"]
+  for (j in DO_phenotypes) {
+    col_j = paste(j,"_bicor_p",sep="")
+    DO_paraclique_significance[i,col_j] = bicorAndPvalue(DO_paraclique_eigengenes[,paraclique_i],
+                                                         DO_pheno[,j],
+                                                         use = "pairwise.complete.obs")$p[1,1]
+  }
+}
+
+MSET_B = 1e6
+for (i in DO_phenotypes) {
+  col_i = paste(i,"_overlap_p",sep="")
+  toptable_i = eval(parse(text = paste("DO_",gsub("^pred_", "", i),"_toptable",sep="")))
+  sig_genes_i = row.names(toptable_i[which(toptable_i$qvalue < 0.10),])
+  for (j in 1:length(DO_paracliques)) {
+    paraclique_genes_j =  DO_paracliques[[j]]
+    DO_paraclique_significance[j,col_i] = MSET.overlap.test(sig_genes_i,
+                                                            paraclique_genes_j,
+                                                            row.names(toptable_i),
+                                                            row.names(DO_dge), 
+                                                            B = MSET_B)$p.value + (1/MSET_B)
+  }
+}
+```
+
+### Output
+
+Saving the annotated toptables.
+
+```{r}
+saveRDS(DO_AQ_lever_ratio_toptable_annotated,"./data/DO_AQ_lever_ratio_toptable_annotated.RDS")
+saveRDS(DO_AQ_mean_inf_toptable_annotated,"./data/DO_AQ_mean_inf_toptable_annotated.RDS")
+saveRDS(DO_AQ_active_CoV_toptable_annotated,"./data/DO_AQ_active_CoV_toptable_annotated.RDS")
+saveRDS(DO_AQ_rate_toptable_annotated,"./data/DO_AQ_rate_toptable_annotated.RDS")
+saveRDS(DO_paraclique_significance,"./data/DO_paraclique_significance_elasticnet.RDS")
+```
+
+Saving the histograms.
+
+```{r}
+save(list = ls(pattern = "hist$"), file = "./data/DO_elasticnet_GEX_pvalue_histograms.RData")
+```
+
+The output data are saved in `./data/`.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

@@ -1,0 +1,67 @@
+---
+title: "DO Drug-Na&iuml;ve Demographic Data Summarize"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This initial script exists to summarize the demographic data of a number of mice used in this study.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r libraries}
+library("readxl")
+library("lubridate")
+```
+
+# Data Import
+
+## Importing data
+
+### Importing basic mouse demographic data
+
+Importing and cleaning up basic demographic data (note: original version of file was named `DO Mice.xlsx` with spaces included, but file name was changed to add underscores on 2020-05-01).
+
+The md5 checksum of the input `DO_Mice.xlsx` file is: ``r tools::md5sum("./data/raw/DO_Mice.xlsx")``.
+
+```{r demodata_import}
+DO_demodata = as.data.frame(read_excel("./data/raw/DO_Mice.xlsx"), stringsAsFactors = FALSE)
+colnames(DO_demodata) = c("Mouse_ID", "Strain", "DOB", "Sex")
+row.names(DO_demodata) = as.character(DO_demodata$Mouse_ID)
+DO_demodata = DO_demodata[,-1]
+DO_demodata$DOB = mdy(DO_demodata$DOB)
+```
+
+### Summarizing demographic data as data frame for future use
+
+```{r demodata_summarize}
+# Saving demodata
+saveRDS(DO_demodata,"./data/DO_demographic_data_df.RDS",compress="xz")
+```
+
+The md5 checksum of the output file (`DO_demographic_data_df.RDS`) is: ``r tools::md5sum("./data/DO_demographic_data_df.RDS")``.
+
+These are the measures used, and they are already summarized as a data frame.
+
+Measure Name    | Measure Description
+----------------|-----------------------------------------------------
+`Strain`        | Mouse strain used in in study
+`DOB`           | Mouse date of birth
+`Sex`           | Sex of mouse
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio and imported into workflowr on 2020-05-01.
+
+(file was formerly saved as [DO_demographic_data_summarize.html](DO_demographic_data_summarize.html))

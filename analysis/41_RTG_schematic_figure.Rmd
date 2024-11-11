@@ -1,0 +1,139 @@
+---
+title: "DO RTG Schematic Figure"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is to make an RTG schematic figure.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("ggplot2")
+library("RColorBrewer")
+```
+
+### Making schematic figure
+
+```{r}
+corr_vector = function(vect, corr) {
+  # Based off of answer from:
+  # https://stats.stackexchange.com/questions/15011/generate-a-random-variable-with-a-defined-correlation-to-an-existing-variables
+  # From user: caracal
+  n     <- length(vect)          # length of vector
+  rho   <- corr                  # desired correlation = cos(angle)
+  theta <- acos(rho)             # corresponding angle
+  x1    <- vect        # fixed given data
+  x2    <- rnorm(n, 2, 0.5)      # new random data
+  X     <- cbind(x1, x2)         # matrix
+  Xctr  <- scale(X, center=TRUE, scale=FALSE)   # centered columns (mean 0)
+  
+  Id   <- diag(n)                               # identity matrix
+  Q    <- qr.Q(qr(Xctr[ , 1, drop=FALSE]))      # QR-decomposition, just matrix Q
+  P    <- tcrossprod(Q)          # = Q Q'       # projection onto space defined by x1
+  x2o  <- (Id-P) %*% Xctr[ , 2]                 # x2ctr made orthogonal to x1ctr
+  Xc2  <- cbind(Xctr[ , 1], x2o)                # bind to matrix
+  Y    <- Xc2 %*% diag(1/sqrt(colSums(Xc2^2)))  # scale columns to length 1
+  
+  x <- Y[ , 2] + (1 / tan(theta)) * Y[ , 1]     # final new vector
+  return(x)     
+}
+
+nrow = 10
+ncol = 10
+npheno = 5
+bigmat_nrow = nrow * 3
+bigmat_ncol = ncol * npheno
+cor = 0.9
+
+bigmat = matrix(nrow = bigmat_nrow,
+                ncol = bigmat_ncol)
+
+random_thing = sample(1:50,
+                      size=bigmat_ncol,
+                      replace=TRUE)
+
+for (i in 1:nrow(bigmat)) {
+  bigmat[i,] = corr_vector(random_thing, cor)
+}
+
+# Getting punchouts in the big matrix
+for (i in 1:npheno) {
+  if ((i %% 2) == 1) {
+    rows_i = (2*nrow + 1):bigmat_nrow
+  } else {
+    rows_i = 1:nrow
+  }
+  cols_i = (((i - 1) * ncol) + 1):(i * ncol)
+  bigmat[rows_i,cols_i] = NA
+}
+
+bigdf = data.frame(x = rep(1:nrow(bigmat), times = ncol(bigmat)),
+                   y = rep(1:ncol(bigmat), each  = nrow(bigmat)))
+bigdf$color = bigmat[as.matrix(bigdf)]
+bigdf = bigdf[which(!is.na(bigdf$color)),]
+
+RTG_schematic = ggplot(data = bigdf, aes(x = y, y = x, fill = color)) +
+  geom_tile() +
+  geom_rect(aes(xmin = 0.5, xmax = 10.5, 
+                ymin = 0.5, ymax = 10.5), 
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 0.5, xmax = 10.5, 
+                ymin = 10.5, ymax = 20.5), 
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 10.5, xmax = 20.5, 
+                ymin = 10.5, ymax = 20.5), 
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 10.5, xmax = 20.5, 
+                ymin = 20.5, ymax = 30.5), 
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 20.5, xmax = 30.5,
+                ymin = 0.5, ymax = 10.5),
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 20.5, xmax = 30.5,
+                ymin = 10.5, ymax = 20.5),
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 30.5, xmax = 40.5, 
+                ymin = 10.5, ymax = 20.5),
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 30.5, xmax = 40.5, 
+                ymin = 20.5, ymax = 30.5),
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 40.5, xmax = 50.5, 
+                ymin = 0.5, ymax = 10.5),
+            color = "#000000", fill = NA, size = 1) +
+  geom_rect(aes(xmin = 40.5, xmax = 50.5, 
+                ymin = 10.5, ymax = 20.5),
+            color = "#000000", fill = NA, size = 1) +
+  scale_fill_viridis_c(direction = -1, option = "inferno") +
+  coord_fixed(ratio = 1) +
+  xlab(NULL) +
+  ylab(NULL) +
+  theme_minimal() +
+  theme(panel.grid = element_line(color = "#FFFFFF"),
+        legend.position = "none",
+        axis.text = element_blank())
+RTG_schematic
+```
+
+### Saving output
+
+```{r}
+saveRDS(RTG_schematic,"./data/figures/DO_RTG_schematic.RDS")
+```
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

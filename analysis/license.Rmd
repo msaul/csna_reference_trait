@@ -1,0 +1,16 @@
+---
+title: "License"
+output:
+  workflowr::wflow_html:
+    toc: false
+editor_options:
+  chunk_output_type: console
+---
+
+All source code and software in this repository are made available
+under the terms of the
+[MIT license](https://opensource.org/licenses/mit-license.html). A [copy of the license text](../LICENSE) is included in the project root.
+
+Note that the data used in this analysis may be made available under a separate license.
+
+As of 2021-12-06, this repository is unpublished. Consequently, the license that appears here may be superseded at any point in the future.

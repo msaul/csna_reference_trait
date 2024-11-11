@@ -1,0 +1,380 @@
+---
+title: "DO RTG Coexpression Analysis"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to perform WGCNA for the reference trait analysis.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("limma")
+library("edgeR")
+library("ggplot2")
+library("ggbeeswarm")
+library("gplots")
+library("RColorBrewer")
+library("data.table")
+library("biomaRt")
+library("statmod")
+library("WGCNA")
+library("MASS")
+library("msaul")
+library("cliqueR")
+```
+
+### Getting `norm_rank_transform` function
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  N = length(x)
+  return(qnorm((rank(x) - c) / (N - (2 * c) + 1)))
+}
+```
+
+### Importing data
+
+```{r}
+# Bringing in expression objects
+DO_voom = readRDS("./data/DO_416_voom.RDS")
+DO_pheno = readRDS("./data/DO_416_pheno.RDS")
+
+# Bringing in RTG objects
+DO_RTG_a1 = readRDS("./data/DO_IVSA_prediction_ACQUISITION_logit.RDS")
+DO_RTG_a2 = readRDS("./data/DO_IVSA_prediction_AQ_cancor.RDS")
+DO_RTG_a3 = readRDS("./data/DO_IVSA_prediction_ALL_cancor.RDS")
+
+# Bringing in RTG top tables
+DO_RTG_a1_toptable = readRDS("./data/DO_rtg_a1_toptable_annotated.RDS")
+DO_RTG_a2_toptable = readRDS("./data/DO_rtg_a2_toptable_annotated.RDS")
+DO_RTG_a3_toptable = readRDS("./data/DO_rtg_a3_toptable_annotated.RDS")
+```
+
+Setting number of permutations for MSET enrichment analysis.
+
+```{r}
+MSET_B = 1e6
+```
+
+### Adjusting data to get residuals after choroid plexus regression
+
+```{r}
+DO_log2_choroid_plexus = log2(DO_pheno$choroid_plexus_covariate)
+names(DO_log2_choroid_plexus) = row.names(DO_pheno)
+DO_log2_choroid_plexus = DO_log2_choroid_plexus[colnames(DO_voom)]
+DO_voom_cpnorm = matrix(nrow = nrow(DO_voom$E), ncol = ncol(DO_voom$E))
+row.names(DO_voom_cpnorm) = row.names(DO_voom)
+colnames(DO_voom_cpnorm) = colnames(DO_voom)
+for (i in 1:nrow(DO_voom_cpnorm)) {
+  gene_i = row.names(DO_voom_cpnorm)[i]
+  DO_voom_cpnorm[gene_i,] = norm_rank_transform(resid(lm(DO_voom$E[gene_i,] ~ DO_log2_choroid_plexus)))
+}
+saveRDS(DO_voom_cpnorm,"./data/DO_416_voom_cpresiduals.RDS",compress="xz")
+```
+
+## Running WGCNA
+
+### Querying good samples
+
+Making sure there are no genes that have too many missing values or are zero variance.
+
+```{r}
+DO_wgcna_gsg = goodSamplesGenes(t(DO_voom_cpnorm))
+ifelse(DO_wgcna_gsg$allOK,
+       "All genes are good and all samples are good.",
+       "There are bad samples or genes.")
+```
+
+### Finding soft threshold
+
+```{r}
+powers = c(c(1:10), seq(from = 12, to=20, by=2))
+DO_wgcna_sft = pickSoftThreshold(t(DO_voom_cpnorm),
+                                 powerVector = powers,
+                                 networkType="signed",
+                                 corFnc = bicor)
+```
+
+Plotting scale-free topology fit
+
+```{r}
+plot(x = DO_wgcna_sft$fitIndices$Power, 
+     DO_wgcna_sft$fitIndices$SFT.R.sq, 
+     xlab = "Soft Threshold (power)", 
+     ylab = "R-Squared", type ="l", 
+     col = "dark gray", main = "Scale Independence (all)")
+text(DO_wgcna_sft$fitIndices$Power, 
+     DO_wgcna_sft$fitIndices$SFT.R.sq, 
+     labels = powers, col ="#3399CC")
+abline(h = 0.9, col = "#FF3333")
+```
+
+Plotting median connectivity
+
+```{r}
+plot(x = DO_wgcna_sft$fitIndices$Power, 
+     y = DO_wgcna_sft$fitIndices$median.k, 
+     xlab = "Soft Threshold (powers)",
+     ylab = "Median Connectivity", 
+     main = "Median Connectivity (all)", 
+     col = "dark gray", type = "l")
+text(DO_wgcna_sft$fitIndices$Power, DO_wgcna_sft$fitIndices$median.k., labels = powers, col = "#3399CC")
+```
+
+A soft threshold of 3 appears to be appropriate for these data. Running signed WGCNA with this soft threshold for each dataset.
+
+```{r}
+DO_modules = blockwiseModules(t(DO_voom_cpnorm), power = 3,
+                              networkType = "signed",
+                              minModuleSize = 30,
+                              corType= "bicor",
+                              maxBlockSize = 30000,
+                              numericLabels = TRUE,
+                              saveTOMs = FALSE,
+                              verbose = 3)
+```
+
+Getting module eigengene information and assigning colors
+
+```{r}
+DO_colors = labels2colors(DO_modules$colors)
+DO_eigengenes = DO_modules$MEs
+```
+
+Finding relationship between eigengenes and phenotype data of interest
+
+```{r}
+# Putting RTG data into DO_pheno
+DO_pheno$RTG_a1 = DO_RTG_a1[row.names(DO_pheno)]
+DO_pheno$RTG_a2 = DO_RTG_a2[row.names(DO_pheno),"IVSA_novelty_cancor"]
+DO_pheno$RTG_a3 = DO_RTG_a3[row.names(DO_pheno),"IVSA_novelty_cancor"]
+
+# Finding significance for each factor in the eigengenes
+DO_phenotypes_cor = c("RTG_a1","RTG_a2","RTG_a3")
+
+DO_eigengene_significance = data.frame(matrix(nrow = ncol(DO_eigengenes), ncol = 1 + (3 * length(DO_phenotypes_cor))))
+row.names(DO_eigengene_significance) = colnames(DO_eigengenes)
+colnames(DO_eigengene_significance) = c("Eigengene",
+                                        paste(DO_phenotypes_cor,"_bicor_p",sep=""),
+                                        paste(DO_phenotypes_cor,"_membership_p",sep=""),
+                                        paste(DO_phenotypes_cor,"_overlap_p",sep=""))
+DO_eigengene_significance$Eigengene = colnames(DO_eigengenes)
+
+for (i in 1:ncol(DO_eigengenes)) {
+  eigengene_i = DO_eigengene_significance[i,"Eigengene"]
+  for (j in DO_phenotypes_cor) {
+    col_j = paste(j,"_bicor_p",sep="")
+    DO_eigengene_significance[i,col_j] = bicorAndPvalue(DO_eigengenes[,eigengene_i],
+                                                        DO_pheno[,j],
+                                                        use = "pairwise.complete.obs")$p[1,1]
+  }
+}
+
+for (i in DO_phenotypes_cor) {
+  col_i = paste(i,"_overlap_p",sep="")
+  toptable_i = eval(parse(text = paste("DO_",i,"_toptable",sep="")))
+  sig_genes_i = toptable_i[which(toptable_i$qvalue < 0.10),"ensembl_gene_id"]
+  for (j in 1:ncol(DO_eigengenes)) {
+    eigengene_j = DO_eigengene_significance[j,"Eigengene"]
+    module_genes_j = row.names(DO_voom_cpnorm)[which(DO_modules$colors == as.numeric(gsub("^ME","",eigengene_j)))]
+    DO_eigengene_significance[j,col_i] = MSET.overlap.test(sig_genes_i,
+                                                           module_genes_j,
+                                                           toptable_i$ensembl_gene_id,
+                                                           row.names(DO_voom_cpnorm), 
+                                                           B = MSET_B)$p.value + (1/MSET_B)
+  }
+}
+```
+
+### Module Membership Values
+
+Getting module membership values for all genes. Flagging outlier observations by changing observations to NA if they have a genewise Bonferroni-corrected externally-studentized residual p-value of 0.001 or less relative to the module eigengene and if there are no more than 2 such flagged outliers.
+
+```{r}
+DO_module_membership = as.data.frame(matrix(ncol = 4 + length(DO_phenotypes_cor), nrow = nrow(DO_voom_cpnorm)))
+row.names(DO_module_membership) = row.names(DO_voom_cpnorm) 
+colnames(DO_module_membership) = c("ID",
+                                   "module",
+                                   "color",
+                                   "module_membership",
+                                   DO_phenotypes_cor) 
+DO_module_membership$ID = row.names(DO_voom_cpnorm)
+DO_module_membership$module = DO_modules$colors 
+DO_module_membership$color = DO_colors
+DO_voom_cpnorm_original = DO_voom_cpnorm
+
+for (i in 1:nrow(DO_module_membership)) {
+  current_id = DO_module_membership[i,"ID"]
+  current_module = DO_module_membership[i,"module"]
+  current_eigengene = paste("ME",current_module,sep="") 
+  current_studres = studres(lm(DO_voom_cpnorm[i,] ~ DO_eigengenes[,current_eigengene]))
+  current_bon_studres = ncol(DO_voom_cpnorm) * 2 * ifelse(current_studres < 0,
+                                                          pnorm(current_studres, lower.tail = TRUE),
+                                                          pnorm(current_studres, lower.tail = FALSE))
+  current_bon_studres = ifelse(current_bon_studres >= 1, 1, current_bon_studres)
+  if (length(which(current_bon_studres < 0.001)) > 0 & length(which(current_bon_studres < 0.001)) <= 2) {
+    DO_voom_cpnorm[i,which(current_bon_studres < 0.001)] = NA
+  }
+  DO_module_membership[i,"module_membership"] = bicor(DO_eigengenes[,current_eigengene],DO_voom_cpnorm[i,],
+                                                      use = "pairwise.complete.obs")
+  for (j in DO_phenotypes_cor) {
+    DO_module_membership[current_id,j] = bicor(DO_voom_cpnorm[current_id,],
+                                               norm_rank_transform(DO_pheno[,j]),
+                                               use = "pairwise.complete.obs")
+  }
+}
+
+saveRDS(DO_voom_cpnorm,"./data/DO_voom_cpresiduals_NArm.RDS",compress="xz")
+
+DO_eigengene_membership_cor = as.data.frame(matrix(nrow = nrow(DO_eigengene_significance),
+                                                   ncol = length(DO_phenotypes_cor)),
+                                            stringsAsFactors = FALSE)
+row.names(DO_eigengene_membership_cor) = DO_eigengene_significance$Eigengene
+colnames(DO_eigengene_membership_cor) = DO_phenotypes_cor
+
+for (i in 1:nrow(DO_eigengene_significance)) {
+  module_i = as.numeric(gsub("^ME","",DO_eigengene_significance[i,"Eigengene"]))
+  rows_i = which(DO_module_membership$module == module_i)
+  for (j in DO_phenotypes_cor) {
+    col_j = paste(j, "_membership_p", sep = "")
+    DO_eigengene_membership_cor[paste("ME",module_i,sep=""),j] = bicor(DO_module_membership[rows_i,j],
+                                                                       DO_module_membership[rows_i,"module_membership"],
+                                                                       use = "pairwise.complete.obs")
+    DO_eigengene_significance[i,col_j] = bicorAndPvalue(DO_module_membership[rows_i,j],
+                                                        DO_module_membership[rows_i,"module_membership"],
+                                                        use = "pairwise.complete.obs")$p[1,1]
+  }
+}
+```
+
+Writing out WGCNA module membership data
+
+```{r}
+saveRDS(DO_module_membership,
+        "./data/DO_module_membership.RDS",
+        compress="xz")
+saveRDS(DO_modules,
+        "./data/DO_wgcna.RDS",
+        compress="xz")
+saveRDS(DO_eigengene_significance,
+        "./data/DO_eigengene_significance.RDS",
+        compress="xz")
+saveRDS(DO_eigengenes,
+        "./data/DO_eigengenes.RDS",
+        compress="xz")
+```
+
+### Getting correlation tables
+
+```{r}
+DO_cortable = bicor(t(DO_voom_cpnorm_original),
+                    use = "pairwise.complete.obs")
+DO_highcor = as.data.table(which(abs(DO_cortable) >= 0.5, arr.ind = TRUE))
+DO_highcor = DO_highcor[row < col]
+DO_highcor = data.frame(gene_1 = row.names(DO_cortable)[DO_highcor$row],
+                        gene_2 = colnames(DO_cortable)[DO_highcor$col],
+                        cor = DO_cortable[as.matrix(DO_highcor)],
+                        stringsAsFactors = FALSE)
+rm(list = c("DO_cortable"))
+
+saveRDS(DO_highcor,"./data/DO_highcor_cpresiduals_datatable.RDS",compress="xz")
+```
+
+### Running paraclique analysis
+
+First, making file with paraclique information on thresholded data
+
+```{r}
+# Getting number of nodes (vertices) and edges
+n_nodes = length(unique(c(DO_highcor$gene_1, DO_highcor$gene_2)))
+n_edges = nrow(DO_highcor)
+
+# Making file to write out
+DO_write_out_pc_cor_table = DO_highcor[,1:2]
+colnames(DO_write_out_pc_cor_table) = c(n_nodes, n_edges)
+write.table(DO_write_out_pc_cor_table, "./data/DO_paraclique_data.el", sep = " ", quote = FALSE, row.names = FALSE, col.names = TRUE)
+
+# Getting paracliques (minimum clique size = 5, minimum paraclique size = 10, glom factor = 0.2)
+# Note: this is not the traditional glom factor. 
+# Instead, it is the proportion of edges that each added node must have to the total number of nodes.
+clique_min = 5
+paraclique_min = 10
+glom_factor = 0.2 
+DO_paracliques = cliqueR.paraclique(filename = "./data/DO_paraclique_data.el", 
+                                    igf = glom_factor, min_mc_size = clique_min, min_pc_size = paraclique_min)
+
+# Getting eigenvalues for paracliques
+for (i in 1:length(DO_paracliques)) {
+  genes_i = DO_paracliques[[i]]
+  eigengene_i = prcomp(t(DO_voom_cpnorm_original[genes_i,]), scale = TRUE, center = TRUE)$x[,1]
+  if (exists("DO_paraclique_eigengenes")) {
+    DO_paraclique_eigengenes[,paste("PCE",i,sep="")] = eigengene_i[DO_paraclique_eigengenes$SubjectID]
+  } else {
+    DO_paraclique_eigengenes = data.frame(row.names = names(eigengene_i),
+                                          SubjectID = as.character(names(eigengene_i)),
+                                          PCE1 = eigengene_i,
+                                          stringsAsFactors = FALSE)
+  }
+}
+```
+
+Next, evaluating paracliques for significance with respect to RTG analyses.
+
+```{r}
+DO_paraclique_significance = data.frame(matrix(nrow = (ncol(DO_paraclique_eigengenes) - 1), ncol = 1 + (2 * length(DO_phenotypes_cor))))
+row.names(DO_paraclique_significance) = colnames(DO_paraclique_eigengenes)[-1]
+colnames(DO_paraclique_significance) = c("paraclique",
+                                         paste(DO_phenotypes_cor,"_bicor_p",sep=""),
+                                         paste(DO_phenotypes_cor,"_overlap_p",sep=""))
+DO_paraclique_significance$paraclique = colnames(DO_paraclique_eigengenes)[-1]
+
+for (i in 1:nrow(DO_paraclique_significance)) {
+  paraclique_i = DO_paraclique_significance[i,"paraclique"]
+  for (j in DO_phenotypes_cor) {
+    col_j = paste(j,"_bicor_p",sep="")
+    DO_paraclique_significance[i,col_j] = bicorAndPvalue(DO_paraclique_eigengenes[,paraclique_i],
+                                                         DO_pheno[,j],
+                                                         use = "pairwise.complete.obs")$p[1,1]
+  }
+}
+
+for (i in DO_phenotypes_cor) {
+  col_i = paste(i,"_overlap_p",sep="")
+  toptable_i = eval(parse(text = paste("DO_",i,"_toptable",sep="")))
+  sig_genes_i = toptable_i[which(toptable_i$qvalue < 0.10),"ensembl_gene_id"]
+  for (j in 1:length(DO_paracliques)) {
+    paraclique_genes_j =  DO_paracliques[[j]]
+    DO_paraclique_significance[j,col_i] = MSET.overlap.test(sig_genes_i,
+                                                            paraclique_genes_j,
+                                                            toptable_i$ensembl_gene_id,
+                                                            row.names(DO_voom_cpnorm), 
+                                                            B = MSET_B)$p.value + (1/MSET_B)
+  }
+}
+```
+
+Next, writing out paraclique data.
+
+```{r}
+saveRDS(DO_paraclique_eigengenes, "./data/DO_paraclique_eigengenes.RDS")
+saveRDS(DO_paracliques, "./data/DO_paracliques.RDS")
+saveRDS(DO_paraclique_significance, "./data/DO_paracliques_significance.RDS")
+```
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

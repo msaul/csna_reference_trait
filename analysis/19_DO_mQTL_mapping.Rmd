@@ -1,0 +1,111 @@
+---
+title: "DO RTG Coexpression Mapping"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to map WGCNA and paraclique eigengenes.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("limma")
+library("edgeR")
+library("ggplot2")
+library("ggbeeswarm")
+library("gplots")
+library("RColorBrewer")
+library("data.table")
+library("biomaRt")
+library("statmod")
+library("WGCNA")
+library("MASS")
+library("qtl2")
+```
+
+### Getting `norm_rank_transform` function
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  N = length(x)
+  return(qnorm((rank(x) - c) / (N - (2 * c) + 1)))
+}
+```
+
+### Importing data
+
+```{r}
+# Bringing in eigengene objects and giving it row names
+DO_WGCNA_eigengenes = readRDS("./data/DO_eigengenes.RDS")
+DO_PCE_eigengenes = readRDS("./data/DO_paraclique_eigengenes.RDS")
+DO_exprs = readRDS("./data/DO_416_voom_cpresiduals.RDS")
+row.names(DO_WGCNA_eigengenes) = colnames(DO_exprs)
+rm(list = c("DO_exprs"))
+
+# Bringing in expression QTL data
+load("./data/DO_str_2016_eQTL.RData")
+
+# Getting covariates
+DO_covar = DO_str_2016_cross$covar
+addcovar_mat = model.matrix(~ ngen + sex, data = DO_covar)[,-1]
+```
+
+Matching eigengene data with cross data
+
+```{r}
+DO_eigengenes_cross = DO_WGCNA_eigengenes[gsub("^(\\d{4,5})_.*$","\\1",row.names(DO_str_2016_cross$pheno)),]
+DO_eigengenes_cross = cbind(DO_eigengenes_cross, DO_PCE_eigengenes[row.names(DO_eigengenes_cross),-1])
+row.names(DO_eigengenes_cross) = row.names(DO_str_2016_cross$pheno)
+DO_eigengenes_cross = as.matrix(DO_eigengenes_cross)
+```
+
+### Running `scan1()` for all modules
+
+```{r}
+# Looping through all coexpression module/paraclique eigengenes to make crosses
+for (i in colnames(DO_eigengenes_cross)) {
+  ME_cross_i = scan1(genoprobs = DO_str_2016_aprobs,
+                     pheno = DO_eigengenes_cross[,i],
+                     kinship = DO_str_2016_kinship,
+                     addcovar = addcovar_mat,
+                     cores = 2)
+  colnames(ME_cross_i) = i
+  if (exists("ME_crosses")) {
+    ME_crosses = cbind(ME_crosses, ME_cross_i)
+  } else {
+    ME_crosses = ME_cross_i
+  }
+}
+```
+
+### Getting peaks for all modules
+
+```{r}
+# Finding peaks with LOD scores >= 6
+ME_peaks = find_peaks(ME_crosses, map = DO_str_2016_cross$pmap, threshold = 6, prob = 0.95)
+ME_peaks[order(ME_peaks$lod),]
+```
+
+### Saving output
+
+```{r}
+saveRDS(ME_peaks, "./data/DO_mQTL_peaks.RDS", compress = "xz")
+saveRDS(ME_crosses, "./data/DO_mQTL_scan1s.RDS", compress = "xz")
+```
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

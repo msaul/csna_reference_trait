@@ -1,0 +1,68 @@
+---
+title: "DO RTG Projection for Mapping"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to calculate RTG projections for mapping work.
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("ggplot2")
+```
+
+### Getting publication themes
+
+```{r}
+source("./code/ggplot_pub_themes.R")
+```
+
+### Importing data
+
+Importing data.
+
+```{r}
+# Loading RTG analyses
+DO_RTG_analysis_1 = readRDS("./data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS")
+DO_RTG_analysis_2 = readRDS("./data/DO_IVSA_prediction_a2_AQ_cancor.RDS")
+DO_RTG_analysis_3 = readRDS("./data/DO_IVSA_prediction_a3_ALL_cancor.RDS")
+
+# Loading novelty response data frame
+DO_novelty_response_raw = readRDS("./data/DO_novelty_response_data.RDS")
+```
+
+### Making Reference Traits Analysis Data Frame
+
+Saving RTG analysis projections as data frame.
+
+```{r}
+# Writing out projection
+DO_RTG_project_df = DO_novelty_response_raw[,c("Mouse_ID","Sex","Study","Generation","Group")]
+
+DO_RTG_project_df$RTG_a1 = DO_RTG_analysis_1[row.names(DO_RTG_project_df)]
+DO_RTG_project_df$RTG_a2 = DO_RTG_analysis_2[row.names(DO_RTG_project_df),"IVSA_novelty_cancor"]
+DO_RTG_project_df$RTG_a3 = DO_RTG_analysis_3[row.names(DO_RTG_project_df),"IVSA_novelty_cancor"]
+```
+
+Saving projection data frame.
+
+```{r}
+saveRDS(DO_RTG_project_df,"./data/DO_RTG_project_df_for_mapping.RDS")
+```
+
+### Output
+
+The output data are saved in `./data/`.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

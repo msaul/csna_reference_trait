@@ -1,0 +1,100 @@
+---
+title: "DO IVSA, Saline, and Cocaine Sensitization Trait Correlation Figures"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to correlate traits in the IVSA assay. The specific traits correlated are the ones derived from the canonical correlation analysis.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("corrplot")
+```
+
+### Getting `norm_rank_transform` function
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  N = length(x)
+  return(qnorm((rank(x) - c) / (N - (2 * c) + 1)))
+}
+```
+
+### Importing data
+
+```{r}
+DO_RTG_analysis_2 = readRDS("./data/DO_IVSA_prediction_a2_AQ_cancor.RDS")
+DO_RTG_analysis_3 = readRDS("./data/DO_IVSA_prediction_a3_ALL_cancor.RDS")
+
+# Loading behavioral data frames
+DO_novelty_response_raw = readRDS("./data/DO_novelty_response_data.RDS")
+DO_IVSA = readRDS("./data/DO_IVSA_data.RDS")
+DO_cocaine_sensi = readRDS("./data/DO_cocaine_measures_data.RDS")
+DO_saline_sensi = readRDS("./data/DO_saline_measures_data.RDS")
+
+# Loading canonical correlations
+IVSA_novelty_cancor_AQ = readRDS("./data/DO_IVSA_novelty_cancor_AQ.RDS")
+IVSA_novelty_cancor_ALL = readRDS("./data/DO_IVSA_novelty_cancor_ALL.RDS")
+cocaine_novelty_cancor_COC = readRDS("./data/DO_novelty_COC_cancor.RDS")
+saline_novelty_cancor_SAL = readRDS("./data/DO_novelty_SAL_cancor.RDS")
+```
+
+### Making IVSA corrplot
+
+```{r}
+IVSA_cancor_vars = unique(c(names(IVSA_novelty_cancor_ALL$xcenter),
+                            names(IVSA_novelty_cancor_AQ$xcenter)))
+IVSA_cancor_vars = IVSA_cancor_vars[grep("Sex",IVSA_cancor_vars,invert=TRUE)]
+IVSA_corrmatrix = cor(DO_IVSA[,IVSA_cancor_vars],
+                 use = "pairwise.complete.obs")
+colnames(IVSA_corrmatrix) = gsub("_batch_ranknorm$","",colnames(IVSA_corrmatrix))
+row.names(IVSA_corrmatrix) = gsub("_batch_ranknorm$","",row.names(IVSA_corrmatrix))
+corrplot(IVSA_corrmatrix, order = "hclust", hclust.method = "ward.D")
+```
+
+### Making sensitization corrplots
+
+```{r}
+SENSI_cocaine_cancor_vars = names(cocaine_novelty_cancor_COC$xcenter)
+SENSI_cocaine_cancor_vars = SENSI_cocaine_cancor_vars[grep("Sex",SENSI_cocaine_cancor_vars,invert=TRUE)]
+SENSI_COC_corrmatrix = cor(DO_cocaine_sensi[,SENSI_cocaine_cancor_vars],
+                 use = "pairwise.complete.obs")
+colnames(SENSI_COC_corrmatrix) = gsub("_batch_ranknorm$","",colnames(SENSI_COC_corrmatrix))
+row.names(SENSI_COC_corrmatrix) = gsub("_batch_ranknorm$","",row.names(SENSI_COC_corrmatrix))
+corrplot(SENSI_COC_corrmatrix, order = "hclust", hclust.method = "ward.D")
+```
+
+```{r}
+SENSI_saline_cancor_vars = names(saline_novelty_cancor_SAL$xcenter)
+SENSI_saline_cancor_vars = SENSI_saline_cancor_vars[grep("Sex",SENSI_saline_cancor_vars,invert=TRUE)]
+SENSI_SAL_corrmatrix = cor(DO_saline_sensi[,SENSI_saline_cancor_vars],
+                           use = "pairwise.complete.obs")
+colnames(SENSI_SAL_corrmatrix) = gsub("_batch_ranknorm$","",colnames(SENSI_SAL_corrmatrix))
+row.names(SENSI_SAL_corrmatrix) = gsub("_batch_ranknorm$","",row.names(SENSI_SAL_corrmatrix))
+corrplot(SENSI_SAL_corrmatrix, order = "hclust", hclust.method = "ward.D")
+```
+
+### Saving output
+
+```{r}
+# saveRDS(corrplot,"./data/figures/DO_IVSA_behaviors_corrplot.RDS")
+saveRDS(IVSA_corrmatrix,"./data/figures/DO_IVSA_behaviors_corrplot_data.RDS")
+```
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

@@ -1,0 +1,424 @@
+---
+title: "DO IVSA Summarization"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to summarize the intravenous self-administration data upstream of using them for reference trait analysis.
+
+### Data Dictionary of IVSA Variables
+
+These variables will been alterred from the original output file. The original file has inconsistent column header IDs that are difficult to query programatically and reference using regular expressions. The correspondence to the current variable names and the original names is in the IVSA metadata sheet created in this notebook. Abbreviations are as follows:
+
+* Prefices
+  * Prefix `AQ_` is acquisition
+  * Prefix `DR_` is dose-response
+  * Prefix `EX_` is extinction
+  * Prefix `RI_` is reinstatement
+  * Prefix `WT_` is weight
+
+* Phenotypes
+  * `SessionsToAcquisition` is the number of sessions it took for the animal to acquire IVSA
+  * `ALP` is active lever presses
+  * `ILP` is inactive lever presses
+  * `Inf` is infusions
+  * `IEI` is inter-event interval
+  * `pAP` is percentage of active presses
+  * `TCI` is total cocaine intake
+  * `TfACDiE` is total for all cocaine doses in experiment
+  * `Tf7Es` is total for all seven extinction sessions
+  * `RIn` is reinstatement
+  * `StS` is sessions to stabilization
+  * `AUC` is area under the curve
+  
+* General terms  
+  * `mgkg` is milligrams per kilogram, mg/kg, and is displayed in NpNNN with the p standing for the decimal point (e.g., 0p032mgkg is 0.032 mg/kg)
+  * `X2` is second exposure, which happens on the 1.0 mg/kg dose to stabilize the mouse.
+  * `dTO` is during time out
+  * `Mean` is mean
+  * `Total` is total
+  * `Variance` is variance
+  * `CoV` is coefficient of variation, ${\sigma}\over{\mu}$
+  * `TfASoTD` is total for all sessions on this dose
+  * `Mean2s` is mean of two sessions
+  * `Sal` is saline
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("MASS")
+library("readxl")
+library("tidyr")
+library("lubridate")
+```
+
+### Functions
+
+Getting a normal rank transformation function that can handle `NA` values from the following formula:
+
+$Y^t_i={\phi}^{-1}({{r_i-c}\over{N-2c+1}})$
+
+where $r_i$ is the rank, $N$ is the number of ranked samples, $\phi^{-1}$ is the inverse normal function (equivalent to `qnorm()` in R). A recommended value of $c=3/8$ in [Beasley and Erickson, 2010](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2921808/), but we use the [van der Waerden (1952)](https://scholar.google.com/scholar_lookup?journal=Proc+Koninklijke+Nederlandse+Akademie+van+Wetenschappen&title=Order+tests+for+the+two-sample+problem+and+their+power&author=BL+van+der+Waerden&volume=55&publication_year=1952&pages=453-458&) value of $c=0$ per Vivek Philip. Additionally, after discussing this with Vivek, I've changed the rank tie method to `"average"` whereas I had `"random"` previously.
+
+Our work appears to meet Beasley and Erickson's sample size recommendations.
+
+```{r}
+norm_rank_transform = function(x, c = 0) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+### Importing data
+
+#### Getting data locations
+
+*Note: have added underscores to file names.*
+
+```{r}
+IVSA_file_path = "./data/raw/IVSA_export_to_3-22-20_preprocessed_multivariate.xlsx"
+LIMS_file_path = "./data/raw/LIMS_export_2020-04-08.csv"
+PED_JMCRS_LIMS_file_path = "./data/raw/Matching_PED_and_JCMS_numbers.xlsx"
+```
+
+#### Importing LIMS Data
+
+```{r}
+# Extracting LIMS information
+LIMS_data = read.table(file = LIMS_file_path, header = TRUE, sep = ",", stringsAsFactors = FALSE, quote = "\"")
+
+# Deduplicting LIMS data
+# There are duplicate 24h circadian rhythm data
+# The IDs to keep are those from the study ID "24H Circadian"
+# Dropping the ones from the duplicates with the study ID "Circadian R"
+duplicate_IDs = unique(LIMS_data[which(duplicated(LIMS_data$Organism.ID)),"Organism.ID"])
+LIMS_data_deduplicate = which(LIMS_data$Organism.ID %in% duplicate_IDs & LIMS_data$Study == "Circadian R")
+LIMS_data = LIMS_data[(-1 * LIMS_data_deduplicate),]
+
+# Making row IDs as the organism IDs.
+row.names(LIMS_data) = as.character(LIMS_data$Organism.ID)
+```
+
+Reformating dates to individual columns for each year, month, and day of each relevant date.
+
+```{r}
+# Coercing dates to lubridate format
+LIMS_data$Birth.Date = mdy(LIMS_data$Birth.Date, tz = "America/New_York")
+LIMS_data$Arrival.Date = mdy(LIMS_data$Arrival.Date, tz = "America/New_York")
+LIMS_data$Exit.Date = mdy(LIMS_data$Exit.Date, tz = "America/New_York")
+
+# Parsing dates to separate columns for year, month, and day
+LIMS_data$birth_date_year = year(LIMS_data$Birth.Date)
+LIMS_data$birth_date_month = month(LIMS_data$Birth.Date)
+LIMS_data$birth_date_day = day(LIMS_data$Birth.Date)
+LIMS_data$arrival_date_year = year(LIMS_data$Arrival.Date)
+LIMS_data$arrival_date_month = month(LIMS_data$Arrival.Date)
+LIMS_data$arrival_date_day = day(LIMS_data$Arrival.Date)
+LIMS_data$exit_date_year = year(LIMS_data$Exit.Date)
+LIMS_data$exit_date_month = month(LIMS_data$Exit.Date)
+LIMS_data$exit_date_day = day(LIMS_data$Exit.Date)
+
+# Removing LIMS data birth, arrival, and exit date columns
+LIMS_data = LIMS_data[,(-1 * which(colnames(LIMS_data) %in% c("Birth.Date","Arrival.Date","Exit.Date")))]
+```
+
+Removing the periods from the column names and replacing them with underscores.
+
+```{r}
+colnames(LIMS_data) = gsub("\\.","_",colnames(LIMS_data))
+colnames(LIMS_data) = gsub("_s_","",colnames(LIMS_data))
+```
+
+Per communication with Jason Bubier, DO animals with mouse IDs of < 10000 are pre-CSNA mice (`precenter`) while > 10000 are CSNA mice (`CSNA`). There were large intralaboratory changes in personnel, equipment, and procedures to scale up the IVSA pipeline when the CSNA started, making this specific factor a primary batch variable that appears to account for both differences in the means and variances of all measures. Consequently, this cannot just be residualized out.
+
+Per discussions with Elissa Chesler, the procedure we arrived at for normalizing these data between arms of the project is to rank-normal transform the residualized data for `precenter` and `CSNA` separately.
+
+```{r}
+LIMS_data$DO_Center_Status = rep(NA, times = nrow(LIMS_data))
+LIMS_data[which(as.numeric(LIMS_data$Organism_ID) < 10000 & LIMS_data$Line_Name == "J:DO"),"DO_Center_Status"] = "precenter"
+LIMS_data[which(as.numeric(LIMS_data$Organism_ID) > 10000 & LIMS_data$Line_Name == "J:DO"),"DO_Center_Status"] = "CSNA"
+LIMS_data$Sex = gsub("^Female$","F",LIMS_data$Sex)
+LIMS_data$Sex = gsub("^Male$","M",LIMS_data$Sex)
+```
+
+#### Importing intravenous self-administration data
+
+```{r import_ivsa, warning=FALSE}
+IVSA_raw = as.data.frame(read_excel(IVSA_file_path), 
+                         stringsAsFactors = FALSE)
+IVSA_Descriptive_vars = c("Subject","Experiment","Active_Lever",
+                          "Control_Unit","Group","Box")
+IVSA_Weight_vars = colnames(IVSA_raw)[grep("^Weight", colnames(IVSA_raw))]
+IVSA_Acquisition_vars = c("SessionsToAcquisition",
+                          colnames(IVSA_raw)[grep("^Acquisition at ", colnames(IVSA_raw))],
+                          "ActiveLeverPressesDuringTimeOut_Block01 Acquisition at 1.0 mg/kg-Session 01",
+                          "ActiveLeverPressesDuringTimeOut_Block01 Acquisition at 1.0 mg/kg-Session 02")
+IVSA_DoseResponse_vars = colnames(IVSA_raw)[grep("^Dose [Rr]esponse FR1", colnames(IVSA_raw))]
+IVSA_Extinction_vars = colnames(IVSA_raw)[grep("^Extinction", colnames(IVSA_raw))]
+IVSA_Reinstatement_vars = colnames(IVSA_raw)[grep("^Reinstatement", colnames(IVSA_raw))]
+IVSA_AllCols = c(IVSA_Descriptive_vars,
+                 IVSA_Weight_vars,
+                 IVSA_Acquisition_vars,
+                 IVSA_DoseResponse_vars,
+                 IVSA_Extinction_vars,
+                 IVSA_Reinstatement_vars)
+ifelse(length(colnames(IVSA_raw)[which(!(colnames(IVSA_raw) %in% IVSA_AllCols))]) == 0,
+       "All columns categorized", 
+       paste(length(colnames(IVSA_raw)[which(!(colnames(IVSA_raw) %in% IVSA_AllCols))]),
+             " columns not categorized.", sep = ""))
+```
+
+Cleaning up data and coercing response variables to numeric.
+
+```{r}
+IVSA_raw[which(IVSA_raw == "x", arr.ind = TRUE)] = NA
+IVSA_Data_vars = c(IVSA_Weight_vars,
+                   IVSA_Acquisition_vars,
+                   IVSA_DoseResponse_vars,
+                   IVSA_Extinction_vars,
+                   IVSA_Reinstatement_vars)
+
+IVSA_raw[,IVSA_Data_vars] = sapply(IVSA_raw[,IVSA_Data_vars], as.numeric)
+data_col_numeric = c()
+for (var_i in IVSA_Data_vars) {
+  data_col_numeric[var_i] = is.numeric(IVSA_raw[,var_i])
+}
+ifelse(length(which(!data_col_numeric)) == 0,
+       "All IVSA data variables successfully coerced to numeric.",
+       paste(length(which(!data_col_numeric)), " IVSA data variables not successfully coerced to numeric.", sep = ""))
+```
+
+Adding in LIMS columns to the raw IVSA dataset and into the descriptive variables.
+
+```{r}
+row.names(IVSA_raw) = as.character(IVSA_raw$Subject)
+IVSA_raw$Strain = LIMS_data[row.names(IVSA_raw),"Line_Name"]
+IVSA_raw$Stock_ID = LIMS_data[row.names(IVSA_raw),"Stock_ID"]
+IVSA_raw$Sex = LIMS_data[row.names(IVSA_raw),"Sex"]
+IVSA_raw$Breeding = LIMS_data[row.names(IVSA_raw),"Breeding"]
+IVSA_raw$Protocol = LIMS_data[row.names(IVSA_raw),"Protocol"]
+IVSA_raw$Study = LIMS_data[row.names(IVSA_raw),"Study"]
+IVSA_raw$birth_date_year = as.integer(LIMS_data[row.names(IVSA_raw),"birth_date_year"])
+IVSA_raw$birth_date_month = as.integer(LIMS_data[row.names(IVSA_raw),"birth_date_month"])
+IVSA_raw$birth_date_day = as.integer(LIMS_data[row.names(IVSA_raw),"birth_date_day"])
+IVSA_raw$arrival_date_year = as.integer(LIMS_data[row.names(IVSA_raw),"arrival_date_year"])
+IVSA_raw$arrival_date_month = as.integer(LIMS_data[row.names(IVSA_raw),"arrival_date_month"])
+IVSA_raw$arrival_date_day = as.integer(LIMS_data[row.names(IVSA_raw),"arrival_date_day"])
+IVSA_raw$exit_date_year = as.integer(LIMS_data[row.names(IVSA_raw),"exit_date_year"])
+IVSA_raw$exit_date_month = as.integer(LIMS_data[row.names(IVSA_raw),"exit_date_month"])
+IVSA_raw$exit_date_day = as.integer(LIMS_data[row.names(IVSA_raw),"exit_date_day"])
+IVSA_raw$Exit_Reason = LIMS_data[row.names(IVSA_raw),"Exit_Reason"]
+IVSA_raw$DO_Center_Status = LIMS_data[row.names(IVSA_raw),"DO_Center_Status"]
+IVSA_from_LIMS_vars = c("Strain","Stock_ID","Sex","Breeding",
+                          "Protocol","Study",
+                          "birth_date_year","birth_date_month","birth_date_day",
+                          "arrival_date_year","arrival_date_month","arrival_date_day",
+                          "exit_date_year","exit_date_month","exit_date_day",
+                          "Exit_Reason","DO_Center_Status")
+IVSA_Descriptive_vars = c(IVSA_Descriptive_vars,
+                          IVSA_from_LIMS_vars)
+IVSA_raw = IVSA_raw[,c(IVSA_Descriptive_vars,IVSA_Data_vars)]
+```
+
+Renaming IVSA variables and creating a metadata sheet to track the names.
+
+```{r}
+IVSA_metadata_sheet = data.frame(variable = rep(NA, times = ncol(IVSA_raw)),
+                                 long_varname = colnames(IVSA_raw),
+                                 vartype = rep(NA, times = ncol(IVSA_raw)),
+                                 stringsAsFactors = FALSE)
+
+# Labeling all variables
+IVSA_metadata_sheet[which(IVSA_metadata_sheet$long_varname %in% IVSA_Descriptive_vars),"vartype"]   = "Descriptive"
+IVSA_metadata_sheet[which(IVSA_metadata_sheet$long_varname %in% IVSA_Weight_vars),"vartype"]        = "Weight"
+IVSA_metadata_sheet[which(IVSA_metadata_sheet$long_varname %in% IVSA_Acquisition_vars),"vartype"]   = "Acquisition"
+IVSA_metadata_sheet[which(IVSA_metadata_sheet$long_varname %in% IVSA_DoseResponse_vars),"vartype"]  = "DoseResponse"
+IVSA_metadata_sheet[which(IVSA_metadata_sheet$long_varname %in% IVSA_Extinction_vars),"vartype"]    = "Extinction"
+IVSA_metadata_sheet[which(IVSA_metadata_sheet$long_varname %in% IVSA_Reinstatement_vars),"vartype"] = "Reinstatement"
+
+# Using regular expressions to replace variable names with things that make sense
+IVSA_metadata_sheet$variable = gsub("Session (\\d{2})", "Session\\1", IVSA_metadata_sheet$long_varname)
+IVSA_metadata_sheet$variable = gsub(" ", "_", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("\\.", "p", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("/", "per", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("-", "_", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("–", "_", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("–", "_", IVSA_metadata_sheet$variable)
+
+# Getting dose
+IVSA_metadata_sheet$dose_mgperkg = gsub("^.*([01])p(\\d+)_mgperkg.*$", "\\1.\\2", IVSA_metadata_sheet$variable)
+DoseResponse_rows = which(IVSA_metadata_sheet$vartype == "DoseResponse")
+DoseResponse_rows_saline = DoseResponse_rows[grep("[Ss]aline",IVSA_metadata_sheet[DoseResponse_rows,"variable"])]
+IVSA_metadata_sheet[DoseResponse_rows_saline,"dose_mgperkg"] = "0.0"
+IVSA_metadata_sheet[grep("\\.", IVSA_metadata_sheet$dose_mgperkg, invert = TRUE),"dose_mgperkg"] = NA
+IVSA_metadata_sheet$dose_mgperkg = as.numeric(IVSA_metadata_sheet$dose_mgperkg)
+
+# Getting session
+IVSA_metadata_sheet$session = gsub("^.*Session(\\d{2})$", "\\1", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet[grep("^\\d{2}$", IVSA_metadata_sheet$session, invert = TRUE),"session"] = NA
+IVSA_metadata_sheet$session = as.numeric(IVSA_metadata_sheet$session)
+IVSA_metadata_sheet$variable = gsub("Session(\\d{2})$", "s\\1", IVSA_metadata_sheet$variable)
+
+# Getting block
+IVSA_metadata_sheet$block = gsub("^.*Block(\\d{2})_.*$", "\\1", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet[grep("^\\d{2}$", IVSA_metadata_sheet$block, invert = TRUE),"block"] = NA
+IVSA_metadata_sheet$block = as.numeric(IVSA_metadata_sheet$block)
+IVSA_metadata_sheet$variable = gsub("Block", "b", IVSA_metadata_sheet$variable)
+
+# Getting columns with totals in them
+IVSA_metadata_sheet$is_total = rep(FALSE, times = nrow(IVSA_metadata_sheet))
+IVSA_metadata_sheet[grep("Total", IVSA_metadata_sheet$variable, ignore.case = TRUE),"is_total"] = TRUE
+
+# Reducing variable prefices
+IVSA_metadata_sheet[which(IVSA_metadata_sheet$vartype == "Descriptive"),"variable"] = paste("DE_", IVSA_metadata_sheet[which(IVSA_metadata_sheet$vartype == "Descriptive"),"variable"], sep = "")
+IVSA_metadata_sheet[which(IVSA_metadata_sheet$variable == "SessionsToAcquisition"), "variable"] = "AQ_SessionsToAcquisition"
+IVSA_metadata_sheet$variable = gsub("^Acquisition_at_1p0_mgperkg_", "AQ_", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("^Dose_[rR]esponse_FR1_", "DR_", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("^Extinction_", "EX_", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("^Reinstatement_", "RI_", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("^Weight_", "WT_", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("_mgperkg", "mgkg", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("DuringTime[Oo]ut", "dTO", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("CoefOfVariation", "CoV", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("Mean", "Mean", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("Variance", "Var", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("InactiveLeverPresses", "ILP", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("ActiveLeverPresses", "ALP", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("Active_LeverPresses", "ALP", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("Infusions", "Inf", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("InterEventInterval", "IEI", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("PercentageActivePresses", "pAP", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("_2nd_exposure", "X2", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("TotalForAllSessionsOnThisDose", "TfASoTD", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("Total_Cocaine_Intake", "TCI", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("TotalForAllCocaineDosesInExperiment", "TfACDiE", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("TotalForAllCocaineDosesInExperiment", "TfACDiE", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("mean_of_2_sessions", "Mean2s", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("TotalForAll7ExtinctionSessions", "Tf7Es", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("Reinstatement", "RIn", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("Sessions_To_Stabilization", "StS", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("[Ss]aline", "Sal", IVSA_metadata_sheet$variable)
+IVSA_metadata_sheet$variable = gsub("^(ALPdTO_b\\d{2})_Acquisition_at_1p0mgkg(_s\\d{2})$","AQ_\\1\\2",IVSA_metadata_sheet$variable)
+
+# Introducing the metadata names into the IVSA sheet.
+row.names(IVSA_metadata_sheet) = IVSA_metadata_sheet$variable
+IVSA_metadata_sheet$varclass = as.character(sapply(IVSA_raw, class))
+
+# Adding in notes
+IVSA_metadata_sheet$notes = ifelse(IVSA_metadata_sheet$long_varname %in% IVSA_from_LIMS_vars,
+                                   "Data populated from LIMS export on 2020-04-08","")
+IVSA_metadata_sheet["DE_Subject","notes"] = "Data corrected to PED IDs"
+
+colnames(IVSA_raw) = IVSA_metadata_sheet[,"variable"]
+```
+
+Performing rank-normal transformation on `J:DO` mice. Starting by selecting important variables. Note that the CSNA changed dose-response data collection from many doses to just 4 doses in an SOP revision after an extermal advisory board meeting. We are only using dose-response curve values that appear in both SOPs (1.0, 0.32, 0.1, and 0.032 mg/kg doses). 
+
+We select variables that do not contain many `NA` values relative to the first day of cued reinstatement. This minimizes data loss for the purposes of canonical correlation analysis.
+
+```{r}
+# Selecting DO only.
+DO_IVSA_raw = IVSA_raw[which(IVSA_raw$DE_Strain == "J:DO"),]
+
+# Getting descriptive columns
+IVSA_DE_vars = IVSA_metadata_sheet[which(IVSA_metadata_sheet$vartype == "Descriptive"),"variable"]
+
+# Removing data columns broken down by sessions and blocks
+IVSA_AQ_vars_noblocks_nosessions = IVSA_metadata_sheet[which(is.na(IVSA_metadata_sheet$session) &
+                                                         is.na(IVSA_metadata_sheet$block) &
+                                                         IVSA_metadata_sheet$vartype == "Acquisition"),
+                                                 "variable"]
+
+# Removing data columns not at 0.032, 0.1, 0.32, and 1 mg/kg
+IVSA_DR_currentdoses = c(0.032, 0.1, 0.32, 1.0)
+IVSA_DR_vars_currentprotocol = IVSA_metadata_sheet[which(is.na(IVSA_metadata_sheet$session) &
+                                                     is.na(IVSA_metadata_sheet$block) &
+                                                     IVSA_metadata_sheet$vartype == "DoseResponse" &
+                                                     IVSA_metadata_sheet$dose_mgperkg %in% IVSA_DR_currentdoses),
+                                             "variable"]
+
+IVSA_EX_noblocks = IVSA_metadata_sheet[which(is.na(IVSA_metadata_sheet$block) &
+                                         IVSA_metadata_sheet$vartype == "Extinction"),
+                                 "variable"]
+
+IVSA_RI_noblocks = IVSA_metadata_sheet[which(is.na(IVSA_metadata_sheet$block) &
+                                         IVSA_metadata_sheet$vartype == "Reinstatement"),
+                                 "variable"]
+
+IVSA_data_vars = c(IVSA_AQ_vars_noblocks_nosessions,
+                   IVSA_DR_vars_currentprotocol,
+                   IVSA_EX_noblocks,
+                   IVSA_RI_noblocks)
+
+# Using the RI_Inf_Total_s01 variable to filter out columns with too many NAs in them
+noNA_col = "RI_Inf_Total_s01"
+
+IVSA_NAs = data.frame(row.names = IVSA_data_vars,
+                      IVSA_var = IVSA_data_vars,
+                      NAs = rep(-1, times = length(IVSA_data_vars)),
+                      stringsAsFactors = FALSE)
+
+for (i in IVSA_data_vars) {
+  IVSA_df_i = DO_IVSA_raw[,c(i,noNA_col)]
+  na_i = which(is.na(IVSA_df_i[,i]) & (!is.na(IVSA_df_i[,noNA_col])))
+  IVSA_NAs[i,"NAs"] = length(na_i)
+}
+
+IVSA_use = IVSA_NAs[which(IVSA_NAs$NAs < 50),"IVSA_var"]
+
+IVSA_transformed = DO_IVSA_raw[,c(IVSA_DE_vars, IVSA_use)]
+precenter_rows = row.names(IVSA_transformed)[which(IVSA_transformed$DE_DO_Center_Status == "precenter")]
+CSNA_rows =  row.names(IVSA_transformed)[which(IVSA_transformed$DE_DO_Center_Status == "CSNA")]
+```
+
+We append values corresponding to the maximum time allowed to acquire for `AQ_SessionsToAcquisition` for mice that did not acquire. This depended upon the center status.
+
+* For `precenter` mice, this value was 28.
+* FOr `CSNA` mice, this value was 18.
+
+```{r}
+IVSA_transformed[which(IVSA_transformed$DE_Subject %in% precenter_rows & IVSA_transformed$DE_Exit_Reason == "IVSA Acquisition Only"),"AQ_SessionsToAcquisition"] = 28
+IVSA_transformed[which(IVSA_transformed$DE_Subject %in% CSNA_rows & IVSA_transformed$DE_Exit_Reason == "IVSA Acquisition Only"),"AQ_SessionsToAcquisition"] = 18
+```
+
+Next, we rank-normal transform the pre-center and CSNA data separately as with the novelty response data.
+
+```{r}
+for (i in IVSA_use) {
+  IVSA_transformed[,paste(i,"_batch_ranknorm",sep="")] = rep(NA, times = nrow(IVSA_transformed))
+  IVSA_transformed[precenter_rows,paste(i,"_batch_ranknorm",sep="")] = norm_rank_transform(IVSA_transformed[precenter_rows,i])
+  IVSA_transformed[CSNA_rows,paste(i,"_batch_ranknorm",sep="")] = norm_rank_transform(IVSA_transformed[CSNA_rows,i])
+}
+```
+
+### Output
+
+Saving the DO IVSA, LIMS data, and metadata.
+
+```{r save_IVSA_LIMS}
+saveRDS(DO_IVSA_raw, file = "./data/DO_IVSA_raw_data.RDS")
+saveRDS(IVSA_metadata_sheet, file = "./data/IVSA_metadata_sheet.RDS")
+saveRDS(LIMS_data[which(LIMS_data$Line_Name == "J:DO"),], file = "./data/DO_LIMS_data.RDS")
+saveRDS(IVSA_transformed, file = "./data/DO_IVSA_transformed_data.RDS")
+```
+
+The output data are saved in `./data/`.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

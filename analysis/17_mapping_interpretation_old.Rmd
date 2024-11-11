@@ -1,0 +1,1241 @@
+---
+title: "DO Mapping Interpretation for RTG Analysis 2"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to interpret the RTG mapping work results. In particular, the result for `RTG_a2`, where Hao identified a significant QTL on chr4 is of interest.
+
+### Summarizing the `RTG_a2` result
+
+Within the RTG results, Hao's mapping work identified a significant peak on chr4 for `RTG_a2`, which is the reference trait analysis using acquisition-related data.
+
+```{r echo=FALSE, fig.cap = "Figure 1: RTG_a2 QTL results"}
+knitr::include_graphics("../data/mapping_from_hao/m2G_RTG_a2.png")
+```
+
+The `RTG_a2` chr4 and chr18 results identified by Hao He with confidence intervals is:
+
+chr | pos       | lod       | ci_lo     | ci_hi
+----|-----------|-----------|-----------|---------
+4   | 83.89746  | 9.836309  | 83.60419  | 86.1584
+18  | 80.66443  | 7.755262  | 77.86739  | 83.77586
+
+The confidence interval result is based upon a 2 LOD drop. The goal is to identify which gene mediates this QTL. 
+
+Hao He sent along an effects plot of this result in our correspondence.
+
+```{r echo=FALSE, fig.cap = "Figure 2: RTG_a2 chr4 coefficients"}
+knitr::include_graphics("../data/mapping_from_hao/m2G_RTG_a2_chr4_coeff.png")
+```
+
+Finally, Hao sent along the SNP effects.
+
+```{r echo=FALSE, fig.cap = "Figure 3: RTG_a2 chr4 SNP effects"}
+knitr::include_graphics("../data/mapping_from_hao/m2G_RTG_a2_chr4_SNP.png")
+```
+
+The goal of this analysis is to resolve these QTL mapping data to one (or a few) genes.
+
+# Analysis
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+library("ggrepel")
+library("biomaRt")
+library("Gviz")
+library("qtl2")
+library("grid")
+library("cowplot")
+library("ggplotify")
+library("data.table")
+```
+
+### Getting publication themes
+
+```{r}
+source("./code/ggplot_pub_themes.R")
+```
+
+### `norm_rank_transform()` function
+
+Getting a normal rank transformation function that can handle `NA` values.
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+### Importing data
+
+Importing data.
+
+First, importing eQTL peaks.
+
+```{r}
+# Importing significant eQTL results
+DO_eQTL_results = readRDS("./data/eQTL_annotated_peaks.RDS")
+```
+
+Next, importing SNP data from the interval around the chr4 QTL from Hao He.
+
+```{r}
+load("./data/m2G.a2.RTG.chr4snp.RData")
+RTG_a2_chr4_SNPs = as.data.frame(m2.sigqtl.snps$RTG_a2[[1]]$lod)
+RTG_a2_chr4_info = as.data.frame(m2.sigqtl.snps$RTG_a2[[1]]$snpinfo)
+row.names(RTG_a2_chr4_info) = RTG_a2_chr4_info$snp_id
+RTG_a2_chr4_SNPs = cbind(RTG_a2_chr4_info[row.names(RTG_a2_chr4_SNPs),], RTG_a2_chr4_SNPs)
+rm(list = c("RTG_a2_chr4_info","m2.sigqtl.genes","m2.sigqtl.snps"))
+```
+
+Next, importing SNP data from the interval around the chr18 QTL from Hao He.
+
+```{r}
+load("./data/mapping_from_hao/m2G.a2.RTG.chr18snp.RData")
+RTG_a2_chr18_SNPs = as.data.frame(m2.sigqtl.snps$RTG_a2[[2]]$lod)
+RTG_a2_chr18_info = as.data.frame(m2.sigqtl.snps$RTG_a2[[2]]$snpinfo)
+row.names(RTG_a2_chr18_info) = RTG_a2_chr18_info$snp_id
+RTG_a2_chr18_SNPs = cbind(RTG_a2_chr18_info[row.names(RTG_a2_chr18_SNPs),], RTG_a2_chr18_SNPs)
+rm(list = c("RTG_a2_chr18_info","m2.sigqtl.genes","m2.sigqtl.snps"))
+```
+
+Next, importing [CC variants file](ftp://ftp.jax.org/dgatti/CC_SNP_DB/cc_variants.sqlite) (downloaded 2020-07-09). Creating a query function.
+
+```{r}
+query_func = create_variant_query_func("./data/cc_variants/cc_variants.sqlite")
+```
+
+Next, loading in the eQTL data
+
+```{r}
+load("./data/DO_str_2016_eQTL.RData")
+DO_pheno = DO_str_2016_cross$pheno
+DO_covar = DO_str_2016_cross$covar
+addcovar_mat = model.matrix(~ ngen + sex, data = DO_covar)[,-1]
+addcovar_i = addcovar_mat
+
+# Getting plotting functions
+plot_eQTL_str_2016 = function(gene_i, n_cores = 2, label = gene_i, color = "darkblue") {
+  pheno_col_i = which(colnames(DO_pheno) == gene_i)
+  qtl_cis_i = scan1(genoprobs = DO_str_2016_aprobs,
+                    pheno = DO_pheno[,pheno_col_i, drop = FALSE],
+                    kinship = DO_str_2016_kinship,
+                    addcovar = addcovar_i,
+                    cores = n_cores)
+  return(plot_scan1(qtl_cis_i, map = DO_str_2016_cross$pmap, col = color, main = label))
+}
+
+plot_BLUP_str_2016 = function(gene_i, chr_i, label = gene_i, n_cores = 2, legendpos = "bottomleft") {
+  pheno_col_i = which(colnames(DO_pheno) == gene_i)
+  blup_i = scan1blup(DO_str_2016_aprobs[,chr_i], 
+                     pheno = DO_pheno[,pheno_col_i, drop = FALSE], 
+                     kinship = DO_str_2016_kinship[[chr_i]], 
+                     addcovar = addcovar_i,
+                     cores = n_cores)
+  return(plot_coefCC(blup_i, map = DO_str_2016_cross$pmap, legend = legendpos, main = label, bgcolor = "white"))
+}
+```
+
+Next, loading the `RTG_a2` data for mediation analysis.
+
+```{r}
+RTG_a2_phenotype = readRDS("./data/DO_IVSA_prediction_AQ_cancor.RDS")
+```
+
+Next, loading CC/DO founders key.
+
+```{r}
+cc_do_founders_key = readRDS("./data/founders_key/cc_do_founders_key.RDS")
+```
+
+Next, loading in `biomaRt` and getting a key for expression data.
+
+```{r}
+# Getting biomaRt data
+mm10_maRt = useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+                    host = "oct2018.archive.ensembl.org",
+                    dataset = "mmusculus_gene_ensembl")
+maRt_filter = "ensembl_gene_id"
+maRt_attributes = c("ensembl_gene_id","mgi_symbol","mgi_description","chromosome_name","start_position","end_position","strand")
+Mm_maRt = getBM(maRt_attributes, maRt_filter, colnames(DO_pheno), mm10_maRt)
+row.names(Mm_maRt) = Mm_maRt$ensembl_gene_id
+Mm_maRt$start_position = Mm_maRt$start_position / 1e6
+Mm_maRt$end_position = Mm_maRt$end_position / 1e6
+```
+
+Finally, loading the `RTG_a2` QTL results from Hao.
+
+```{r}
+# Loading RTG a1
+load("./output/RTG_out/m2G.a1.RTG.RData")
+RTG_a1_qtl = m2.qtl.out
+RTG_a1_perms = m2.permu
+
+# Loading RTG a2
+load("./output/RTG_out/m2G.a2.RTG.RData")
+RTG_a2_qtl = m2.qtl.out
+RTG_a2_perms = m2.permu
+
+# Loading RTG a3
+load("./output/RTG_out/m2G.a3.RTG.RData")
+RTG_a3_qtl = m2.qtl.out
+RTG_a3_perms = m2.permu
+
+# Removing RTG data that aren't needed for downstream analysis
+rm(list = c("m2.permu","m2.qtl.out","m2.sigqtl.blup",
+            "m2.sigqtl.coef","m2.sigqtl.genes",
+            "m2.sigqtl.peak","m2.sigqtl.snps"))
+
+# Loading physical map
+load("./output/RTG_out/gm_qc_pgmap.rdata")
+```
+
+### Analysis
+
+Identifying all genes within a 10 Mb window around the peaks.
+
+#### Chromosome 4 peak
+
+Starting with chr4.
+
+```{r}
+RTG_a2_chr4_peak_pos = 83.89746
+chr4_genes = Mm_maRt[which(Mm_maRt$chromosome_name == 4 &
+                           (Mm_maRt$start_position > (RTG_a2_chr4_peak_pos - 5) | Mm_maRt$end_position > (RTG_a2_chr4_peak_pos - 5)) &
+                           (Mm_maRt$start_position < (RTG_a2_chr4_peak_pos + 5) | Mm_maRt$end_position < (RTG_a2_chr4_peak_pos + 5))),]
+```
+
+Finding SNP associations for all of these genes and calculating correlations with the `RTG_a2` SNP associations. Starting with chr4.
+
+```{r}
+# Getting SNP range for Hao's chr4 results
+chr = 4
+start = min(RTG_a2_chr4_SNPs$pos)
+end = max(RTG_a2_chr4_SNPs$pos)
+
+# Looping through to make eQTL results
+for (i in 1:nrow(chr4_genes)) {
+  sig_gene_i = chr4_genes[i,"ensembl_gene_id"]
+  sig_label_i = chr4_genes[i,"mgi_symbol"]
+  pheno_col_i = which(colnames(DO_pheno) == sig_gene_i)
+  assoc = scan1snps(genoprobs = DO_str_2016_aprobs[,chr], 
+                    map = DO_str_2016_cross$pmap, 
+                    pheno = DO_pheno[,pheno_col_i, drop = FALSE], 
+                    kinship = DO_str_2016_kinship, 
+                    addcovar = addcovar_i, 
+                    query_func = query_func, 
+                    chr = chr, 
+                    start = start, 
+                    end = end, 
+                    keep_all_snps = TRUE)
+  if (exists("qtl_df")) {
+    qtl_df = cbind(qtl_df, as.data.frame(assoc$lod)[row.names(qtl_df),])
+  } else {
+    qtl_df = as.data.frame(assoc$lod)
+  }
+}
+
+colnames(qtl_df) = chr4_genes$mgi_symbol
+qtl_df = cbind(RTG_a2_chr4_SNPs[row.names(qtl_df),], qtl_df)
+colnames(qtl_df)[which(colnames(qtl_df) == "pheno1")] = "RTG_a2"
+```
+
+Calculating correlations between the `RTG_a2` SNP mapping for chr4.
+
+```{r}
+RTG_a2_cor = cor(qtl_df$RTG_a2,qtl_df[,chr4_genes$mgi_symbol],
+                 use = "pairwise.complete.obs")
+chr4_genes$cor_RTG_a2 = RTG_a2_cor[,as.character(chr4_genes$mgi_symbol)]
+rm(list = c("qtl_df"))
+```
+
+Performing mediation analysis with `RTG_a2` phenotype on chr4 genes. Beginning with a plot of the `RTG_a2` result on the data with expression information.
+
+```{r}
+RTG_a2_phenotype_mat = matrix(RTG_a2_phenotype[gsub("^(\\d{4,5})_.*$","\\1",row.names(DO_pheno)),"IVSA_novelty_cancor"], ncol = 1)
+row.names(RTG_a2_phenotype_mat) = row.names(DO_pheno)
+colnames(RTG_a2_phenotype_mat) = "RTG_a2"
+
+# Mapping RTG_a2 on chromosome 4
+qtl_RTG_a2_exprs = scan1(genoprobs = DO_str_2016_aprobs[,"4"],
+                         pheno = RTG_a2_phenotype_mat[,"RTG_a2"],
+                         kinship = DO_str_2016_kinship$`4`,
+                         addcovar = addcovar_i,
+                         cores = 2)
+chr4_markers = DO_str_2016_cross$pmap$`4`
+chr4_markers = chr4_markers[which(chr4_markers >= (RTG_a2_chr4_peak_pos - 5) &
+                                  chr4_markers <= (RTG_a2_chr4_peak_pos + 5))]
+chr4_pheno1 = as.data.frame(qtl_RTG_a2_exprs)[names(chr4_markers),"pheno1"]
+names(chr4_pheno1) = names(chr4_markers)
+max_marker = names(chr4_pheno1[which(chr4_pheno1 == max(chr4_pheno1))])
+max_marker_lod = chr4_pheno1[max_marker]
+
+# Doing mediation analysis: looking at LOD score drops
+for (i in 1:nrow(chr4_genes)) {
+  sig_gene_i = chr4_genes[i,"ensembl_gene_id"]
+  sig_label_i = chr4_genes[i,"mgi_symbol"]
+  pheno_col_i = which(colnames(DO_pheno) == sig_gene_i)
+  RTG_a2_scan_i = scan1(genoprobs = DO_str_2016_aprobs[,"4"],
+                        pheno = RTG_a2_phenotype_mat[,"RTG_a2"],
+                        kinship = DO_str_2016_kinship$`4`,
+                        addcovar = cbind(addcovar_i,
+                                         DO_pheno[,sig_gene_i]),
+                        cores = 2)
+  max_marker_lod_i = as.data.frame(RTG_a2_scan_i)[max_marker,1]
+  if (exists("max_markers")) {
+    max_markers = c(max_markers, max_marker_lod_i)
+    names(max_markers)[i] = sig_label_i
+  } else {
+    max_markers = max_marker_lod_i
+    names(max_markers) = sig_label_i
+  }
+}
+chr4_genes$med_RTG_a2 = max_markers[chr4_genes$mgi_symbol]
+rm(list = c("max_markers"))
+```
+
+Displaying correlations and mediation analysis (LOD score drops) with the `RTG_a2` SNP mapping.
+
+```{r}
+chr4_genes[order(chr4_genes$cor_RTG_a2, decreasing = TRUE),]
+```
+
+Identifying genes extreme on both mediation analysis and correlational analysis
+
+```{r}
+# Calculating a few variables that are useful for plotting
+chr4_genes$RTG_a2_lod_drop = max_marker_lod - chr4_genes$med_RTG_a2
+chr4_genes$label = ifelse(chr4_genes$RTG_a2_lod_drop > 0.1 & chr4_genes$cor_RTG_a2 > 0.3,
+                                 chr4_genes$mgi_symbol,"")
+chr4_genes$color = ifelse(chr4_genes$label == "", "#666666", "#CC3333")
+
+# Plotting mediation and SNP correlation variables with ggplot2 and ggrepel
+chr4_eQTL_cor_med_plot = ggplot(data = chr4_genes, aes(x = cor_RTG_a2,
+                                                       y = RTG_a2_lod_drop,
+                                                       color = color,
+                                                       label = label,
+                                                       size = color)) +
+  theme_classic() + 
+  theme(legend.position = "none") +
+  geom_point() +
+  scale_color_manual(values = c("#666666","#CC3333")) +
+  scale_size_manual(values = c(1,3)) +
+  geom_label_repel() +
+  xlab("eQTL SNP Correlation with RTG") +
+  ylab("RTG LOD Drop with Expression")
+
+# Displaying plot
+chr4_eQTL_cor_med_plot
+```
+
+These data show that the strongest correlation and largest LOD drops at the peak on 4 are with the genes *Mpdz*, *Psip1*, *Frem1*, *Lurap1l*, and *Snapc3*. Plotting their respective eQTL effects on chr4.
+
+Starting with *Mpdz*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000028402","4",label="Mpdz",legendpos = "bottomright")
+```
+
+Now plotting *Psip1*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000028484","4",label="Psip1",legendpos = "bottomright")
+```
+
+Now plotting *Snapc3*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000028483","4",label="Snapc3",legendpos = "bottomright")
+```
+
+Now plotting *Frem1*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000059049","4",label="Frem1",legendpos = "bottomright")
+```
+
+Now plotting *Lurap1l*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000048706","4",label="Lurap1l",legendpos = "bottomright")
+```
+
+#### Chromosome 18 peak
+
+Getting chr18 peak genes.
+
+```{r}
+RTG_a2_chr18_peak_pos = 80.66443
+chr18_genes = Mm_maRt[which(Mm_maRt$chromosome_name == 18 &
+                           (Mm_maRt$start_position > (RTG_a2_chr18_peak_pos - 5) | Mm_maRt$end_position > (RTG_a2_chr18_peak_pos - 5)) &
+                           (Mm_maRt$start_position < (RTG_a2_chr18_peak_pos + 5) | Mm_maRt$end_position < (RTG_a2_chr18_peak_pos + 5))),]
+```
+
+Finding SNP associations for all of these genes and calculating SNP association correlations with the `RTG_a2` for chr18 genes. 
+
+```{r}
+# Getting SNP range for Hao's chr18 results
+chr = 18
+start = min(RTG_a2_chr18_SNPs$pos)
+end = max(RTG_a2_chr18_SNPs$pos)
+
+# Looping through to make eQTL results
+for (i in 1:nrow(chr18_genes)) {
+  sig_gene_i = chr18_genes[i,"ensembl_gene_id"]
+  sig_label_i = chr18_genes[i,"mgi_symbol"]
+  pheno_col_i = which(colnames(DO_pheno) == sig_gene_i)
+  assoc = scan1snps(genoprobs = DO_str_2016_aprobs[,chr], 
+                    map = DO_str_2016_cross$pmap, 
+                    pheno = DO_pheno[,pheno_col_i, drop = FALSE], 
+                    kinship = DO_str_2016_kinship, 
+                    addcovar = addcovar_i, 
+                    query_func = query_func, 
+                    chr = chr, 
+                    start = start, 
+                    end = end, 
+                    keep_all_snps = TRUE)
+  if (exists("qtl_df")) {
+    qtl_df = cbind(qtl_df, as.data.frame(assoc$lod)[row.names(qtl_df),])
+  } else {
+    qtl_df = as.data.frame(assoc$lod)
+  }
+}
+
+colnames(qtl_df) = chr18_genes$mgi_symbol
+qtl_df = cbind(RTG_a2_chr18_SNPs[row.names(qtl_df),], qtl_df)
+colnames(qtl_df)[which(colnames(qtl_df) == "pheno1")] = "RTG_a2"
+```
+
+Calculating correlations between the `RTG_a2` SNP mapping for chr18.
+
+```{r}
+RTG_a2_cor = cor(qtl_df$RTG_a2,qtl_df[,chr18_genes$mgi_symbol],
+                 use = "pairwise.complete.obs")
+chr18_genes$cor_RTG_a2 = RTG_a2_cor[,as.character(chr18_genes$mgi_symbol)]
+```
+
+Performing mediation analysis with `RTG_a2` phenotype on chr18 genes. Beginning with a plot of the `RTG_a2` result on the data with expression information.
+
+```{r}
+RTG_a2_phenotype_mat = matrix(RTG_a2_phenotype[gsub("^(\\d{4,5})_.*$","\\1",row.names(DO_pheno)),"IVSA_novelty_cancor"], ncol = 1)
+row.names(RTG_a2_phenotype_mat) = row.names(DO_pheno)
+colnames(RTG_a2_phenotype_mat) = "RTG_a2"
+
+# Mapping RTG_a2 on chromosome 18
+qtl_RTG_a2_exprs = scan1(genoprobs = DO_str_2016_aprobs[,"18"],
+                         pheno = RTG_a2_phenotype_mat[,"RTG_a2"],
+                         kinship = DO_str_2016_kinship$`18`,
+                         addcovar = addcovar_i,
+                         cores = 2)
+chr18_markers = DO_str_2016_cross$pmap$`18`
+chr18_markers = chr18_markers[which(chr18_markers >= (RTG_a2_chr18_peak_pos - 5) &
+                                  chr18_markers <= (RTG_a2_chr18_peak_pos + 5))]
+chr18_pheno1 = as.data.frame(qtl_RTG_a2_exprs)[names(chr18_markers),"pheno1"]
+names(chr18_pheno1) = names(chr18_markers)
+max_marker = names(chr18_pheno1[which(chr18_pheno1 == max(chr18_pheno1))])
+max_marker_lod = chr18_pheno1[max_marker]
+
+# Doing mediation analysis: looking at LOD score drops
+for (i in 1:nrow(chr18_genes)) {
+  sig_gene_i = chr18_genes[i,"ensembl_gene_id"]
+  sig_label_i = chr18_genes[i,"mgi_symbol"]
+  pheno_col_i = which(colnames(DO_pheno) == sig_gene_i)
+  RTG_a2_scan_i = scan1(genoprobs = DO_str_2016_aprobs[,"18"],
+                        pheno = RTG_a2_phenotype_mat[,"RTG_a2"],
+                        kinship = DO_str_2016_kinship$`18`,
+                        addcovar = cbind(addcovar_i,
+                                         DO_pheno[,sig_gene_i]),
+                        cores = 2)
+  max_marker_lod_i = as.data.frame(RTG_a2_scan_i)[max_marker,1]
+  if (exists("max_markers")) {
+    max_markers = c(max_markers, max_marker_lod_i)
+    names(max_markers)[i] = sig_label_i
+  } else {
+    max_markers = max_marker_lod_i
+    names(max_markers) = sig_label_i
+  }
+}
+chr18_genes$med_RTG_a2 = max_markers[chr18_genes$mgi_symbol]
+rm(list = c("max_markers"))
+```
+
+Displaying correlations and mediation analysis (LOD score drops) with the `RTG_a2` SNP mapping.
+
+```{r}
+chr18_genes[order(chr18_genes$cor_RTG_a2, decreasing = TRUE),]
+```
+
+Identifying genes extreme on both mediation analysis and correlational analysis
+
+```{r}
+# Calculating a few variables that are useful for plotting
+chr18_genes$RTG_a2_lod_drop = max_marker_lod - chr18_genes$med_RTG_a2
+chr18_genes$label = ifelse(chr18_genes$RTG_a2_lod_drop > 0.1 & chr18_genes$cor_RTG_a2 > 0.3,
+                                 chr18_genes$mgi_symbol,"")
+chr18_genes$color = ifelse(chr18_genes$label == "", "#666666", "#CC3333")
+
+# Plotting mediation and SNP correlation variables with ggplot2 and ggrepel
+chr18_eQTL_cor_med_plot = ggplot(data = chr18_genes, aes(x = cor_RTG_a2,
+                                                       y = RTG_a2_lod_drop,
+                                                       color = color,
+                                                       label = label,
+                                                       size = color)) +
+  theme_classic() + 
+  theme(legend.position = "none") +
+  geom_point() +
+  scale_color_manual(values = c("#666666","#CC3333")) +
+  scale_size_manual(values = c(1,3)) +
+  geom_label_repel() +
+  xlab("eQTL SNP Correlation with RTG") +
+  ylab("RTG LOD Drop with Expression")
+
+# Displaying plot
+chr18_eQTL_cor_med_plot
+```
+
+These data show that the strongest correlation and largest LOD drops at the peak on 18 are with the genes *Cndp2*, *Setbp1*, and *Slc14a1*. Plotting their respective eQTL effects on chr18.
+
+Starting with *Cndp2*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000024644","18",label="Cndp2",legendpos = "bottomleft")
+```
+
+Finally plotting *Setbp1*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000024548","18",label="Setbp1",legendpos = "bottomleft")
+```
+
+*Setbp1* looks most like the effects plot for chr18 sent along by Hao.
+
+### Output
+
+The output data are saved in `./data/`.
+
+```{r}
+saveRDS(chr4_genes,"./data/chr4_QTL_results.RDS")
+saveRDS(chr18_genes,"./data/chr18_QTL_results.RDS")
+```
+
+# Discussion
+
+## Identifying possible mechanism
+
+These results are particularly interesting given the genomic context. The peak appears to occur at the edge of a TAD (from HiC data derived from [the Yue lab's HiC browser](http://promoter.bx.psu.edu/hi-c/view.php?method=Hi-C&species=mouse&assembly=mm10&source=inside&tissue=Neuron&type=Jiang_2017-raw&resolution=10&c_url=&transfer=&chr=chr4&start=80000000&end=88000000&sessionID=&browser=none), accessed 2020-07-09).
+
+```{r echo=FALSE, fig.cap = "Figure 4: HiC results for *Mus musculus* chr4"}
+knitr::include_graphics("../data/figures/Mouse_chr4_80Mb-88Mb.png")
+```
+
+A shared syntenic region appears to be [present on human chromosome 9](http://promoter.bx.psu.edu/hi-c/view.php?method=Hi-C&species=human&assembly=hg38&source=inside&tissue=Cortex_DLPFC&type=Schmitt2016-raw&resolution=10&c_url=&transfer=&chr=chr9&start=12000000&end=20000000&sessionID=&browser=none) (accessed 2020-07-09).
+
+```{r echo=FALSE, fig.cap = "Figure 5: HiC results for *Homo sapiens* chr9"}
+knitr::include_graphics("../data/figures/Human_chr9_12Mb-17p8Mb.png")
+```
+
+In mouse, summarized data from the [UCSC Genome Browser](http://genome.ucsc.edu/cgi-bin/hgTracks?db=mm10&lastVirtModeType=default&lastVirtModeExtraState=&virtModeType=default&virtMode=0&nonVirtPosition=&position=chr4%3A80000000%2D88000000&hgsid=859033387_AyACrMUkAbG3fqA7sF6sLDjQXNNB) (accessed 2020-07-13) support this TAD, showing that at ~84Mb, the region is apparently the border of a G-band. Additionally, there are multiple long-distance enhancer elements reaching to *Psip1*, *Mpdz*, and *Snapc3* from the ENCODE track.
+
+```{r echo=FALSE, fig.cap = "Figure 6: Mouse chr4 demonstrates regulatory structure to support the TAD."}
+knitr::include_graphics("../data/figures/Mm_chr4_80Mb_to_88Mb.png")
+```
+
+In human, the data from the [UCSC Genome Browser](http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&lastVirtModeType=default&lastVirtModeExtraState=&virtModeType=default&virtMode=0&nonVirtPosition=&position=chr9%3A12000000%2D20000000&hgsid=859033387_AyACrMUkAbG3fqA7sF6sLDjQXNNB) (accessed 2020-07-13) appear somewhat similar.
+
+```{r echo=FALSE, fig.cap = "Figure 7: Human chr9 appears to have similar regulatory structure."}
+knitr::include_graphics("../data/figures/Hs_chr9_12Mb_to_20Mb.png")
+```
+
+This supports the argument that the variant affecting behavior is potentially working at the level of a distal enhancer or even a 3D chromatin remodeling component.
+
+## QTL figures
+
+Plotting publication-quality figures for the QTL analysis. Starting with the `RTG_a1` QTL plot.
+
+```{r}
+# Getting QTL thresholds
+RTG_a1_permu_thresholds = quantile(RTG_a1_perms$RTG_a1, probs = c(0, 1-0.63, 1-0.1, 1-0.05 ,1-0.01, 1))
+RTG_a1_suggestive = RTG_a1_permu_thresholds["37%"]
+RTG_a1_ten_percent = RTG_a1_permu_thresholds["90%"]
+RTG_a1_five_percent = RTG_a1_permu_thresholds["95%"]
+RTG_a1_one_percent = RTG_a1_permu_thresholds["99%"]
+
+# Getting information to plot
+gap_Mb = 20
+min_chr_i = 0
+chrs = as.character(c(1:19,"X"))
+RTG_a1_df = as.data.frame(RTG_a1_qtl$RTG_a1)
+RTG_a1_df$marker = row.names(RTG_a1_df)
+RTG_a1_df$chr = rep(NA, times = nrow(RTG_a1_df))
+RTG_a1_df$stagger = rep(NA, times = nrow(RTG_a1_df))
+RTG_a1_df$pos = rep(-10, times = nrow(RTG_a1_df))
+RTG_a1_df$calc_pos = rep(-10, times = nrow(RTG_a1_df))
+RTG_a1_df$label = rep("", times = nrow(RTG_a1_df))
+RTG_a1_min_max_mid = data.frame(row.names = chrs,
+                                chr = chrs,
+                                max = rep(-10, times = length(chrs)),
+                                calc_min = rep(-10, times = length(chrs)),
+                                calc_mid = rep(-10, times = length(chrs)),
+                                calc_max = rep(-10, times = length(chrs)))
+
+# Getting data frame for plotting RTG a1 in ggplot2
+for (i in 1:length(chrs)) {
+  chr_i = chrs[i]
+  pmap_i = pmap[[chr_i]]
+  RTG_a1_df[names(pmap_i),"chr"] = chr_i
+  RTG_a1_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+  RTG_a1_df[names(pmap_i),"pos"] = pmap_i
+  RTG_a1_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+  max_lod_chr_i = max(RTG_a1_df[names(pmap_i),"pheno1"])
+  max_marker_chr_i = RTG_a1_df[which(RTG_a1_df$chr == chr_i & RTG_a1_df$pheno1 == max_lod_chr_i),"marker"]
+  RTG_a1_df[max_marker_chr_i,"label"] = ifelse(max_lod_chr_i > RTG_a1_five_percent,
+                                               paste(max_marker_chr_i, " at chr", chr_i,
+                                                     ":",round(RTG_a1_df[max_marker_chr_i,"pos"], 2),
+                                                     " Mb (LOD = ",round(max_lod_chr_i, 2),")", sep = ""),
+                                               "")
+  max_pos_i = max(pmap_i)
+  RTG_a1_min_max_mid[chr_i,"calc_min"] = min_chr_i
+  RTG_a1_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+  RTG_a1_min_max_mid[chr_i,"max"] = max_pos_i
+  min_chr_i = min_chr_i + max_pos_i + gap_Mb
+}
+RTG_a1_min_max_mid$calc_mid = RTG_a1_min_max_mid$calc_min + (0.5 * (RTG_a1_min_max_mid$calc_max - RTG_a1_min_max_mid$calc_min))
+RTG_a1_df$chr = factor(RTG_a1_df$chr, levels = chrs, ordered = TRUE)
+
+# Plotting RTG a1
+RTG_a1_mapping_plot = ggplot(data = RTG_a1_df, aes(x = calc_pos,
+                                                   y = pheno1,
+                                                   color = stagger,
+                                                   group = chr, 
+                                                   label = label)) +
+  theme_bw() +
+  theme(legend.position = "none", panel.grid = element_line(color = "#FFFFFF")) +
+  geom_line(size = 0.5) +
+  scale_x_continuous(labels = RTG_a1_min_max_mid$chr, 
+                     breaks = RTG_a1_min_max_mid$calc_mid, 
+                     minor_breaks = c(RTG_a1_min_max_mid$calc_min, RTG_a1_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#002D72","#0085CA")) +
+  xlab(NULL) +
+  ylab("LOD Score") +  
+  geom_hline(yintercept = RTG_a1_five_percent, color = "#AB2328", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a1_ten_percent, color = "#ED8B00", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a1_suggestive, color = "#F1C400", linetype = "dashed", size = 1) +
+  annotate("text", label = expression(paste(alpha, " = 0.05")), x = 80, y = RTG_a1_five_percent + 0.25, color = "#AB2328") +
+  annotate("text", label = expression(paste(alpha, " = 0.10")), x = 80, y = RTG_a1_ten_percent + 0.25, color = "#ED8B00") +
+  annotate("text", label = "Suggestive", x = 80, y = RTG_a1_suggestive + 0.25, color = "#F1C400") +
+  geom_label_repel() +
+  ggtitle("RTG Analysis 1: Mapping Results")
+RTG_a1_mapping_plot
+```
+
+Plotting `RTG_a2` QTL plot
+
+```{r}
+# Getting QTL thresholds
+RTG_a2_permu_thresholds = quantile(RTG_a2_perms$RTG_a2, probs = c(0, 1-0.63, 1-0.1, 1-0.05 ,1-0.01, 1))
+RTG_a2_suggestive = RTG_a2_permu_thresholds["37%"]
+RTG_a2_ten_percent = RTG_a2_permu_thresholds["90%"]
+RTG_a2_five_percent = RTG_a2_permu_thresholds["95%"]
+RTG_a2_one_percent = RTG_a2_permu_thresholds["99%"]
+
+# Getting information to plot
+gap_Mb = 20
+min_chr_i = 0
+chrs = as.character(c(1:19,"X"))
+RTG_a2_df = as.data.frame(RTG_a2_qtl$RTG_a2)
+RTG_a2_df$marker = row.names(RTG_a2_df)
+RTG_a2_df$chr = rep(NA, times = nrow(RTG_a2_df))
+RTG_a2_df$stagger = rep(NA, times = nrow(RTG_a2_df))
+RTG_a2_df$pos = rep(-10, times = nrow(RTG_a2_df))
+RTG_a2_df$calc_pos = rep(-10, times = nrow(RTG_a2_df))
+RTG_a2_df$label = rep("", times = nrow(RTG_a2_df))
+RTG_a2_min_max_mid = data.frame(row.names = chrs,
+                                chr = chrs,
+                                max = rep(-10, times = length(chrs)),
+                                calc_min = rep(-10, times = length(chrs)),
+                                calc_mid = rep(-10, times = length(chrs)),
+                                calc_max = rep(-10, times = length(chrs)))
+
+# Getting data frame for plotting RTG a2 in ggplot2
+for (i in 1:length(chrs)) {
+  chr_i = chrs[i]
+  pmap_i = pmap[[chr_i]]
+  RTG_a2_df[names(pmap_i),"chr"] = chr_i
+  RTG_a2_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+  RTG_a2_df[names(pmap_i),"pos"] = pmap_i
+  RTG_a2_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+  max_lod_chr_i = max(RTG_a2_df[names(pmap_i),"pheno1"])
+  max_marker_chr_i = RTG_a2_df[which(RTG_a2_df$chr == chr_i & RTG_a2_df$pheno1 == max_lod_chr_i),"marker"]
+  RTG_a2_df[max_marker_chr_i,"label"] = ifelse(max_lod_chr_i > RTG_a2_five_percent,
+                                               paste(max_marker_chr_i, " at chr", chr_i,
+                                                     ":",round(RTG_a2_df[max_marker_chr_i,"pos"], 2),
+                                                     " Mb (LOD = ",round(max_lod_chr_i, 2),")", sep = ""),
+                                               "")
+  max_pos_i = max(pmap_i)
+  RTG_a2_min_max_mid[chr_i,"calc_min"] = min_chr_i
+  RTG_a2_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+  RTG_a2_min_max_mid[chr_i,"max"] = max_pos_i
+  min_chr_i = min_chr_i + max_pos_i + gap_Mb
+}
+RTG_a2_min_max_mid$calc_mid = RTG_a2_min_max_mid$calc_min + (0.5 * (RTG_a2_min_max_mid$calc_max - RTG_a2_min_max_mid$calc_min))
+RTG_a2_df$chr = factor(RTG_a2_df$chr, levels = chrs, ordered = TRUE)
+
+# Plotting RTG a2
+RTG_a2_mapping_plot = ggplot(data = RTG_a2_df, aes(x = calc_pos,
+                                                   y = pheno1,
+                                                   color = stagger,
+                                                   group = chr, 
+                                                   label = label)) +
+  theme_bw() +
+  theme(legend.position = "none", panel.grid = element_line(color = "#FFFFFF")) +
+  geom_line(size = 0.5) +
+  scale_x_continuous(labels = RTG_a2_min_max_mid$chr, 
+                     breaks = RTG_a2_min_max_mid$calc_mid, 
+                     minor_breaks = c(RTG_a2_min_max_mid$calc_min, RTG_a2_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#002D72","#0085CA")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  geom_hline(yintercept = RTG_a2_five_percent, color = "#AB2328", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a2_ten_percent, color = "#ED8B00", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a2_suggestive, color = "#F1C400", linetype = "dashed", size = 1) +
+  annotate("text", label = expression(paste(alpha, " = 0.05")), x = 80, y = RTG_a2_five_percent + 0.25, color = "#AB2328") +
+  annotate("text", label = expression(paste(alpha, " = 0.10")), x = 80, y = RTG_a2_ten_percent + 0.25, color = "#ED8B00") +
+  annotate("text", label = "Suggestive", x = 80, y = RTG_a2_suggestive + 0.25, color = "#F1C400") +
+  geom_label_repel() +
+  ggtitle("RTG Analysis 2: Mapping Results")
+RTG_a2_mapping_plot
+```
+
+Plotting `RTG_a3` plot.
+
+```{r}
+# Getting QTL thresholds
+RTG_a3_permu_thresholds = quantile(RTG_a3_perms$RTG_a3, probs = c(0, 1-0.63, 1-0.1, 1-0.05 ,1-0.01, 1))
+RTG_a3_suggestive = RTG_a3_permu_thresholds["37%"]
+RTG_a3_ten_percent = RTG_a3_permu_thresholds["90%"]
+RTG_a3_five_percent = RTG_a3_permu_thresholds["95%"]
+RTG_a3_one_percent = RTG_a3_permu_thresholds["99%"]
+
+# Getting information to plot
+gap_Mb = 20
+min_chr_i = 0
+chrs = as.character(c(1:19,"X"))
+RTG_a3_df = as.data.frame(RTG_a3_qtl$RTG_a3)
+RTG_a3_df$marker = row.names(RTG_a3_df)
+RTG_a3_df$chr = rep(NA, times = nrow(RTG_a3_df))
+RTG_a3_df$stagger = rep(NA, times = nrow(RTG_a3_df))
+RTG_a3_df$pos = rep(-10, times = nrow(RTG_a3_df))
+RTG_a3_df$calc_pos = rep(-10, times = nrow(RTG_a3_df))
+RTG_a3_df$label = rep("", times = nrow(RTG_a3_df))
+RTG_a3_min_max_mid = data.frame(row.names = chrs,
+                                chr = chrs,
+                                max = rep(-10, times = length(chrs)),
+                                calc_min = rep(-10, times = length(chrs)),
+                                calc_mid = rep(-10, times = length(chrs)),
+                                calc_max = rep(-10, times = length(chrs)))
+
+# Getting data frame for plotting RTG a3 in ggplot2
+for (i in 1:length(chrs)) {
+  chr_i = chrs[i]
+  pmap_i = pmap[[chr_i]]
+  RTG_a3_df[names(pmap_i),"chr"] = chr_i
+  RTG_a3_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+  RTG_a3_df[names(pmap_i),"pos"] = pmap_i
+  RTG_a3_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+  max_lod_chr_i = max(RTG_a3_df[names(pmap_i),"pheno1"], na.rm = TRUE)
+  max_marker_chr_i = RTG_a3_df[which(RTG_a3_df$chr == chr_i & RTG_a3_df$pheno1 == max_lod_chr_i),"marker"]
+  RTG_a3_df[max_marker_chr_i,"label"] = ifelse(max_lod_chr_i > RTG_a3_five_percent,
+                                               paste(max_marker_chr_i, " at chr", chr_i,
+                                                     ":",round(RTG_a3_df[max_marker_chr_i,"pos"], 2),
+                                                     " Mb (LOD = ",round(max_lod_chr_i, 2),")", sep = ""),
+                                               "")
+  max_pos_i = max(pmap_i)
+  RTG_a3_min_max_mid[chr_i,"calc_min"] = min_chr_i
+  RTG_a3_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+  RTG_a3_min_max_mid[chr_i,"max"] = max_pos_i
+  min_chr_i = min_chr_i + max_pos_i + gap_Mb
+}
+RTG_a3_min_max_mid$calc_mid = RTG_a3_min_max_mid$calc_min + (0.5 * (RTG_a3_min_max_mid$calc_max - RTG_a3_min_max_mid$calc_min))
+RTG_a3_df$chr = factor(RTG_a3_df$chr, levels = chrs, ordered = TRUE)
+
+# Plotting RTG a3
+RTG_a3_mapping_plot = ggplot(data = RTG_a3_df, aes(x = calc_pos,
+                                                   y = pheno1,
+                                                   color = stagger,
+                                                   group = chr, 
+                                                   label = label)) +
+  theme_bw() +
+  theme(legend.position = "none", panel.grid = element_line(color = "#FFFFFF")) +
+  geom_line(size = 0.5) +
+  scale_x_continuous(labels = RTG_a3_min_max_mid$chr, 
+                     breaks = RTG_a3_min_max_mid$calc_mid, 
+                     minor_breaks = c(RTG_a3_min_max_mid$calc_min, RTG_a3_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#002D72","#0085CA")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  geom_hline(yintercept = RTG_a3_five_percent, color = "#AB2328", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a3_ten_percent, color = "#ED8B00", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a3_suggestive, color = "#F1C400", linetype = "dashed", size = 1) +
+  annotate("text", label = expression(paste(alpha, " = 0.05")), x = 80, y = RTG_a3_five_percent + 0.25, color = "#AB2328") +
+  annotate("text", label = expression(paste(alpha, " = 0.10")), x = 80, y = RTG_a3_ten_percent + 0.25, color = "#ED8B00") +
+  annotate("text", label = "Suggestive", x = 80, y = RTG_a3_suggestive + 0.25, color = "#F1C400") +
+  geom_label_repel() +
+  ggtitle("RTG Analysis 3: Mapping Results")
+RTG_a3_mapping_plot
+```
+
+## Compiling QTL table
+
+Compiling table of QTL results
+
+```{r}
+# RTG_a1 peaks
+RTG_a1_peaks = find_peaks(RTG_a1_qtl$RTG_a1, map = pmap, threshold = RTG_a1_suggestive, prob = 0.95)
+RTG_a1_peaks$lodcolumn = rep("RTG_a1", times = nrow(RTG_a1_peaks))
+RTG_a1_peaks$threshold = rep("suggestive", times = nrow(RTG_a1_peaks))
+RTG_a1_peaks$threshold = ifelse(RTG_a1_peaks$lod > RTG_a1_ten_percent, "ten_percent", RTG_a1_peaks$threshold)
+RTG_a1_peaks$threshold = ifelse(RTG_a1_peaks$lod > RTG_a1_five_percent, "five_percent", RTG_a1_peaks$threshold)
+RTG_a1_peaks$threshold = ifelse(RTG_a1_peaks$lod > RTG_a1_one_percent, "one_percent", RTG_a1_peaks$threshold)
+
+# RTG_a2 peaks
+RTG_a2_peaks = find_peaks(RTG_a2_qtl$RTG_a2, map = pmap, threshold = RTG_a2_suggestive, prob = 0.95)
+RTG_a2_peaks$lodcolumn = rep("RTG_a2", times = nrow(RTG_a2_peaks))
+RTG_a2_peaks$threshold = rep("suggestive", times = nrow(RTG_a2_peaks))
+RTG_a2_peaks$threshold = ifelse(RTG_a2_peaks$lod > RTG_a2_ten_percent, "ten_percent", RTG_a2_peaks$threshold)
+RTG_a2_peaks$threshold = ifelse(RTG_a2_peaks$lod > RTG_a2_five_percent, "five_percent", RTG_a2_peaks$threshold)
+RTG_a2_peaks$threshold = ifelse(RTG_a2_peaks$lod > RTG_a2_one_percent, "one_percent", RTG_a2_peaks$threshold)
+
+# RTG_a3 peaks
+RTG_a3_peaks = find_peaks(RTG_a3_qtl$RTG_a3, map = pmap, threshold = RTG_a3_suggestive, prob = 0.95)
+RTG_a3_peaks$lodcolumn = rep("RTG_a3", times = nrow(RTG_a3_peaks))
+RTG_a3_peaks$threshold = rep("suggestive", times = nrow(RTG_a3_peaks))
+RTG_a3_peaks$threshold = ifelse(RTG_a3_peaks$lod > RTG_a3_ten_percent, "ten_percent", RTG_a3_peaks$threshold)
+RTG_a3_peaks$threshold = ifelse(RTG_a3_peaks$lod > RTG_a3_five_percent, "five_percent", RTG_a3_peaks$threshold)
+RTG_a3_peaks$threshold = ifelse(RTG_a3_peaks$lod > RTG_a3_one_percent, "one_percent", RTG_a3_peaks$threshold)
+
+# Making and displaying an RTG peaks table
+RTG_peaks = rbind(RTG_a1_peaks, RTG_a2_peaks, RTG_a3_peaks)
+saveRDS(RTG_peaks[order(RTG_peaks$lod, decreasing = TRUE),], file = "./data/RTG_QTL_peaks.RDS")
+RTG_peaks[order(RTG_peaks$lod, decreasing = TRUE),]
+```
+
+## 3D chromatin figures
+
+Using the `Gviz` package to make figures. Including [mouse neuron TAD data](http://promoter.bx.psu.edu/hi-c/downloads/mm10.TADs.zip) and [mouse neuron chromosome loop data](http://promoter.bx.psu.edu/hi-c/downloads/loops-mm10.zip) (accessed 2020-07-15) from the Yue Lab's browser.
+
+```{r}
+# Getting coordinates
+Mm_chr4_from = 80e6
+Mm_chr4_to = 88e6
+
+# Getting G banding information
+mm10_chr4_bands_table = "http://hgdownload.cse.ucsc.edu/goldenpath/mm10/database/cytoBand.txt.gz"
+mm10_chr4_bands = fread(mm10_chr4_bands_table, col.names = c("chromosome","start","end","id","color"), data.table = FALSE)
+mm10_chr4_bands$color = ifelse(mm10_chr4_bands$color == "gneg", "gray100",
+                               paste("gray",100 - as.numeric(gsub("gpos","",mm10_chr4_bands$color)), sep = ""))
+mm10_chr4_bands = mm10_chr4_bands[which(mm10_chr4_bands$chromosome == "chr4"),]
+mm10_chr4_bands_fromto = mm10_chr4_bands[which(mm10_chr4_bands$id %in% c("qC3","qC4")),]
+mm10_chr4_bands_fromto$strand = rep("*", times = 2)
+mm10_chr4_bands_fromto$qC3 = ifelse(mm10_chr4_bands_fromto$id == "qC3", 1, NA)
+mm10_chr4_bands_fromto$qC4 = ifelse(mm10_chr4_bands_fromto$id == "qC4", 1, NA)
+mm10_chr4_bands_track = AnnotationTrack(mm10_chr4_bands_fromto[,c("chromosome","start","end","strand","qC3","qC4")],
+                                        groups = c("odd","even"), fill = c("gray0","gray100"), id = c("qC3","qC4"),
+                                        stacking = "dense", name = "G Bands", showId = TRUE)
+
+# Getting RTG_a2 SNP LOD score data track
+RTG_a2_max_SNP_lod = max(RTG_a2_chr4_SNPs$pheno1)
+RTG_a2_chr4_SNPs_data = RTG_a2_chr4_SNPs %>%
+  mutate(chromosome = paste("chr",chr,sep=""),
+         start = (pos * 1e6) - 1,
+         end = (pos * 1e6) + 1,
+         color = ifelse(pheno1 >= (RTG_a2_max_SNP_lod - 2),
+                        "hi","lo"),
+         blue = ifelse(pheno1 >= (RTG_a2_max_SNP_lod - 2),
+                       pheno1, NA),
+         gray = ifelse(pheno1 >= (RTG_a2_max_SNP_lod - 2),
+                       NA, pheno1),
+         strand = rep("*", times = length(pheno1)))
+RTG_a2_chr4_SNPs_data_track = DataTrack(genome = "mm10",
+                                        RTG_a2_chr4_SNPs_data[,c("chromosome","start","end","strand","blue","gray")],
+                                        groups = c("hi","lo"),
+                                        col = c("#CC3333","lightblue"),
+                                        name = "RTG a2 SNP LODs",
+                                        type = "p", legend = FALSE)
+
+# Getting neuron TAD track from HiC data
+TADs = read.table(file = "./data/tads_loops/Neuron_Cortical.Bonev_2017-raw.domains",
+                  sep = "\t", header = FALSE, stringsAsFactors = FALSE,
+                  col.names = c("chromosome","start","end"))
+TADs$chromosome = as.character(paste("chr", TADs$chromosome, sep=""))
+TADs$strand = rep("*", times = nrow(TADs))
+chr4_TADs = TADs[which(TADs$chromosome == "chr4"),]
+chr4_TADs$number = 1:nrow(chr4_TADs)
+chr4_TADs$odd = ifelse((chr4_TADs$number %% 2) == 0, NA, 1)
+chr4_TADs$even = ifelse((chr4_TADs$number %% 2) == 0, 1, NA)
+chr4_TADs_track = AnnotationTrack(chr4_TADs[,c("chromosome","start","end","strand","odd","even")],
+                                  groups = c("odd","even"), fill = c("navajowhite","navajowhite3"),
+                                  stacking = "dense", name = "TADs", col = NULL)
+
+# Getting neuron chromosome loop track from HiC data
+loops = read.table(file = "./data/tads_loops/Bonev_2017.Neuron.mm10.peakachu-merged.loops",
+                   sep = "\t", header = FALSE, stringsAsFactors = FALSE,
+                   col.names = c("chromosome_l1","start_l1","end_l1",
+                                 "chromosome_l2","start_l2","end_l2","weight"))
+loops$strand = rep("*", times = nrow(loops))
+chr4_loops = loops[which(loops$chromosome_l1 == "chr4" & loops$chromosome_l2 == "chr4"),]
+
+# Making gene tracks
+grtr_mm10_chr4_ensembl = BiomartGeneRegionTrack(start = 80e6, end = 88e6, biomart = mm10_maRt, chromosome = 4,
+                                                genome = "mm10", stacking = "squish", name = "Mouse Protein-Coding Genes", showId=TRUE,
+                                                collapseTranscripts = "longest", col = NULL, shape = "smallArrow",
+                                                filter = list(transcript_biotype = "protein_coding"))
+
+gaxis = GenomeAxisTrack(exponent = 6)
+itrack_mm10_chr4 = IdeogramTrack(genome = "mm10", chromosome = "chr4")
+plotTracks(list(itrack_mm10_chr4, gaxis, RTG_a2_chr4_SNPs_data_track, 
+                chr4_TADs_track, mm10_chr4_bands_track,
+                grtr_mm10_chr4_ensembl),
+           from = Mm_chr4_from, to = Mm_chr4_to)
+```
+
+Using the `Gviz` package to make a similar figure for humans. Including [human hippocampus TAD data](http://promoter.bx.psu.edu/hi-c/downloads/hg38.TADs.zip) and [human hippocampus chromosome loop data](http://promoter.bx.psu.edu/hi-c/downloads/loops-hg38.zip) (accessed 2020-07-15) from the Yue Lab's browser.
+
+```{r}
+# Getting coordinates
+Hs_chr9_from = 12e6
+Hs_chr9_to = 20e6
+
+# Getting biomaRt data
+hg38_maRt = useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+                    host = "oct2018.archive.ensembl.org",
+                    dataset = "hsapiens_gene_ensembl")
+
+# Getting G banding information
+hg38_chr9_bands_table = "http://hgdownload.cse.ucsc.edu/goldenpath/hg38/database/cytoBand.txt.gz"
+hg38_chr9_bands = fread(hg38_chr9_bands_table, col.names = c("chromosome","start","end","id","color"), data.table = FALSE)
+hg38_chr9_bands$color = ifelse(hg38_chr9_bands$color == "gneg", "gray100",
+                               paste("gray",100 - as.numeric(gsub("gpos","",hg38_chr9_bands$color)), sep = ""))
+hg38_chr9_bands = hg38_chr9_bands[which(hg38_chr9_bands$chromosome == "chr9"),]
+hg38_chr9_bands_fromto = hg38_chr9_bands[which(hg38_chr9_bands$id %in% c("p23","p22.3","p22.2","p22.1")),]
+hg38_chr9_bands_fromto$strand = rep("*", times = 2)
+hg38_chr9_bands_fromto$p23 = ifelse(hg38_chr9_bands_fromto$id == "p23", 1, NA)
+hg38_chr9_bands_fromto$p22.3 = ifelse(hg38_chr9_bands_fromto$id == "p22.3", 1, NA)
+hg38_chr9_bands_fromto$p22.2 = ifelse(hg38_chr9_bands_fromto$id == "p22.2", 1, NA)
+hg38_chr9_bands_fromto$p22.1 = ifelse(hg38_chr9_bands_fromto$id == "p22.1", 1, NA)
+hg38_chr9_bands_track = AnnotationTrack(hg38_chr9_bands_fromto[,c("chromosome","start","end","strand","p23","p22.3","p22.2","p22.1")],
+                                        groups = c("p23","p22.3","p22.2","p22.1"), fill = c("gray25","gray100","gray75","gray100"), id = c("p23","p22.3","p22.2","p22.1"),
+                                        stacking = "dense", name = "G Bands", showId = TRUE)
+
+# Getting neuron TAD track from HiC data
+hg38_TADs = read.table(file = "./data/tads_loops/Hippocampus_Schmitt2016-raw_TADs.txt",
+                  sep = "\t", header = FALSE, stringsAsFactors = FALSE,
+                  col.names = c("chromosome","start","end"))
+hg38_TADs$strand = rep("*", times = nrow(hg38_TADs))
+chr9_TADs = hg38_TADs[which(hg38_TADs$chromosome == "chr9"),]
+chr9_TADs$number = 1:nrow(chr9_TADs)
+chr9_TADs$odd = ifelse((chr9_TADs$number %% 2) == 0, NA, 1)
+chr9_TADs$even = ifelse((chr9_TADs$number %% 2) == 0, 1, NA)
+chr9_TADs_track = AnnotationTrack(chr9_TADs[,c("chromosome","start","end","strand","odd","even")],
+                                  groups = c("odd","even"), fill = c("navajowhite","navajowhite3"),
+                                  stacking = "dense", name = "TADs", col = NULL)
+
+# Making gene tracks
+grtr_hg38_chr9_ensembl = BiomartGeneRegionTrack(start = Hs_chr9_from, end = 20e6, biomart = hg38_maRt, chromosome = 9,
+                                                genome = "hg38", stacking = "squish", name = "Human Protein-Coding Genes", showId=TRUE,
+                                                collapseTranscripts = "longest", col = NULL, shape = "smallArrow",
+                                                filter = list(transcript_biotype = "protein_coding"))
+
+gaxis = GenomeAxisTrack()
+itrack_hg38_chr9 = IdeogramTrack(genome = "hg38", chromosome = "chr9")
+plotTracks(list(itrack_hg38_chr9, gaxis,
+                chr9_TADs_track, hg38_chr9_bands_track,
+                grtr_hg38_chr9_ensembl),
+           from = Hs_chr9_from, to = Hs_chr9_to)
+```
+
+Plotting these together in `grid`.
+
+```{r}
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(2, 1, heights=c(0.6,0.4))))
+pushViewport(viewport(layout.pos.col = 1, layout.pos.row = 1))
+plotTracks(list(itrack_mm10_chr4, mm10_chr4_bands_track, gaxis,
+                RTG_a2_chr4_SNPs_data_track,
+                grtr_mm10_chr4_ensembl,
+                chr4_TADs_track),
+           from = Mm_chr4_from, to = Mm_chr4_to, add = TRUE)
+popViewport(1)
+pushViewport(viewport(layout.pos.col = 1, layout.pos.row = 2))
+plotTracks(list(chr9_TADs_track,
+                grtr_hg38_chr9_ensembl,
+                gaxis, hg38_chr9_bands_track ,itrack_hg38_chr9),
+           from = Hs_chr9_from, to = Hs_chr9_to, add = TRUE)
+popViewport(1)
+```
+
+## Identifying SNPs, INDELs, and SVs
+
+From [Sanger MGP v1505](https://www.sanger.ac.uk/sanger/Mouse_SnpViewer/rel-1505) (accessed 2020-07-16), downloaded [SNPs](https://www.sanger.ac.uk/sanger/Mouse_SnpViewer/rel-1505?gene=&context=0&loc=4%3A79000000-89000000&release=rel-1505&sn=3_prime_utr_variant&sn=5_prime_utr_variant&sn=coding_sequence_variant&sn=downstream_gene_variant&sn=feature_elongation&sn=feature_truncation&sn=frameshift_variant&sn=incomplete_terminal_codon_variant&sn=inframe_deletion&sn=inframe_insertion&sn=initiator_codon_variant&sn=intergenic_variant&sn=intron_variant&sn=mature_mirna_variant&sn=missense_variant&sn=nmd_transcript_variant&sn=nc_transcript_variant&sn=non_coding_exon_variant&sn=regulatory_region_ablation&sn=regulatory_region_amplification&sn=regulatory_region_variant&sn=splice_acceptor_variant&sn=splice_donor_variant&sn=splice_region_variant&sn=stop_gained&sn=stop_lost&sn=stop_retained_variant&sn=synonymous_variant&sn=tf_binding_site_variant&sn=tfbs_ablation&sn=tfbs_amplification&sn=transcript_ablation&sn=transcript_amplification&sn=_&sn=upstream_gene_variant&sv=complex_events&sv=copy_number_gain&sv=deletion&sv=insertion&sv=inversion&st=129s1_svimj&st=a_j&st=cast_eij&st=nod_shiltj&st=nzo_hlltj&st=pwk_phj&st=wsb_eij#t_snps), [INDELs](https://www.sanger.ac.uk/sanger/Mouse_SnpViewer/rel-1505?gene=&context=0&loc=4%3A79000000-89000000&release=rel-1505&sn=3_prime_utr_variant&sn=5_prime_utr_variant&sn=coding_sequence_variant&sn=downstream_gene_variant&sn=feature_elongation&sn=feature_truncation&sn=frameshift_variant&sn=incomplete_terminal_codon_variant&sn=inframe_deletion&sn=inframe_insertion&sn=initiator_codon_variant&sn=intergenic_variant&sn=intron_variant&sn=mature_mirna_variant&sn=missense_variant&sn=nmd_transcript_variant&sn=nc_transcript_variant&sn=non_coding_exon_variant&sn=regulatory_region_ablation&sn=regulatory_region_amplification&sn=regulatory_region_variant&sn=splice_acceptor_variant&sn=splice_donor_variant&sn=splice_region_variant&sn=stop_gained&sn=stop_lost&sn=stop_retained_variant&sn=synonymous_variant&sn=tf_binding_site_variant&sn=tfbs_ablation&sn=tfbs_amplification&sn=transcript_ablation&sn=transcript_amplification&sn=_&sn=upstream_gene_variant&sv=complex_events&sv=copy_number_gain&sv=deletion&sv=insertion&sv=inversion&st=129s1_svimj&st=a_j&st=cast_eij&st=nod_shiltj&st=nzo_hlltj&st=pwk_phj&st=wsb_eij#t_indels), and [SVs](https://www.sanger.ac.uk/sanger/Mouse_SnpViewer/rel-1505?gene=&context=0&loc=4%3A79000000-89000000&release=rel-1505&sn=3_prime_utr_variant&sn=5_prime_utr_variant&sn=coding_sequence_variant&sn=downstream_gene_variant&sn=feature_elongation&sn=feature_truncation&sn=frameshift_variant&sn=incomplete_terminal_codon_variant&sn=inframe_deletion&sn=inframe_insertion&sn=initiator_codon_variant&sn=intergenic_variant&sn=intron_variant&sn=mature_mirna_variant&sn=missense_variant&sn=nmd_transcript_variant&sn=nc_transcript_variant&sn=non_coding_exon_variant&sn=regulatory_region_ablation&sn=regulatory_region_amplification&sn=regulatory_region_variant&sn=splice_acceptor_variant&sn=splice_donor_variant&sn=splice_region_variant&sn=stop_gained&sn=stop_lost&sn=stop_retained_variant&sn=synonymous_variant&sn=tf_binding_site_variant&sn=tfbs_ablation&sn=tfbs_amplification&sn=transcript_ablation&sn=transcript_amplification&sn=_&sn=upstream_gene_variant&sv=complex_events&sv=copy_number_gain&sv=deletion&sv=insertion&sv=inversion&st=129s1_svimj&st=a_j&st=cast_eij&st=nod_shiltj&st=nzo_hlltj&st=pwk_phj&st=wsb_eij#t_svs) for chr4:79,000,000-89,000,000.
+
+Starting by importing SNPs, INDELs, and SVs in this region.
+
+```{r}
+# Importing SNPs
+chr4_MGP_SNPs = read.table(file = "./data/variants/rel-1505-snps-export-4_79000000-89000000.tsv", 
+                           sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+chr4_MGP_SNPs$chromosome = as.character(paste("chr", chr4_MGP_SNPs$Chr, sep=""))
+chr4_MGP_SNPs$start = chr4_MGP_SNPs$Position
+chr4_MGP_SNPs$end = chr4_MGP_SNPs$Position
+chr4_MGP_SNPs$strand = rep("*", times = nrow(chr4_MGP_SNPs))
+chr4_MGP_SNPs$AJ = ifelse(chr4_MGP_SNPs$A_J == ""  | 
+                          chr4_MGP_SNPs$A_J == " " |
+                          chr4_MGP_SNPs$A_J == "-" | 
+                          chr4_MGP_SNPs$A_J == "~",
+                          NA, 1)
+chr4_MGP_SNPs$s129 = ifelse(chr4_MGP_SNPs$X129S1_SvImJ == ""  |
+                            chr4_MGP_SNPs$X129S1_SvImJ == " " |
+                            chr4_MGP_SNPs$X129S1_SvImJ == "-" |
+                            chr4_MGP_SNPs$X129S1_SvImJ == "~",
+                            NA, 1)
+chr4_MGP_SNPs$NOD = ifelse(chr4_MGP_SNPs$NOD_ShiLtJ == ""  |
+                           chr4_MGP_SNPs$NOD_ShiLtJ == " " |
+                           chr4_MGP_SNPs$NOD_ShiLtJ == "-" |
+                           chr4_MGP_SNPs$NOD_ShiLtJ == "~",
+                           NA, 1)
+chr4_MGP_SNPs$NZO = ifelse(chr4_MGP_SNPs$NZO_HlLtJ == ""  | 
+                           chr4_MGP_SNPs$NZO_HlLtJ == " " | 
+                           chr4_MGP_SNPs$NZO_HlLtJ == "-" |
+                           chr4_MGP_SNPs$NZO_HlLtJ == "~",
+                           NA, 1)
+chr4_MGP_SNPs$CAST = ifelse(chr4_MGP_SNPs$CAST_EiJ == ""  | 
+                            chr4_MGP_SNPs$CAST_EiJ == " " | 
+                            chr4_MGP_SNPs$CAST_EiJ == "-" |
+                            chr4_MGP_SNPs$CAST_EiJ == "~",
+                            NA, 1)
+chr4_MGP_SNPs$PWK = ifelse(chr4_MGP_SNPs$PWK_PhJ == ""  | 
+                           chr4_MGP_SNPs$PWK_PhJ == " " | 
+                           chr4_MGP_SNPs$PWK_PhJ == "-" |
+                           chr4_MGP_SNPs$PWK_PhJ == "~",
+                           NA, 1)
+chr4_MGP_SNPs$WSB = ifelse(chr4_MGP_SNPs$WSB_EiJ == ""  | 
+                           chr4_MGP_SNPs$WSB_EiJ == " " |
+                           chr4_MGP_SNPs$WSB_EiJ == "-" |
+                           chr4_MGP_SNPs$WSB_EiJ == "~",
+                           NA, 1)
+
+# Importing INDELs
+chr4_MGP_INDELs = read.table(file = "./data/variants/rel-1505-indels-export-4_79000000-89000000.tsv",
+                             sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+chr4_MGP_INDELs$chromosome = as.character(paste("chr", chr4_MGP_INDELs$Chr, sep=""))
+chr4_MGP_INDELs$start = chr4_MGP_INDELs$Position
+chr4_MGP_INDELs$end = chr4_MGP_INDELs$Position
+chr4_MGP_INDELs$strand = rep("*", times = nrow(chr4_MGP_INDELs))
+chr4_MGP_INDELs$AJ = ifelse(chr4_MGP_INDELs$A_J == ""  | 
+                            chr4_MGP_INDELs$A_J == " " |
+                            chr4_MGP_INDELs$A_J == "-" | 
+                            chr4_MGP_INDELs$A_J == "~",
+                            NA, 1)
+chr4_MGP_INDELs$s129 = ifelse(chr4_MGP_INDELs$X129S1_SvImJ == ""  |
+                              chr4_MGP_INDELs$X129S1_SvImJ == " " |
+                              chr4_MGP_INDELs$X129S1_SvImJ == "-" |
+                              chr4_MGP_INDELs$X129S1_SvImJ == "~",
+                              NA, 1)
+chr4_MGP_INDELs$NOD = ifelse(chr4_MGP_INDELs$NOD_ShiLtJ == ""  |
+                             chr4_MGP_INDELs$NOD_ShiLtJ == " " |
+                             chr4_MGP_INDELs$NOD_ShiLtJ == "-" |
+                             chr4_MGP_INDELs$NOD_ShiLtJ == "~",
+                             NA, 1)
+chr4_MGP_INDELs$NZO = ifelse(chr4_MGP_INDELs$NZO_HlLtJ == ""  | 
+                             chr4_MGP_INDELs$NZO_HlLtJ == " " | 
+                             chr4_MGP_INDELs$NZO_HlLtJ == "-" |
+                             chr4_MGP_INDELs$NZO_HlLtJ == "~",
+                             NA, 1)
+chr4_MGP_INDELs$CAST = ifelse(chr4_MGP_INDELs$CAST_EiJ == ""  | 
+                              chr4_MGP_INDELs$CAST_EiJ == " " | 
+                              chr4_MGP_INDELs$CAST_EiJ == "-" |
+                              chr4_MGP_INDELs$CAST_EiJ == "~",
+                              NA, 1)
+chr4_MGP_INDELs$PWK = ifelse(chr4_MGP_INDELs$PWK_PhJ == ""  | 
+                             chr4_MGP_INDELs$PWK_PhJ == " " | 
+                             chr4_MGP_INDELs$PWK_PhJ == "-" |
+                             chr4_MGP_INDELs$PWK_PhJ == "~",
+                             NA, 1)
+chr4_MGP_INDELs$WSB = ifelse(chr4_MGP_INDELs$WSB_EiJ == ""  | 
+                             chr4_MGP_INDELs$WSB_EiJ == " " | 
+                             chr4_MGP_INDELs$WSB_EiJ == "-" |
+                             chr4_MGP_INDELs$WSB_EiJ == "~",
+                             NA, 1)
+
+# Importing SVs
+chr4_MGP_SVs = read.table(file = "./data/variants/rel-1505-svs-export-4_79000000-89000000.tsv",
+                          sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+chr4_MGP_SVs$chromosome = as.character(paste("chr", chr4_MGP_SVs$Chr, sep=""))
+chr4_MGP_SVs$start = chr4_MGP_SVs$Start
+chr4_MGP_SVs$end = chr4_MGP_SVs$End
+chr4_MGP_SVs$strand = rep("*", times = nrow(chr4_MGP_SVs))
+chr4_MGP_SVs$AJ = ifelse(chr4_MGP_SVs$A_J == ""  | 
+                         chr4_MGP_SVs$A_J == " " |
+                         chr4_MGP_SVs$A_J == "-" | 
+                         chr4_MGP_SVs$A_J == "~",
+                         NA, 1)
+chr4_MGP_SVs$s129 = ifelse(chr4_MGP_SVs$X129S1_SvImJ == ""  |
+                           chr4_MGP_SVs$X129S1_SvImJ == " " |
+                           chr4_MGP_SVs$X129S1_SvImJ == "-" |
+                           chr4_MGP_SVs$X129S1_SvImJ == "~",
+                           NA, 1)
+chr4_MGP_SVs$NOD = ifelse(chr4_MGP_SVs$NOD_ShiLtJ == ""  |
+                          chr4_MGP_SVs$NOD_ShiLtJ == " " |
+                          chr4_MGP_SVs$NOD_ShiLtJ == "-" |
+                          chr4_MGP_SVs$NOD_ShiLtJ == "~",
+                          NA, 1)
+chr4_MGP_SVs$NZO = ifelse(chr4_MGP_SVs$NZO_HlLtJ == ""  | 
+                          chr4_MGP_SVs$NZO_HlLtJ == " " | 
+                          chr4_MGP_SVs$NZO_HlLtJ == "-" |
+                          chr4_MGP_SVs$NZO_HlLtJ == "~",
+                          NA, 1)
+chr4_MGP_SVs$CAST = ifelse(chr4_MGP_SVs$CAST_EiJ == ""  | 
+                           chr4_MGP_SVs$CAST_EiJ == " " | 
+                           chr4_MGP_SVs$CAST_EiJ == "-" |
+                           chr4_MGP_SVs$CAST_EiJ == "~",
+                           NA, 1)
+chr4_MGP_SVs$PWK = ifelse(chr4_MGP_SVs$PWK_PhJ == ""  | 
+                          chr4_MGP_SVs$PWK_PhJ == " " | 
+                          chr4_MGP_SVs$PWK_PhJ == "-" |
+                          chr4_MGP_SVs$PWK_PhJ == "~",
+                          NA, 1)
+chr4_MGP_SVs$WSB = ifelse(chr4_MGP_SVs$WSB_EiJ == ""  | 
+                          chr4_MGP_SVs$WSB_EiJ == " " | 
+                          chr4_MGP_SVs$WSB_EiJ == "-" |
+                          chr4_MGP_SVs$WSB_EiJ == "~",
+                          NA, 1)
+```
+
+Generating tracks from these data.
+
+```{r}
+# Making SNPs tracks
+chr4_SNPs_AJ_track = AnnotationTrack(chr4_MGP_SNPs[which(!is.na(chr4_MGP_SNPs$AJ)),c("chromosome","start","end","strand","AJ")],
+                                    groups = c("AJ"),
+                                    fill = cc_do_founders_key[c("A"),"collaborative_cross_color_broman"],
+                                    stacking = "dense", name = "AJ SNPs", col = NULL)
+chr4_SNPs_129_track = AnnotationTrack(chr4_MGP_SNPs[which(!is.na(chr4_MGP_SNPs$s129)),c("chromosome","start","end","strand","s129")],
+                                     groups = c("s129"),
+                                     fill = cc_do_founders_key[c("C"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "129 SNPs", col = NULL)
+chr4_SNPs_NOD_track = AnnotationTrack(chr4_MGP_SNPs[which(!is.na(chr4_MGP_SNPs$NOD)),c("chromosome","start","end","strand","NOD")],
+                                     groups = c("NOD"),
+                                     fill = cc_do_founders_key[c("D"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "NOD SNPs", col = NULL)
+chr4_SNPs_NZO_track = AnnotationTrack(chr4_MGP_SNPs[which(!is.na(chr4_MGP_SNPs$NZO)),c("chromosome","start","end","strand","NZO")],
+                                     groups = c("NZO"),
+                                     fill = cc_do_founders_key[c("E"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "NZO SNPs", col = NULL)
+chr4_SNPs_CAST_track = AnnotationTrack(chr4_MGP_SNPs[which(!is.na(chr4_MGP_SNPs$CAST)),c("chromosome","start","end","strand","CAST")],
+                                      groups = c("CAST"),
+                                      fill = cc_do_founders_key[c("F"),"collaborative_cross_color_broman"],
+                                      stacking = "dense", name = "CAST SNPs", col = NULL)
+chr4_SNPs_PWK_track = AnnotationTrack(chr4_MGP_SNPs[which(!is.na(chr4_MGP_SNPs$PWK)),c("chromosome","start","end","strand","PWK")],
+                                     groups = c("PWK"),
+                                     fill = cc_do_founders_key[c("G"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "PWK SNPs", col = NULL)
+chr4_SNPs_WSB_track = AnnotationTrack(chr4_MGP_SNPs[which(!is.na(chr4_MGP_SNPs$WSB)),c("chromosome","start","end","strand","WSB")],
+                                     groups = c("WSB"),
+                                     fill = cc_do_founders_key[c("H"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "WSB SNPs", col = NULL)
+
+# Making INDELs tracks
+chr4_INDELs_AJ_track = AnnotationTrack(chr4_MGP_INDELs[which(!is.na(chr4_MGP_INDELs$AJ)),c("chromosome","start","end","strand","AJ")],
+                                    groups = c("AJ"),
+                                    fill = cc_do_founders_key[c("A"),"collaborative_cross_color_broman"],
+                                    stacking = "dense", name = "AJ INDELs", col = NULL)
+chr4_INDELs_129_track = AnnotationTrack(chr4_MGP_INDELs[which(!is.na(chr4_MGP_INDELs$s129)),c("chromosome","start","end","strand","s129")],
+                                     groups = c("s129"),
+                                     fill = cc_do_founders_key[c("C"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "129 INDELs", col = NULL)
+chr4_INDELs_NOD_track = AnnotationTrack(chr4_MGP_INDELs[which(!is.na(chr4_MGP_INDELs$NOD)),c("chromosome","start","end","strand","NOD")],
+                                     groups = c("NOD"),
+                                     fill = cc_do_founders_key[c("D"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "NOD INDELs", col = NULL)
+chr4_INDELs_NZO_track = AnnotationTrack(chr4_MGP_INDELs[which(!is.na(chr4_MGP_INDELs$NZO)),c("chromosome","start","end","strand","NZO")],
+                                     groups = c("NZO"),
+                                     fill = cc_do_founders_key[c("E"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "NZO INDELs", col = NULL)
+chr4_INDELs_CAST_track = AnnotationTrack(chr4_MGP_INDELs[which(!is.na(chr4_MGP_INDELs$CAST)),c("chromosome","start","end","strand","CAST")],
+                                      groups = c("CAST"),
+                                      fill = cc_do_founders_key[c("F"),"collaborative_cross_color_broman"],
+                                      stacking = "dense", name = "CAST INDELs", col = NULL)
+chr4_INDELs_PWK_track = AnnotationTrack(chr4_MGP_INDELs[which(!is.na(chr4_MGP_INDELs$PWK)),c("chromosome","start","end","strand","PWK")],
+                                     groups = c("PWK"),
+                                     fill = cc_do_founders_key[c("G"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "PWK INDELs", col = NULL)
+chr4_INDELs_WSB_track = AnnotationTrack(chr4_MGP_INDELs[which(!is.na(chr4_MGP_INDELs$WSB)),c("chromosome","start","end","strand","WSB")],
+                                     groups = c("WSB"),
+                                     fill = cc_do_founders_key[c("H"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "WSB INDELs", col = NULL)
+
+# Making SVs tracks
+chr4_SVs_AJ_track = AnnotationTrack(chr4_MGP_SVs[which(!is.na(chr4_MGP_SVs$AJ)),c("chromosome","start","end","strand","AJ")],
+                                    groups = c("AJ"),
+                                    fill = cc_do_founders_key[c("A"),"collaborative_cross_color_broman"],
+                                    stacking = "dense", name = "AJ SVs", col = NULL)
+chr4_SVs_129_track = AnnotationTrack(chr4_MGP_SVs[which(!is.na(chr4_MGP_SVs$s129)),c("chromosome","start","end","strand","s129")],
+                                     groups = c("s129"),
+                                     fill = cc_do_founders_key[c("C"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "129 SVs", col = NULL)
+chr4_SVs_NOD_track = AnnotationTrack(chr4_MGP_SVs[which(!is.na(chr4_MGP_SVs$NOD)),c("chromosome","start","end","strand","NOD")],
+                                     groups = c("NOD"),
+                                     fill = cc_do_founders_key[c("D"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "NOD SVs", col = NULL)
+chr4_SVs_NZO_track = AnnotationTrack(chr4_MGP_SVs[which(!is.na(chr4_MGP_SVs$NZO)),c("chromosome","start","end","strand","NZO")],
+                                     groups = c("NZO"),
+                                     fill = cc_do_founders_key[c("E"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "NZO SVs", col = NULL)
+chr4_SVs_CAST_track = AnnotationTrack(chr4_MGP_SVs[which(!is.na(chr4_MGP_SVs$CAST)),c("chromosome","start","end","strand","CAST")],
+                                      groups = c("CAST"),
+                                      fill = cc_do_founders_key[c("F"),"collaborative_cross_color_broman"],
+                                      stacking = "dense", name = "CAST SVs", col = NULL)
+chr4_SVs_PWK_track = AnnotationTrack(chr4_MGP_SVs[which(!is.na(chr4_MGP_SVs$PWK)),c("chromosome","start","end","strand","PWK")],
+                                     groups = c("PWK"),
+                                     fill = cc_do_founders_key[c("G"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "PWK SVs", col = NULL)
+chr4_SVs_WSB_track = AnnotationTrack(chr4_MGP_SVs[which(!is.na(chr4_MGP_SVs$WSB)),c("chromosome","start","end","strand","WSB")],
+                                     groups = c("WSB"),
+                                     fill = cc_do_founders_key[c("H"),"collaborative_cross_color_broman"],
+                                     stacking = "dense", name = "WSB SVs", col = NULL)
+```
+
+Plotting variants in context of the peak and the TAD boundary.
+
+```{r}
+# Plotting chr4:83e6-85e6
+plotTracks(list(itrack_mm10_chr4, mm10_chr4_bands_track, gaxis,
+                chr4_SNPs_AJ_track, chr4_SNPs_129_track, chr4_SNPs_NOD_track, chr4_SNPs_NZO_track,
+                chr4_SNPs_CAST_track, chr4_SNPs_PWK_track, chr4_SNPs_WSB_track,
+                chr4_INDELs_AJ_track, chr4_INDELs_129_track, chr4_INDELs_NOD_track, chr4_INDELs_NZO_track,
+                chr4_INDELs_CAST_track, chr4_INDELs_PWK_track, chr4_INDELs_WSB_track,
+                chr4_SVs_AJ_track, chr4_SVs_129_track, chr4_SVs_NOD_track, chr4_SVs_NZO_track,
+                chr4_SVs_CAST_track, chr4_SVs_PWK_track, chr4_SVs_WSB_track,
+                chr4_TADs_track,
+                grtr_mm10_chr4_ensembl),
+           from = 83.0e6, to = 85.0e6)
+```
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

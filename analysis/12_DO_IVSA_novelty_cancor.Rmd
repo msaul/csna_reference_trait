@@ -1,0 +1,352 @@
+---
+title: "DO IVSA and Novelty Response Canonical Correlation"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to summarize the novelty data upstream of using them for reference trait analysis.
+
+*NOTE: on 2024-03-29, Michael Saul pulled a couple of analyses out of this document that were no longer relevant to the reference trait analysis paper. These can be restored with `git` as this repository is tracked with `git`.*
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("MASS")
+library("cowplot")
+library("lubridate")
+library("car")
+library("corrplot")
+library("tidyr")
+library("gplots")
+library("ggpubr")
+library("ggbeeswarm")
+```
+
+Getting a normal rank transformation function that can handle `NA` values from the following formula:
+
+$Y^t_i={\phi}^{-1}({{r_i-c}\over{N-2c+1}})$
+
+where $r_i$ is the rank, $N$ is the number of ranked samples, $\phi^{-1}$ is the inverse normal function (equivalent to `qnorm()` in R). A recommended value of $c=3/8$ in [Beasley and Erickson, 2010](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2921808/), but we use the [van der Waerden (1952)](https://scholar.google.com/scholar_lookup?journal=Proc+Koninklijke+Nederlandse+Akademie+van+Wetenschappen&title=Order+tests+for+the+two-sample+problem+and+their+power&author=BL+van+der+Waerden&volume=55&publication_year=1952&pages=453-458&) value of $c=0$ per Vivek Philip. Additionally, after discussing this with Vivek, I've changed the rank tie method to `"average"` whereas I had `"random"` previously.
+
+Our work appears to meet Beasley and Erickson's sample size recommendations.
+
+```{r}
+norm_rank_transform = function(x, c = 0) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+#### Getting publication themes
+
+```{r}
+source("./code/ggplot_pub_themes.R")
+```
+
+### Importing data
+
+#### Importing IVSA and novelty response data
+
+Bringing in datasets from RDS files as well as founders IVSA heritability.
+
+```{r}
+DO_novelty = readRDS("./data/DO_novelty_response_data.RDS")
+DO_IVSA = readRDS("./data/DO_IVSA_transformed_data.RDS")
+IVSA_metadata = readRDS("./data/IVSA_metadata_sheet.RDS")
+
+# Getting IVSA measure heritability calculations derived from the CC/DO founders
+IVSA_h2 = read.table("./data/IVSA_h2_2019-11-18.tsv",
+                     sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+```
+
+Getting IVSA metadata. Selecting only those doses that are in the SOP v2 (1.0 mg/kg, 0.32 mg/kg, 0.1 mg/kg, and 0.032 mg/kg).
+
+```{r}
+IVSA_DE_vars = IVSA_metadata[which(IVSA_metadata$vartype == "Descriptive"),"variable"]
+
+# Removing data columns broken down by sessions and blocks
+IVSA_AQ_vars_noblocks_nosessions = IVSA_metadata[which(is.na(IVSA_metadata$session) &
+                                                         is.na(IVSA_metadata$block) &
+                                                         IVSA_metadata$vartype == "Acquisition"),
+                                                 "variable"]
+
+# Removing data columns not at 0.032, 0.1, 0.32, and 1 mg/kg
+IVSA_DR_currentdoses = c(0.032, 0.1, 0.32, 1.0)
+IVSA_DR_vars_currentprotocol = IVSA_metadata[which(is.na(IVSA_metadata$session) &
+                                                     is.na(IVSA_metadata$block) &
+                                                     IVSA_metadata$vartype == "DoseResponse" &
+                                                     IVSA_metadata$dose_mgperkg %in% IVSA_DR_currentdoses),
+                                             "variable"]
+
+IVSA_EX_noblocks = IVSA_metadata[which(is.na(IVSA_metadata$block) &
+                                         IVSA_metadata$vartype == "Extinction"),
+                                 "variable"]
+
+IVSA_RI_noblocks = IVSA_metadata[which(is.na(IVSA_metadata$block) &
+                                         IVSA_metadata$vartype == "Reinstatement"),
+                                 "variable"]
+
+IVSA_data_vars = c(IVSA_AQ_vars_noblocks_nosessions,
+                   IVSA_DR_vars_currentprotocol,
+                   IVSA_EX_noblocks,
+                   IVSA_RI_noblocks)
+```
+
+### Analysis
+
+#### Novelty and IVSA Data
+
+Making data frame to carry novelty and IVSA data
+
+```{r}
+novelty_vars = colnames(DO_novelty)
+novelty_vars = novelty_vars[grep("_batch_ranknorm$",novelty_vars)]
+IVSA_vars = colnames(DO_IVSA)
+IVSA_vars = IVSA_vars[grep("_batch_ranknorm$", IVSA_vars)]
+IVSA_vars = c("AQ_SessionsToAcquisition",IVSA_vars)
+
+DO_novelty_IVSA_IDs = intersect(row.names(DO_IVSA), row.names(DO_novelty))
+DO_novelty_IVSA = cbind(DO_IVSA[DO_novelty_IVSA_IDs,c(IVSA_DE_vars, IVSA_vars)],
+                        DO_novelty[DO_novelty_IVSA_IDs,novelty_vars])
+
+# Filtering for only animals that acquired IVSA or were acquisition-only.
+DO_novelty_IVSA_raw = DO_novelty_IVSA
+DO_novelty_IVSA = DO_novelty_IVSA[which(DO_novelty_IVSA$DE_Exit_Reason == "Finished Pipeline" |
+                                        DO_novelty_IVSA$DE_Exit_Reason == "IVSA Acquisition Only"),]
+```
+
+Looking at ratios of acquisition.
+
+```{r}
+DO_novelty_IVSA$acquisition = ifelse(DO_novelty_IVSA$DE_Exit_Reason == "Finished Pipeline",1,0)
+DO_acquisition_ratios = as.matrix(table(DO_novelty_IVSA$DE_Sex, DO_novelty_IVSA$acquisition))
+cat("Overall acquisition: ", round(100 * sum(DO_acquisition_ratios[,2]) / sum(DO_acquisition_ratios),1),"%.\n", sep = "")
+cat("Female acquisition: ", round(100 * sum(DO_acquisition_ratios[1,2]) / sum(DO_acquisition_ratios[1,]),1),"%.\n", sep = "")
+cat("Male acquisition: ", round(100 * sum(DO_acquisition_ratios[2,2]) / sum(DO_acquisition_ratios[2,]),1),"%.\n", sep = "")
+DO_acquisition_ratios
+```
+
+#### Model 3: Canonical correlation on all IVSA data.
+
+Running the same canonical correlation, but on acquisition plus all other variables for animals with complete data. Requiring at least 300 samples to fit. Starting by finding the highest correlation in animals that finished the pipeline.
+
+```{r}
+# Excluding hole board repeat entries as it does not allow traverse to data collected before CSNA
+novelty_vars = novelty_vars[which(novelty_vars != "HB_Repeat_Entries_batch_ranknorm")]
+
+# Making a data frame for these data.
+DO_novelty_IVSA = DO_novelty_IVSA_raw
+DO_novelty_IVSA = DO_novelty_IVSA[which(DO_novelty_IVSA$DE_Exit_Reason == "Finished Pipeline"),]
+
+# Getting highest correlation variables to start out
+highest_cor = cor(DO_novelty_IVSA[,IVSA_vars], 
+                  DO_novelty_IVSA[,novelty_vars],
+                  use = "pairwise.complete.obs")
+highest_cor_r = max(abs(highest_cor), na.rm = TRUE)
+highest_cor_ind = which(abs(highest_cor) == highest_cor_r, arr.ind = TRUE)
+ivsa_highcor_id = row.names(highest_cor)[highest_cor_ind[1,"row"]] # "RI_Inf_Total_s01_batch_ranknorm"
+novelty_highcor_id = colnames(highest_cor)[highest_cor_ind[1,"col"]]
+
+paste0("The highest correlation (", round(highest_cor_r, 2),") is between ", ivsa_highcor_id, " and ",
+       novelty_highcor_id, ".")
+```
+
+Doing the canonical correlation analysis. Starting by testing correlations.
+
+```{r}
+DO_novelty_IVSA = DO_novelty_IVSA_raw
+DO_novelty_IVSA = DO_novelty_IVSA[which(DO_novelty_IVSA$DE_Exit_Reason == "Finished Pipeline"),]
+
+# Starting with these as best novelty and IVSA variables
+best_novelty_vars = novelty_highcor_id
+best_IVSA_vars = ivsa_highcor_id
+noNA_rows = which(rowSums(is.na(DO_novelty_IVSA[,c(best_novelty_vars, best_IVSA_vars)])) == 0)
+starting_cancor =  stats::cancor(DO_novelty_IVSA[noNA_rows,best_novelty_vars], DO_novelty_IVSA[noNA_rows,best_IVSA_vars],
+                         xcenter = TRUE, ycenter = TRUE)
+
+# Selecting heritable IVSA variables
+IVSA_vars_unselected = IVSA_vars[(-1 * which(IVSA_vars == best_IVSA_vars))]
+novelty_vars_unselected = novelty_vars[(-1 * which(novelty_vars == best_novelty_vars))]
+
+not_optimized = TRUE
+min_obs = 300
+max_var = 20
+
+while (not_optimized) {
+  best_cancor = starting_cancor$cor[1]
+  best_var = ""
+  best_paradigm = ""
+  
+  for (i in novelty_vars_unselected) {
+    noNA_rows = which(rowSums(is.na(DO_novelty_IVSA[,c(best_novelty_vars, i, best_IVSA_vars)])) == 0)
+    if (length(noNA_rows) >= min_obs) {
+      cancor_i = stats::cancor(DO_novelty_IVSA[noNA_rows, c(best_novelty_vars, i)], DO_novelty_IVSA[noNA_rows, best_IVSA_vars],
+                        xcenter = TRUE, ycenter = TRUE)
+      if (cancor_i$cor[1] > best_cancor) {
+        best_cancor = cancor_i$cor[1]
+        best_var = i
+        best_paradigm = "novelty"
+      }
+    }
+  }
+  
+  for (j in IVSA_vars_unselected) {
+    noNA_rows = which(rowSums(is.na(DO_novelty_IVSA[,c(best_novelty_vars, j, best_IVSA_vars)])) == 0)
+    if (length(noNA_rows) >= min_obs) {
+      cancor_j = stats::cancor(DO_novelty_IVSA[noNA_rows, best_novelty_vars], DO_novelty_IVSA[noNA_rows,c(best_IVSA_vars, j)],
+                        xcenter = TRUE, ycenter = TRUE)
+      if (cancor_j$cor[1] > best_cancor) {
+        best_cancor = cancor_j$cor[1]
+        best_var = j
+        best_paradigm = "IVSA"
+      }
+    }
+  }
+  
+  if (best_paradigm == "novelty") {
+    novelty_vars_test = c(best_novelty_vars, best_var)
+    IVSA_vars_test = best_IVSA_vars
+  } else if (best_paradigm == "IVSA") {
+    novelty_vars_test = best_novelty_vars
+    IVSA_vars_test = c(best_IVSA_vars, best_var)
+  }
+  
+  noNA_rows = which(rowSums(is.na(DO_novelty_IVSA[,c(novelty_vars_test, IVSA_vars_test)])) == 0)
+  k_gtr = c()
+  
+  B = 1e4
+  for (k in 1:B) {
+    cancor_k =  stats::cancor(DO_novelty_IVSA[sample(noNA_rows), novelty_vars_test], 
+                      DO_novelty_IVSA[noNA_rows, IVSA_vars_test],
+                      xcenter = TRUE, ycenter = TRUE)
+    k_gtr = c(k_gtr, cancor_k$cor[1])
+  }
+  p_value_improvement = (length(which(k_gtr > best_cancor)) + 1) / (B + 1)
+  
+  if ((length(best_novelty_vars) + length(best_IVSA_vars)) > max_var) {
+    not_optimized = FALSE
+  } else if (p_value_improvement < 0.001) {
+    if (best_paradigm == "novelty") {
+      best_novelty_vars = c(best_novelty_vars, best_var)
+      novelty_vars_unselected = novelty_vars_unselected[-1 * which(novelty_vars_unselected == best_var)]
+    } else if (best_paradigm == "IVSA") {
+      best_IVSA_vars = c(best_IVSA_vars, best_var)
+      IVSA_vars_unselected = IVSA_vars_unselected[-1 * which(IVSA_vars_unselected == best_var)]
+    }
+    starting_cancor =  stats::cancor(DO_novelty_IVSA[noNA_rows,best_novelty_vars], DO_novelty_IVSA[noNA_rows,best_IVSA_vars],
+                             xcenter = TRUE, ycenter = TRUE)
+  } else {
+    not_optimized = FALSE
+  }
+}
+noNA_rows = which(rowSums(is.na(DO_novelty_IVSA[,c(best_novelty_vars, best_IVSA_vars)])) == 0)
+
+cat("Best novelty variables:\n", paste(best_novelty_vars, sep = "", collapse = "\n"),"\n\n", sep = "")
+cat("Best IVSA variables:\n", paste(best_IVSA_vars, sep = "", collapse = "\n"), "\n\n", sep = "")
+cat("First canonical correlate magnitude: ", round(starting_cancor$cor[1], 4), "\n\n", sep = "")
+cat("Canonical correlation trained on ", length(noNA_rows), " complete observations.", sep = "")
+```
+
+Adjusting this canonical correlation for sex.
+
+```{r}
+DO_novelty_IVSA$Sex = ifelse(DO_novelty_IVSA$DE_Sex == "M", 1, 0)
+novelty_cancor_vars_ALL = c(best_novelty_vars,"Sex")
+IVSA_cancor_vars_ALL = c(best_IVSA_vars,"Sex")
+
+IVSA_cancor_rows_ALL = which(rowSums(is.na(DO_novelty_IVSA[,c(novelty_cancor_vars_ALL,IVSA_cancor_vars_ALL)])) == 0)
+
+IVSA_novelty_cancor_ALL =  stats::cancor(DO_novelty_IVSA[IVSA_cancor_rows_ALL,IVSA_cancor_vars_ALL],
+                                 DO_novelty_IVSA[IVSA_cancor_rows_ALL,novelty_cancor_vars_ALL],
+                                 xcenter = TRUE, ycenter = TRUE)
+paste("The first canonical correlate of these IVSA variables to novelty variables has a magnitude of ", 
+      round(IVSA_novelty_cancor_ALL$cor[2], digits = 3), 
+      ".", sep = "")
+paste("This canonical correlation is based upon ",
+      length(IVSA_cancor_rows_ALL), " complete observations.", sep = "")
+```
+
+This is an adequate fit for the canonical correlation. Plotting the variables.
+
+```{r}
+IVSA_cancor = as.matrix(DO_novelty_IVSA[IVSA_cancor_rows_ALL,IVSA_cancor_vars_ALL]) %*% IVSA_novelty_cancor_ALL$xcoef[,2]
+novelty_cancor = as.matrix(DO_novelty_IVSA[IVSA_cancor_rows_ALL,novelty_cancor_vars_ALL]) %*% IVSA_novelty_cancor_ALL$ycoef[,2]
+
+IVSA_novelty_cancor_ALL_df = data.frame(IVSA_cancor = IVSA_cancor, novelty_cancor = novelty_cancor)
+IVSA_novelty_cancor_ALL_df$Sex = DO_novelty_IVSA[row.names(IVSA_novelty_cancor_ALL_df),"DE_Sex"]
+IVSA_novelty_cancor_ALL_df$Subject = as.numeric(as.character(row.names(IVSA_novelty_cancor_ALL_df)))
+IVSA_novelty_cancor_ALL_df$Acquired = DO_novelty_IVSA[row.names(IVSA_novelty_cancor_ALL_df),"DE_Exit_Reason"]
+IVSA_novelty_cancor_lm = lm(IVSA_cancor ~ novelty_cancor, data = IVSA_novelty_cancor_ALL_df)
+novelty_IVSA_ALL_cancor_plot = ggplot(data = IVSA_novelty_cancor_ALL_df, aes(x = novelty_cancor, y = IVSA_cancor, color = Sex)) +
+  geom_point(size = (pt_to_mm * 1.5)) +
+  geom_abline(slope = IVSA_novelty_cancor_lm$coefficients["novelty_cancor"], 
+              intercept = IVSA_novelty_cancor_lm$coefficients["(Intercept)"],
+              size = (1 * pt_to_mm)) +
+  scale_color_manual(values = c("#3399CC","#66CC66")) +
+  xlab("Novelty Canonical Correlate") +
+  ylab("IVSA Canonical Correlate")
+novelty_IVSA_ALL_cancor_plot + theme_bw() + theme(panel.grid = element_line(color = "#FFFFFF"))
+```
+
+#### Making Predictions
+
+Using canonical correlations and logistic regression to make predictions.
+
+```{r}
+DO_novelty$DE_Sex = gsub("^([MF]).*$","\\1",DO_novelty$Sex)
+DO_novelty$Sex = ifelse(DO_novelty$DE_Sex == "M", 1, 0)
+
+DO_predict_rows_ALL = which(rowSums(is.na(DO_novelty[,novelty_cancor_vars_ALL])) == 0)
+IVSA_prediction_ALL = as.matrix(DO_novelty[DO_predict_rows_ALL,novelty_cancor_vars_ALL]) %*% IVSA_novelty_cancor_ALL$ycoef[,2]
+IVSA_prediction_ALL = data.frame(row.names = row.names(IVSA_prediction_ALL),
+                                 Mouse_ID = row.names(IVSA_prediction_ALL),
+                                 IVSA_novelty_cancor = IVSA_prediction_ALL,
+                                 Sex = DO_novelty[row.names(IVSA_prediction_ALL),"Sex"],
+                                 Generation = DO_novelty[row.names(IVSA_prediction_ALL),"Generation"],
+                                 stringsAsFactors = FALSE)
+```
+
+### Output
+
+Saving RTG predictions as output.
+
+```{r}
+today = as.character(today())
+saveRDS(IVSA_prediction_ALL, file = paste0("./data/DO_IVSA_prediction_a3_ALL_cancor_",today,".RDS"))
+```
+
+Saving canonical correlations and prediction-training data as output.
+
+```{r}
+saveRDS(IVSA_novelty_cancor_ALL, paste0("./data/DO_IVSA_novelty_cancor_ALL_",today,".RDS"))
+saveRDS(DO_novelty_IVSA_raw, paste0("./data/DO_IVSA_novelty_data_",today,".RDS"))
+saveRDS(DO_novelty, paste0("./data/DO_novelty_data_",today,".RDS"))
+saveRDS(DO_IVSA, paste0("./data/DO_IVSA_data_",today,".RDS"))
+```
+
+Saving data frames of each analysis as output.
+
+```{r}
+saveRDS(IVSA_novelty_cancor_ALL_df, paste0("./data/DO_IVSA_all_cancor_df_",today,".RDS"))
+```
+
+The output data are saved in `./data/`.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

@@ -1,0 +1,1095 @@
+---
+title: "DO Mapping Interpretation for RTG Analysis 2"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to interpret the RTG mapping work results. 
+
+The goal of this analysis is to resolve these QTL mapping data to one (or a few) genes.
+
+# Analysis
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+library("ggrepel")
+library("biomaRt")
+library("qtl2")
+library("grid")
+library("cowplot")
+library("ggplotify")
+library("data.table")
+library("edgeR")
+library("limma")
+```
+
+### Getting publication themes
+
+```{r}
+source("./code/ggplot_pub_themes.R")
+```
+
+### `norm_rank_transform()` function
+
+Getting a normal rank transformation function that can handle `NA` values.
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+### Importing data
+
+Importing data.
+
+First, importing eQTL peaks.
+
+```{r}
+# Importing significant eQTL results
+DO_eQTL_results = readRDS("./data/eQTL_annotated_peaks.RDS")
+```
+
+Next, importing SNP data from the interval around the chr7 QTL from Hao He.
+
+```{r}
+load("./data/DO_RTG_a3_new_mapping_1000x_01.RData")
+RTG_a3_chr7_SNPs = as.data.frame(m2.sigqtl.snps$RTG_a3[[2]]$lod)
+RTG_a3_chr7_info = as.data.frame(m2.sigqtl.snps$RTG_a3[[2]]$snpinfo)
+row.names(RTG_a3_chr7_info) = RTG_a3_chr7_info$snp_id
+RTG_a3_chr7_SNPs = cbind(RTG_a3_chr7_info[row.names(RTG_a3_chr7_SNPs),], RTG_a3_chr7_SNPs)
+rm(list = c("RTG_a3_chr7_info","m2.sigqtl.genes","m2.sigqtl.snps"))
+```
+
+Loading sensi SNPs for SNP correlations.
+
+```{r}
+load("./data/SENSI_chr7_snps.RData")
+chr7_cocaine_snps_lod = as.data.frame(chr7_cocaine_snps$lod)
+chr7_saline_snps_lod  = as.data.frame(chr7_saline_snps$lod)
+```
+
+Next, importing [CC variants file](ftp://ftp.jax.org/dgatti/CC_SNP_DB/cc_variants.sqlite) (downloaded 2020-07-09). Creating a query function.
+
+```{r}
+query_func = create_variant_query_func("./data/cc_variants/cc_variants.sqlite")
+```
+
+Next, loading in the eQTL data
+
+```{r}
+load("./data/DO_str_2016_eQTL.RData")
+# DO_pheno = DO_str_2016_cross$pheno
+DO_covar = DO_str_2016_cross$covar
+
+DO_unfiltered_DGE = readRDS("./data/DO_416_DGEList_unfiltered.RDS")
+DO_unfiltered_DGE = calcNormFactors(DO_unfiltered_DGE)
+DO_pheno = t(voom(DO_unfiltered_DGE)$E)
+rm(list = c("DO_unfiltered_DGE"))
+DO_pheno = DO_pheno[gsub("^(\\d{4,5})_.*$","\\1",row.names(DO_covar)),]
+row.names(DO_pheno) = row.names(DO_covar)
+
+addcovar_mat = model.matrix(~ ngen + sex, data = DO_covar)[,-1]
+addcovar_i = addcovar_mat
+
+library("qtl2")
+
+plot_eQTL_str_2016 = function(gene_i, n_cores = 9, label = gene_i, color = "darkblue") {
+  pheno_col_i = which(colnames(DO_pheno) == gene_i)
+  qtl_cis_i = scan1(genoprobs = DO_str_2016_aprobs,
+                    pheno = DO_pheno[,pheno_col_i, drop = FALSE],
+                    kinship = DO_str_2016_kinship,
+                    addcovar = addcovar_i,
+                    cores = n_cores)
+  return(plot_scan1(qtl_cis_i, map = DO_str_2016_cross$pmap, col = color, main = label))
+}
+
+plot_coefCC2 = function(x,
+                        map, 
+                        columns = c("A","B","C","D","E","F","G","H"), 
+                        col =  c("#F0E442", "#555555", "#E69F00", "#0072B2", 
+                                 "#56B4E9", "#009E73", "#D55E00", "#CC79A7"),
+                        labels = c("AJ", "B6", "129", "NOD", 
+                                   "NZO", "CAST", "PWK", "WSB"),
+                        legend = NULL,
+                        ...) {
+  if (length(columns) != length(labels)) {
+    stop("Column length different than label length")
+  } else if (length(which(columns %in% colnames(x))) != length(columns)) {
+    stop("Columns not in coefficient matrix") 
+  } else if (length(col) != length(columns)) {
+    stop("Different number of colors to column length")
+  }
+  stopifnot(require("qtl2"))
+  x = x[,columns]
+  colnames(x) = labels
+  return(plot_coef(x = x, map = map, col = col, legend = legend, ...))
+}
+
+
+plot_BLUP_str_2016 = function(gene_i, chr_i, label = gene_i, n_cores = 9, legendpos = "bottomleft") {
+  pheno_col_i = which(colnames(DO_pheno) == gene_i)
+  blup_i = scan1blup(DO_str_2016_aprobs[,chr_i], 
+                     pheno = DO_pheno[,pheno_col_i, drop = FALSE], 
+                     kinship = DO_str_2016_kinship[[chr_i]], 
+                     addcovar = addcovar_i,
+                     cores = n_cores)
+  return(plot_coefCC2(blup_i, map = DO_str_2016_cross$pmap, legend = legendpos, main = label, bgcolor = "white"))
+}
+```
+
+Next, loading the `RTG_a3` data for mediation analysis.
+
+```{r}
+RTG_phenotypes = readRDS("./data/DO_RTG_project_df_for_mapping.RDS")
+```
+
+Also loading the `SENSI` data for mediation analysis
+
+```{r}
+SENSI_cocaine_sensi = readRDS("./data/DO_novelty_saline_cocaine_cancor.RDS")
+```
+
+Next, loading CC/DO founders key.
+
+```{r}
+cc_do_founders_key = readRDS("./data/founders_key/cc_do_founders_key.RDS")
+```
+
+Next, loading in `biomaRt` and getting a key for expression data.
+
+```{r}
+# 10
+# Getting biomaRt data
+mm10_maRt = useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+                    host = "https://oct2018.archive.ensembl.org",
+                    dataset = "mmusculus_gene_ensembl")
+maRt_filter = "ensembl_gene_id"
+maRt_attributes = c("ensembl_gene_id","mgi_symbol","mgi_description","chromosome_name","start_position","end_position","strand")
+Mm_maRt = getBM(maRt_attributes, maRt_filter, colnames(DO_pheno), mm10_maRt)
+# row.names(Mm_maRt) = Mm_maRt$ensembl_gene_id
+Mm_maRt$start_position = Mm_maRt$start_position / 1e6
+Mm_maRt$end_position = Mm_maRt$end_position / 1e6
+```
+
+Finally, loading the `RTG_a2`, `RTG_a3`, and `SENS` QTL results.
+
+```{r}
+# Loading RTG a1
+load("./data/DO_RTG_a1_new.qtl.RData")
+RTG_a1_qtl = m2.qtl.out$RTG_a1
+load("./data/DO_RTG_a1_new_1000x.qtlpermu.RData")
+RTG_a1_perms = m2.permu$RTG_a1
+
+# Loading RTG a2
+load("./data/DO_RTG_a2_new.qtl.RData")
+RTG_a2_qtl = m2.qtl.out$RTG_a2
+load("./data/DO_RTG_a2_new_1000x.qtlpermu.RData")
+RTG_a2_perms = m2.permu$RTG_a2
+
+# Loading RTG a3
+load("./data/DO_RTG_a3_new.qtl.RData")
+RTG_a3_qtl = m2.qtl.out$RTG_a3
+load("./data/DO_RTG_a3_new_1000x.qtlpermu.RData")
+RTG_a3_perms = m2.permu$RTG_a3
+
+# Loading SENS
+load("./data/DO_sensi_cocaine.qtl.RData")
+SENS_COC_qtl = m2.qtl.out$cocaine_novelty_cancor
+
+# Loading SENSI Saline
+load("./data/DO_saline.qtl.RData")
+SENS_SAL_qtl = m2.qtl.out$saline_novelty_cancor
+
+# Loading physical map
+load("./output/RTG_out/gm_qc_pgmap.rdata")
+```
+
+### Analysis
+
+Identifying all genes within a 10 Mb window around the peaks.
+
+
+#### RTG a1
+
+```{r}
+# Getting thresholds
+RTG_a1_permu_thresholds = quantile(RTG_a1_perms, probs = 1 - c(0, 0.01, 0.05, 0.10, 0.63, 1))
+RTG_a1_suggestive = RTG_a1_permu_thresholds["37%"]
+RTG_a1_ten_percent = RTG_a1_permu_thresholds["90%"]
+RTG_a1_five_percent = RTG_a1_permu_thresholds["95%"]
+RTG_a1_one_percent = RTG_a1_permu_thresholds["99%"]
+
+RTG_a1_peaks_pos = find_peaks(RTG_a1_qtl,
+                              map = pmap,
+                              threshold = RTG_a1_permu_thresholds["37%"],
+                              prob = 0.95)
+RTG_a1_peaks_pos
+```
+
+#### RTG a2
+
+```{r}
+RTG_a2_permu_thresholds = quantile(RTG_a2_perms, probs = 1 - c(0, 0.01, 0.05, 0.10, 0.63, 1))
+RTG_a2_suggestive = RTG_a2_permu_thresholds["37%"]
+RTG_a2_ten_percent = RTG_a2_permu_thresholds["90%"]
+RTG_a2_five_percent = RTG_a2_permu_thresholds["95%"]
+RTG_a2_one_percent = RTG_a2_permu_thresholds["99%"]
+
+RTG_a2_peaks_pos = find_peaks(RTG_a2_qtl,
+                              map = pmap,
+                              threshold = RTG_a2_permu_thresholds["37%"],
+                              prob = 0.95)
+RTG_a2_peaks_pos
+```
+
+#### RTG a3
+
+Starting with chr7.
+
+```{r}
+RTG_a3_permu_thresholds = quantile(RTG_a3_perms, probs = 1 - c(0, 0.01, 0.05, 0.10, 0.63, 1))
+RTG_a3_suggestive = RTG_a3_permu_thresholds["37%"]
+RTG_a3_ten_percent = RTG_a3_permu_thresholds["90%"]
+RTG_a3_five_percent = RTG_a3_permu_thresholds["95%"]
+RTG_a3_one_percent = RTG_a3_permu_thresholds["99%"]
+
+RTG_a3_peaks_pos = find_peaks(RTG_a3_qtl,
+                              map = pmap,
+                              threshold = RTG_a3_permu_thresholds["37%"],
+                              prob = 0.95)
+RTG_a3_peaks_pos
+```
+
+#### SENS Cocaine Peaks
+
+```{r}
+SENS_COC_peaks_pos = find_peaks(SENS_COC_qtl,
+                              map = pmap,
+                              threshold = RTG_a3_permu_thresholds["37%"],
+                              prob = 0.95)
+SENS_COC_peaks_pos
+```
+
+#### SENS Saline Peaks
+
+```{r}
+SENS_SAL_peaks_pos = find_peaks(SENS_SAL_qtl,
+                              map = pmap,
+                              threshold = RTG_a3_permu_thresholds["37%"],
+                              prob = 0.95)
+SENS_SAL_peaks_pos
+```
+
+#### Chromosome 7 peak
+
+```{r}
+RTG_a3_chr7_peak = RTG_a3_peaks_pos[which(RTG_a3_peaks_pos$chr == "7"),]
+RTG_a3_chr7_peak_pos = RTG_a3_chr7_peak[,"pos"]
+
+SENSI_cocaine_chr7_peak = SENS_COC_peaks_pos[which(SENS_COC_peaks_pos$chr == "7"),]
+SENSI_cocaine_chr7_peak_pos = SENSI_cocaine_chr7_peak[,"pos"]
+
+SENSI_saline_chr7_peak = SENS_SAL_peaks_pos[which(SENS_SAL_peaks_pos$chr == "7"),]
+SENSI_saline_chr7_peak_pos = SENSI_saline_chr7_peak[,"pos"]
+
+max_chr7_peak_pos = max(c(RTG_a3_chr7_peak_pos, SENSI_cocaine_chr7_peak_pos, SENSI_saline_chr7_peak_pos))
+min_chr7_peak_pos = min(c(RTG_a3_chr7_peak_pos, SENSI_cocaine_chr7_peak_pos, SENSI_saline_chr7_peak_pos))
+
+chr7_genes = Mm_maRt[which(Mm_maRt$chromosome_name == "7"),]
+
+# Getting genes within 10 Mb of the peak
+chr7_genes = chr7_genes[which(chr7_genes$start_position >= (min_chr7_peak_pos - 10) | chr7_genes$end_position >= (min_chr7_peak_pos - 10)),]
+chr7_genes = chr7_genes[which(chr7_genes$start_position <= (max_chr7_peak_pos + 10) | chr7_genes$end_position <= (max_chr7_peak_pos + 10)),]
+```
+
+Getting BLUPs for all genes on chr7. Ran this command to get these.
+
+```{r eval=FALSE}
+chr7_gene_blup = list()
+
+for (i in seq_len(nrow(chr7_genes))) {
+  gene_i = as.character(chr7_genes[i,"ensembl_gene_id"])
+  chr7_gene_blup[[gene_i]] = scan1blup(DO_str_2016_aprobs[,"7"], 
+                                       pheno = DO_pheno[,gene_i, drop = FALSE], 
+                                       kinship = DO_str_2016_kinship[["7"]], 
+                                       addcovar = addcovar_i,
+                                       cores = 9)
+}
+```
+
+Loading these BLUPs.
+
+```{r}
+chr7_gene_blup = readRDS("./data/chr7_blups_with_rtg.RDS")
+chr7_pmap = DO_str_2016_cross$pmap[["7"]]
+RTG_a3_chr7_peak_marker = names(chr7_pmap)[which(chr7_pmap > RTG_a3_chr7_peak_pos - (10 / 1e6) & chr7_pmap < RTG_a3_chr7_peak_pos + (10 / 1e6))]
+SENSI_cocaine_chr7_peak_marker = names(chr7_pmap)[which(chr7_pmap > SENSI_cocaine_chr7_peak_pos - (10 / 1e6) & chr7_pmap < SENSI_cocaine_chr7_peak_pos + (10 / 1e6))]
+SENSI_saline_chr7_peak_marker = names(chr7_pmap)[which(chr7_pmap > SENSI_saline_chr7_peak_pos - (10 / 1e6) & chr7_pmap < SENSI_saline_chr7_peak_pos + (10 / 1e6))]
+
+chr7_genes_in_blup = grep("^ENSMUSG",names(chr7_gene_blup),value=TRUE)
+
+RTG_a3_peak_blups = matrix(nrow = 8, ncol = 1 + length(chr7_genes_in_blup))
+row.names(RTG_a3_peak_blups) = LETTERS[1:8]
+colnames(RTG_a3_peak_blups) = c("RTG_a3", chr7_genes_in_blup)
+RTG_a3_peak_blups[LETTERS[1:8],"RTG_a3"] = chr7_gene_blup[["RTG_a3"]][RTG_a3_chr7_peak_marker,LETTERS[1:8]]
+
+SENSI_cocaine_peak_blups = matrix(nrow = 8, ncol = 1 + length(chr7_genes_in_blup))
+row.names(SENSI_cocaine_peak_blups) = LETTERS[1:8]
+colnames(SENSI_cocaine_peak_blups) = c("SENSI_cocaine", chr7_genes_in_blup)
+SENSI_cocaine_peak_blups[LETTERS[1:8],"SENSI_cocaine"] = chr7_gene_blup[["SENSI_cocaine"]][SENSI_cocaine_chr7_peak_marker,LETTERS[1:8]]
+
+SENSI_saline_peak_blups = matrix(nrow = 8, ncol = 1 + length(chr7_genes_in_blup))
+row.names(SENSI_saline_peak_blups) = LETTERS[1:8]
+colnames(SENSI_saline_peak_blups) = c("SENSI_saline", chr7_genes_in_blup)
+SENSI_saline_peak_blups[LETTERS[1:8],"SENSI_saline"] = chr7_gene_blup[["SENSI_saline"]][SENSI_saline_chr7_peak_marker,LETTERS[1:8]]
+
+for (i in chr7_genes_in_blup) {
+  RTG_a3_peak_blups[LETTERS[1:8],i] = chr7_gene_blup[[i]][RTG_a3_chr7_peak_marker,LETTERS[1:8]]
+  SENSI_cocaine_peak_blups[LETTERS[1:8],i] = chr7_gene_blup[[i]][SENSI_cocaine_chr7_peak_marker,LETTERS[1:8]]
+  SENSI_saline_peak_blups[LETTERS[1:8],i] = chr7_gene_blup[[i]][SENSI_saline_chr7_peak_marker,LETTERS[1:8]]
+}
+
+RTG_a3_blup_spearman = cor(RTG_a3_peak_blups[,"RTG_a3"],RTG_a3_peak_blups[,-1],
+                           method = "spearman")
+SENSI_cocaine_blup_spearman = cor(SENSI_cocaine_peak_blups[,"SENSI_cocaine"],SENSI_cocaine_peak_blups[,-1],
+                           method = "spearman")
+SENSI_saline_blup_spearman = cor(SENSI_saline_peak_blups[,"SENSI_saline"],SENSI_saline_peak_blups[,-1],
+                           method = "spearman")
+```
+
+Finding SNP associations for all of these genes and calculating correlations with the `RTG_a3` SNP associations. Starting with chr7.
+
+```{r}
+# Getting SNP range for the chr7 resuls
+chr = "7"
+start = min(RTG_a3_chr7_SNPs$pos)
+end = max(RTG_a3_chr7_SNPs$pos)
+chr7_pheno = DO_pheno[,which(colnames(DO_pheno) %in% chr7_genes$ensembl_gene_id)]
+
+for (i in 1:ncol(chr7_pheno)) {
+  col_i = colnames(chr7_pheno)[i]
+  ranknorm_resid_i = norm_rank_transform(resid(lm(DO_pheno[,col_i] ~ as.numeric(DO_covar$choroid_plexus_covariate))))
+  chr7_pheno[,i] = ranknorm_resid_i[row.names(chr7_pheno)]
+}
+
+# Looping through to make eQTL results
+for (i in 1:nrow(chr7_genes)) {
+  sig_gene_i = chr7_genes[i,"ensembl_gene_id"]
+  sig_label_i = chr7_genes[i,"mgi_symbol"]
+  pheno_col_i = which(colnames(chr7_pheno) == sig_gene_i)
+  assoc = scan1snps(genoprobs = DO_str_2016_aprobs[,chr], 
+                    map = DO_str_2016_cross$pmap, 
+                    pheno = chr7_pheno[,pheno_col_i, drop = FALSE], 
+                    kinship = DO_str_2016_kinship, 
+                    addcovar = addcovar_i, 
+                    query_func = query_func, 
+                    chr = chr, 
+                    start = start, 
+                    end = end, 
+                    keep_all_snps = TRUE)
+  if (exists("qtl_df")) {
+    qtl_df = cbind(qtl_df, as.data.frame(assoc$lod)[row.names(qtl_df),])
+  } else {
+    qtl_df = as.data.frame(assoc$lod)
+  }
+  colnames(qtl_df)[i] = sig_label_i
+}
+
+#  colnames(qtl_df) = chr7_genes$mgi_symbol
+qtl_df$RTG_a3 = RTG_a3_chr7_SNPs[row.names(qtl_df),"pheno1"]
+qtl_df$SENSI_cocaine = chr7_cocaine_snps_lod[row.names(qtl_df),"pheno1"]
+qtl_df$SENSI_saline = chr7_saline_snps_lod[row.names(qtl_df),"pheno1"]
+```
+
+Calculating correlations between the `RTG_a3`, `SENSI_cocaine`, and `SENSI_saline` SNP mapping for chr7.
+
+```{r}
+RTG_a3_cor = cor(qtl_df$RTG_a3,qtl_df[,chr7_genes$mgi_symbol],
+                 use = "pairwise.complete.obs")
+SENSI_cocaine_cor = cor(qtl_df$SENSI_cocaine,qtl_df[,chr7_genes$mgi_symbol],
+                        use = "pairwise.complete.obs")
+SENSI_saline_cor = cor(qtl_df$SENSI_saline,qtl_df[,chr7_genes$mgi_symbol],
+                 use = "pairwise.complete.obs")
+chr7_genes$cor_RTG_a3 = RTG_a3_cor[,as.character(chr7_genes$mgi_symbol)]
+chr7_genes$cor_SENSI_cocaine = SENSI_cocaine_cor[,as.character(chr7_genes$mgi_symbol)]
+chr7_genes$cor_SENSI_saline = SENSI_saline_cor[,as.character(chr7_genes$mgi_symbol)]
+```
+
+Performing mediation analysis with `RTG_a3` phenotype on chr7 genes. Beginning with a plot of the `RTG_a3` result on the data with expression information.
+
+```{r}
+# Getting phenotype matrices for IVSA, SENSI Cocaine, and SENSI Saline
+RTG_a3_phenotype_mat = matrix(RTG_phenotypes[gsub("^(\\d{4,5})_.*$","\\1",row.names(chr7_pheno)),"RTG_a3"], ncol = 1)
+row.names(RTG_a3_phenotype_mat) = row.names(chr7_pheno)
+colnames(RTG_a3_phenotype_mat) = "RTG_a3"
+
+SENSI_cocaine_phenotype_mat = matrix(SENSI_cocaine_sensi[gsub("^(\\d{4,5})_.*$","\\1",row.names(chr7_pheno)),"cocaine_novelty_cancor"], ncol = 1)
+row.names(SENSI_cocaine_phenotype_mat) = row.names(chr7_pheno)
+colnames(SENSI_cocaine_phenotype_mat) = "SENSI_cocaine"
+
+SENSI_saline_phenotype_mat = matrix(SENSI_cocaine_sensi[gsub("^(\\d{4,5})_.*$","\\1",row.names(chr7_pheno)),"saline_novelty_cancor"], ncol = 1)
+row.names(SENSI_saline_phenotype_mat) = row.names(chr7_pheno)
+colnames(SENSI_saline_phenotype_mat) = "SENSI_saline"
+
+# Mapping RTG_a3 on chromosome 7
+qtl_RTG_a3_exprs = scan1(genoprobs = DO_str_2016_aprobs[,"7"],
+                         pheno = RTG_a3_phenotype_mat[,"RTG_a3"],
+                         kinship = DO_str_2016_kinship$`7`,
+                         addcovar = addcovar_i,
+                         cores = 9)
+chr7_markers = DO_str_2016_cross$pmap$`7`
+chr7_markers = chr7_markers[which(chr7_markers >= (RTG_a3_chr7_peak_pos - 5) &
+                                  chr7_markers <= (RTG_a3_chr7_peak_pos + 5))]
+chr7_pheno1 = as.data.frame(qtl_RTG_a3_exprs)[names(chr7_markers),"pheno1"]
+names(chr7_pheno1) = names(chr7_markers)
+max_marker_RTG_a3 = names(chr7_pheno1[which(chr7_pheno1 == max(chr7_pheno1))])
+max_marker_lod_RTG_a3 = chr7_pheno1[max_marker_RTG_a3]
+
+# Mapping SENSI_cocaine on chromosome 7
+qtl_SENSI_cocaine_exprs = scan1(genoprobs = DO_str_2016_aprobs[,"7"],
+                                pheno = SENSI_cocaine_phenotype_mat[,"SENSI_cocaine"],
+                                kinship = DO_str_2016_kinship$`7`,
+                                addcovar = addcovar_i,
+                                cores = 9)
+chr7_markers = DO_str_2016_cross$pmap$`7`
+chr7_markers = chr7_markers[which(chr7_markers >= (SENSI_cocaine_chr7_peak_pos - 5) &
+                                  chr7_markers <= (SENSI_cocaine_chr7_peak_pos + 5))]
+chr7_pheno1 = as.data.frame(qtl_SENSI_cocaine_exprs)[names(chr7_markers),1]
+names(chr7_pheno1) = names(chr7_markers)
+max_marker_SENSI_cocaine = names(chr7_pheno1[which(chr7_pheno1 == max(chr7_pheno1))])
+max_marker_lod_SENSI_cocaine = chr7_pheno1[max_marker_SENSI_cocaine]
+
+# Mapping SENSI_saline on chromosome 7
+qtl_SENSI_saline_exprs = scan1(genoprobs = DO_str_2016_aprobs[,"7"],
+                         pheno = SENSI_saline_phenotype_mat[,"SENSI_saline"],
+                         kinship = DO_str_2016_kinship$`7`,
+                         addcovar = addcovar_i,
+                         cores = 9)
+chr7_markers = DO_str_2016_cross$pmap$`7`
+chr7_markers = chr7_markers[which(chr7_markers >= (SENSI_saline_chr7_peak_pos - 5) &
+                                  chr7_markers <= (SENSI_saline_chr7_peak_pos + 5))]
+chr7_pheno1 = as.data.frame(qtl_SENSI_saline_exprs)[names(chr7_markers),1]
+names(chr7_pheno1) = names(chr7_markers)
+max_marker_SENSI_saline = names(chr7_pheno1[which(chr7_pheno1 == max(chr7_pheno1))])
+max_marker_lod_SENSI_saline = chr7_pheno1[max_marker_SENSI_saline]
+
+# Doing mediation analysis: looking at LOD score drops
+for (i in 1:nrow(chr7_genes)) {
+  sig_gene_i = chr7_genes[i,"ensembl_gene_id"]
+  sig_label_i = chr7_genes[i,"mgi_symbol"]
+  pheno_col_i = which(colnames(chr7_pheno) == sig_gene_i)
+  
+  # RTG_a3
+  RTG_a3_scan_i = scan1(genoprobs = DO_str_2016_aprobs[,"7"],
+                        pheno = RTG_a3_phenotype_mat[,"RTG_a3"],
+                        kinship = DO_str_2016_kinship$`7`,
+                        addcovar = cbind(addcovar_i,
+                                         chr7_pheno[,sig_gene_i]),
+                        cores = 9)
+  max_marker_RTG_a3_lod_i = as.data.frame(RTG_a3_scan_i)[max_marker_RTG_a3,1]
+  if (exists("max_markers_RTG_a3")) {
+    max_markers_RTG_a3 = c(max_markers_RTG_a3, max_marker_RTG_a3_lod_i)
+    names(max_markers_RTG_a3)[i] = sig_label_i
+  } else {
+    max_markers_RTG_a3 = max_marker_RTG_a3_lod_i
+    names(max_markers_RTG_a3) = sig_label_i
+  }
+  
+  # SENSI_cocaine
+  SENSI_cocaine_scan_i = scan1(genoprobs = DO_str_2016_aprobs[,"7"],
+                        pheno = SENSI_cocaine_phenotype_mat[,"SENSI_cocaine"],
+                        kinship = DO_str_2016_kinship$`7`,
+                        addcovar = cbind(addcovar_i,
+                                         chr7_pheno[,sig_gene_i]),
+                        cores = 9)
+  max_marker_SENSI_cocaine_lod_i = as.data.frame(SENSI_cocaine_scan_i)[max_marker_SENSI_cocaine,1]
+  if (exists("max_markers_SENSI_cocaine")) {
+    max_markers_SENSI_cocaine = c(max_markers_SENSI_cocaine, max_marker_SENSI_cocaine_lod_i)
+    names(max_markers_SENSI_cocaine)[i] = sig_label_i
+  } else {
+    max_markers_SENSI_cocaine = max_marker_SENSI_cocaine_lod_i
+    names(max_markers_SENSI_cocaine) = sig_label_i
+  }
+  
+  # SENSI_saline
+    SENSI_saline_scan_i = scan1(genoprobs = DO_str_2016_aprobs[,"7"],
+                        pheno = SENSI_saline_phenotype_mat[,"SENSI_saline"],
+                        kinship = DO_str_2016_kinship$`7`,
+                        addcovar = cbind(addcovar_i,
+                                         chr7_pheno[,sig_gene_i]),
+                        cores = 9)
+  max_marker_SENSI_saline_lod_i = as.data.frame(SENSI_saline_scan_i)[max_marker_SENSI_saline,1]
+  if (exists("max_markers_SENSI_saline")) {
+    max_markers_SENSI_saline = c(max_markers_SENSI_saline, max_marker_SENSI_saline_lod_i)
+    names(max_markers_SENSI_saline)[i] = sig_label_i
+  } else {
+    max_markers_SENSI_saline = max_marker_SENSI_saline_lod_i
+    names(max_markers_SENSI_saline) = sig_label_i
+  }
+}
+chr7_genes$med_RTG_a3 = max_markers_RTG_a3[chr7_genes$mgi_symbol]
+chr7_genes$med_SENSI_cocaine = max_markers_SENSI_cocaine[chr7_genes$mgi_symbol]
+chr7_genes$med_SENSI_saline = max_markers_SENSI_saline[chr7_genes$mgi_symbol]
+
+rm(list = ls(pattern = "^max_markers_"))
+
+# Calculating a few variables that are useful for plotting
+chr7_genes$RTG_a3_lod_drop = max_marker_lod_RTG_a3 - chr7_genes$med_RTG_a3
+chr7_genes$SENSI_cocaine_lod_drop = max_marker_lod_SENSI_cocaine - chr7_genes$med_SENSI_cocaine
+chr7_genes$SENSI_saline_lod_drop = max_marker_lod_SENSI_saline - chr7_genes$med_SENSI_saline
+
+# Getting labels and colors and such.
+chr7_genes$label_RTG_a3 = ifelse((chr7_genes$RTG_a3_lod_drop > 0.1) | (chr7_genes$cor_RTG_a3 > 0.3),
+                                 chr7_genes$mgi_symbol,"")
+chr7_genes$color_RTG_a3 = ifelse(chr7_genes$label_RTG_a3 == "", "#666666", "#CC3333")
+chr7_genes[which(chr7_genes$mgi_symbol == "Eed"),"label_RTG_a3"] = "Eed"
+
+chr7_genes$label_SENSI_cocaine = ifelse((chr7_genes$SENSI_cocaine_lod_drop > 0.1) | (chr7_genes$cor_SENSI_cocaine > 0.3),
+                                 chr7_genes$mgi_symbol,"")
+chr7_genes$color_SENSI_cocaine = ifelse(chr7_genes$label_SENSI_cocaine == "", "#666666", "#CC3333")
+chr7_genes[which(chr7_genes$mgi_symbol == "Eed"),"label_SENSI_cocaine"] = "Eed"
+
+
+chr7_genes$label_SENSI_saline = ifelse((chr7_genes$SENSI_saline_lod_drop > 0.1) | (chr7_genes$cor_SENSI_saline > 0.3),
+                                 chr7_genes$mgi_symbol,"")
+chr7_genes$color_SENSI_saline = ifelse(chr7_genes$label_SENSI_saline == "", "#666666", "#CC3333")
+chr7_genes[which(chr7_genes$mgi_symbol == "Eed"),"label_SENSI_saline"] = "Eed"
+
+chr7_genes$in_exprs_set = chr7_genes$ensembl_gene_id %in% colnames(DO_str_2016_cross$pheno)
+
+chr7_genes$label_all = ifelse(chr7_genes$mgi_symbol %in% c("Eed","Me3"),
+                              chr7_genes$mgi_symbol, NA)
+```
+
+Displaying correlations and mediation analysis (LOD score drops) with the `RTG_a3` SNP mapping.
+
+```{r}
+# 20
+chr7_genes[order(chr7_genes$RTG_a3_lod_drop, decreasing = TRUE),]
+```
+
+Identifying genes extreme on both mediation analysis and correlational analysis for `RTG_a3` (IVSA all traits).
+
+```{r}
+# Plotting mediation and SNP correlation variables with ggplot2 and ggrepel
+chr7_eQTL_cor_med_plot = ggplot(data = chr7_genes[which(chr7_genes$in_exprs_set),], aes(x = cor_RTG_a3,
+                                                       y = RTG_a3_lod_drop,
+                                                       color = color_RTG_a3,
+                                                       fill = color_RTG_a3,
+                                                       label = label_all)) +
+  theme_classic() + 
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 0.1, linetype = "dashed") +
+  geom_vline(xintercept = 0.3, linetype = "dashed") +
+  geom_point(shape = 21, stroke = 0.75) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  scale_fill_manual(values = c("#FFFFFF","#000000")) +
+  scale_size_manual(values = c(1,3)) +
+  geom_label_repel(aes(fill = NULL)) +
+  xlab("eQTL SNP Correlation with\nCocaine IVSA") +
+  ylab("Cocaine IVSA\nLOD Drop with Expression")
+
+# Displaying plot
+chr7_eQTL_cor_med_plot
+```
+
+Identifying genes extreme on both mediation analysis and correlational analysis for `SENSI_cocaine`.
+
+```{r}
+# Plotting mediation and SNP correlation variables with ggplot2 and ggrepel
+chr7_eQTL_cor_med_plot_SENSI_cocaine = ggplot(data = chr7_genes[which(chr7_genes$in_exprs_set),], aes(x = cor_SENSI_cocaine,
+                                                       y = SENSI_cocaine_lod_drop,
+                                                       color = color_SENSI_cocaine,
+                                                       fill = color_SENSI_cocaine,
+                                                       label = label_all)) +
+  theme_classic() + 
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 0.1, linetype = "dashed") +
+  geom_vline(xintercept = 0.3, linetype = "dashed") +
+  geom_point(shape = 21, stroke = 0.75) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  scale_fill_manual(values = c("#FFFFFF","#000000")) +
+  scale_size_manual(values = c(1,3)) +
+  geom_label_repel(aes(fill = NULL)) +
+  xlab("eQTL SNP Correlation with\nCocaine Sensitization") +
+  ylab("Cocaine Sensitization\nLOD Drop with Expression")
+
+# Displaying plot
+chr7_eQTL_cor_med_plot_SENSI_cocaine
+```
+
+Identifying genes extreme on both mediation analysis and correlational analysis for `SENSI_saline`.
+
+```{r}
+# Plotting mediation and SNP correlation variables with ggplot2 and ggrepel
+chr7_eQTL_cor_med_plot_SENSI_saline = ggplot(data = chr7_genes[which(chr7_genes$in_exprs_set),], aes(x = cor_SENSI_saline,
+                                                       y = SENSI_saline_lod_drop,
+                                                       color = color_SENSI_saline,
+                                                       fill = color_SENSI_saline,
+                                                       label = label_all)) +
+  theme_classic() + 
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 0.1, linetype = "dashed") +
+  geom_vline(xintercept = 0.3, linetype = "dashed") +
+  geom_point(shape = 21, stroke = 0.75) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  scale_fill_manual(values = c("#FFFFFF","#000000")) +
+  scale_size_manual(values = c(1,3)) +
+  geom_label_repel(aes(fill = NULL)) +
+  xlab("eQTL SNP Correlation with\nSham/Control Locomotor Activity") +
+  ylab("Sham/Control Locomotor Activity\nLOD Drop with Expression")
+
+# Displaying plot
+chr7_eQTL_cor_med_plot_SENSI_saline
+```
+
+```{r}
+ggsave("./output/mediation_all_rta_figure.pdf", plot = plot_grid(chr7_eQTL_cor_med_plot + ggtitle("Cocaine IVSA"), chr7_eQTL_cor_med_plot_SENSI_cocaine + ggtitle("Cocaine Sensitization"), chr7_eQTL_cor_med_plot_SENSI_saline + ggtitle("Sham/Control Locomotor Activity"), ncol = 3), width = 12, height = 4, units = "in")
+```
+
+These data show that the strongest correlation and largest LOD drops at the peak on 4 are with the genes *Me3*, *Sytl2*, and *Arnt2* as well-annotated genes that meet criteria for potential causal genes for this QTL. Plotting their respective eQTL effects on chr7.
+
+Starting with *Me3*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000030621","7",label="Me3",legendpos = "bottomleft")
+```
+
+Now plotting *Arnt2*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000015709","7",label="Arnt2",legendpos = "bottomleft")
+```
+
+Now plotting *Sytl2*.
+
+```{r}
+plot_BLUP_str_2016("ENSMUSG00000030616","7",label="Sytl2",legendpos = "bottomleft")
+```
+
+Running 100 randomizations on positions other than the chr7 allele to see how rare the mediation result is.
+
+```{r}
+calculated_positions = Mm_maRt %>% 
+  group_by(chromosome_name) %>% 
+  summarize(min_start = min(start_position), 
+            min_end = min(end_position), 
+            max_start = max(start_position), 
+            max_end = max(end_position)) %>% 
+  group_by(chromosome_name) %>% 
+  mutate(min_pos = min(c(min_start, min_end)), 
+         max_pos = max(c(max_start, max_end)),
+         min_plus_5 = min(c(min_start, min_end)) + 5,
+         max_minus_5 = max(c(max_start, max_end)) - 5) %>%
+  mutate(length = max_minus_5 - min_plus_5)
+
+calculated_positions = as.data.frame(calculated_positions)
+row.names(calculated_positions) = calculated_positions$chromosome_name
+calculated_positions = calculated_positions[c(1:19,"X"),]
+calculated_positions$cumulative_length = cumsum(calculated_positions$length)
+calculated_positions$min_length = calculated_positions$cumulative_length - calculated_positions$length
+
+Me3_min = (chr7_genes[which(chr7_genes$mgi_symbol == "Me3"),"start_position"] - 5) + calculated_positions[which(calculated_positions$chromosome_name == "7"),"min_length"]
+Me3_max = (chr7_genes[which(chr7_genes$mgi_symbol == "Me3"),"end_position"] + 5) + calculated_positions[which(calculated_positions$chromosome_name == "7"),"min_length"]
+
+max_pos = max(calculated_positions$cumulative_length)
+random_peaks = c()
+
+# Making random peaks excluding the Me3 region
+while (length(random_peaks) < 100) {
+  candidate_peak = runif(1, min = 0, max = max_pos)
+  if (candidate_peak >= Me3_min & candidate_peak <= Me3_max) {
+    next
+  } else {
+    random_peaks = c(random_peaks, candidate_peak)
+  }
+}
+
+random_peaks = random_peaks[order(random_peaks)]
+
+min_lod_drop = c()
+max_lod_drop = c()
+lods_drop = list()
+
+for (i in random_peaks) {
+  chr_i = calculated_positions[which(calculated_positions$min_length < i & calculated_positions$cumulative_length >= i),"chromosome_name"]
+  scale_i = calculated_positions[which(calculated_positions$min_length < i & calculated_positions$cumulative_length >= i),"min_length"]
+  min_chr_i = calculated_positions[which(calculated_positions$min_length < i & calculated_positions$cumulative_length >= i),"min_plus_5"]
+  peak_i = (i - scale_i) + min_chr_i
+  genes_i = Mm_maRt[which(Mm_maRt$chromosome_name == chr_i &
+                            (Mm_maRt$start_position > (peak_i - 5) | Mm_maRt$end_position > (peak_i - 5)) &
+                           (Mm_maRt$start_position < (peak_i + 5) | Mm_maRt$end_position < (peak_i + 5))),]
+  lods_i = c()
+  for (j in 1:nrow(genes_i)) {
+    sig_gene_j = genes_i[j,"ensembl_gene_id"]
+    sig_label_j = genes_i[j,"mgi_symbol"]
+    pheno_col_j = which(colnames(DO_pheno) == sig_gene_i)
+    RTG_a3_scan_j = scan1(genoprobs = DO_str_2016_aprobs[,"7"],
+                          pheno = RTG_a3_phenotype_mat[,"RTG_a3"],
+                          kinship = DO_str_2016_kinship$`7`,
+                          addcovar = cbind(addcovar_i,
+                                           DO_pheno[,sig_gene_j]),
+                          cores = 9)
+    max_marker_lod_j = as.data.frame(RTG_a3_scan_j)[max_marker_RTG_a3,1]
+    lods_i = c(lods_i, max_marker_lod_j)
+  }
+  lods_drop_i = max_marker_lod_RTG_a3 - lods_i
+  lods_drop[[length(lods_drop) + 1]] = lods_drop_i
+  min_lod_drop = c(min_lod_drop, min(lods_drop_i))
+  max_lod_drop = c(max_lod_drop, max(lods_drop_i))
+}
+```
+
+### Output
+
+The output data are saved in `./data/`.
+
+```{r}
+saveRDS(chr7_genes,"./data/chr7_a3_QTL_results.RDS")
+```
+
+# Discussion
+
+## QTL figures
+
+Plotting publication-quality figures for the QTL analysis. Starting with the `SENS` QTL plot.
+
+```{r}
+# Getting QTL thresholds
+SENS_COC_suggestive = RTG_a3_permu_thresholds["37%"]
+SENS_COC_ten_percent = RTG_a3_permu_thresholds["90%"]
+SENS_COC_five_percent = RTG_a3_permu_thresholds["95%"]
+SENS_COC_one_percent = RTG_a3_permu_thresholds["99%"]
+
+# Getting information to plot
+gap_Mb = 20
+min_chr_i = 0
+chrs = as.character(c(1:19,"X"))
+SENS_COC_df = as.data.frame(SENS_COC_qtl)
+SENS_COC_df$marker = row.names(SENS_COC_df)
+SENS_COC_df$chr = rep(NA, times = nrow(SENS_COC_df))
+SENS_COC_df$stagger = rep(NA, times = nrow(SENS_COC_df))
+SENS_COC_df$pos = rep(-10, times = nrow(SENS_COC_df))
+SENS_COC_df$calc_pos = rep(-10, times = nrow(SENS_COC_df))
+SENS_COC_df$label = rep("", times = nrow(SENS_COC_df))
+SENS_COC_min_max_mid = data.frame(row.names = chrs,
+                                chr = chrs,
+                                max = rep(-10, times = length(chrs)),
+                                calc_min = rep(-10, times = length(chrs)),
+                                calc_mid = rep(-10, times = length(chrs)),
+                                calc_max = rep(-10, times = length(chrs)))
+
+# Getting data frame for plotting RTG a1 in ggplot2
+for (i in 1:length(chrs)) {
+  chr_i = chrs[i]
+  pmap_i = pmap[[chr_i]]
+  SENS_COC_df[names(pmap_i),"chr"] = chr_i
+  SENS_COC_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+  SENS_COC_df[names(pmap_i),"pos"] = pmap_i
+  SENS_COC_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+  max_lod_chr_i = max(SENS_COC_df[names(pmap_i),"pheno1"])
+  max_marker_chr_i = SENS_COC_df[which(SENS_COC_df$chr == chr_i & SENS_COC_df$pheno1 == max_lod_chr_i),"marker"]
+  SENS_COC_df[max_marker_chr_i,"label"] = ifelse(max_lod_chr_i > SENS_COC_five_percent,
+                                               paste(max_marker_chr_i, " at chr", chr_i,
+                                                     ":",round(SENS_COC_df[max_marker_chr_i,"pos"], 2),
+                                                     " Mb (LOD = ",round(max_lod_chr_i, 2),")", sep = ""),
+                                               "")
+  max_pos_i = max(pmap_i)
+  SENS_COC_min_max_mid[chr_i,"calc_min"] = min_chr_i
+  SENS_COC_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+  SENS_COC_min_max_mid[chr_i,"max"] = max_pos_i
+  min_chr_i = min_chr_i + max_pos_i + gap_Mb
+}
+SENS_COC_min_max_mid$calc_mid = SENS_COC_min_max_mid$calc_min + (0.5 * (SENS_COC_min_max_mid$calc_max - SENS_COC_min_max_mid$calc_min))
+SENS_COC_df$chr = factor(SENS_COC_df$chr, levels = chrs, ordered = TRUE)
+
+# Plotting RTG a1
+SENS_COC_mapping_plot = ggplot(data = SENS_COC_df, aes(x = calc_pos,
+                                                   y = pheno1,
+                                                   color = stagger,
+                                                   group = chr,
+                                                   label = label)) +
+  theme_bw() +
+  theme(legend.position = "none", panel.grid = element_line(color = "#FFFFFF")) +
+  geom_line(size = 0.5) +
+  scale_x_continuous(labels = SENS_COC_min_max_mid$chr,
+                     breaks = SENS_COC_min_max_mid$calc_mid,
+                     minor_breaks = c(SENS_COC_min_max_mid$calc_min, SENS_COC_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#002D72","#0085CA")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  geom_hline(yintercept = SENS_COC_five_percent, color = "#AB2328", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = SENS_COC_ten_percent, color = "#ED8B00", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = SENS_COC_suggestive, color = "#F1C400", linetype = "dashed", size = 1) +
+  annotate("text", label = expression(paste(alpha, " = 0.05")), x = 80, y = SENS_COC_five_percent + 0.25, color = "#AB2328") +
+  annotate("text", label = expression(paste(alpha, " = 0.10")), x = 80, y = SENS_COC_ten_percent + 0.25, color = "#ED8B00") +
+  annotate("text", label = "Suggestive", x = 80, y = SENS_COC_suggestive + 0.25, color = "#F1C400") +
+  geom_label_repel() +
+  ggtitle("RTG Analysis 1: Mapping Results")
+SENS_COC_mapping_plot
+```
+
+Plotting `RTG_a2` QTL plot
+
+```{r}
+# Getting QTL thresholds
+RTG_a2_suggestive = RTG_a2_permu_thresholds["37%"]
+RTG_a2_ten_percent = RTG_a2_permu_thresholds["90%"]
+RTG_a2_five_percent = RTG_a2_permu_thresholds["95%"]
+RTG_a2_one_percent = RTG_a2_permu_thresholds["99%"]
+
+# Getting information to plot
+gap_Mb = 20
+min_chr_i = 0
+chrs = as.character(c(1:19,"X"))
+RTG_a2_df = as.data.frame(RTG_a2_qtl)
+RTG_a2_df$marker = row.names(RTG_a2_df)
+RTG_a2_df$chr = rep(NA, times = nrow(RTG_a2_df))
+RTG_a2_df$stagger = rep(NA, times = nrow(RTG_a2_df))
+RTG_a2_df$pos = rep(-10, times = nrow(RTG_a2_df))
+RTG_a2_df$calc_pos = rep(-10, times = nrow(RTG_a2_df))
+RTG_a2_df$label = rep("", times = nrow(RTG_a2_df))
+RTG_a2_min_max_mid = data.frame(row.names = chrs,
+                                chr = chrs,
+                                max = rep(-10, times = length(chrs)),
+                                calc_min = rep(-10, times = length(chrs)),
+                                calc_mid = rep(-10, times = length(chrs)),
+                                calc_max = rep(-10, times = length(chrs)))
+
+# Getting data frame for plotting RTG a2 in ggplot2
+for (i in 1:length(chrs)) {
+  chr_i = chrs[i]
+  pmap_i = pmap[[chr_i]]
+  RTG_a2_df[names(pmap_i),"chr"] = chr_i
+  RTG_a2_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+  RTG_a2_df[names(pmap_i),"pos"] = pmap_i
+  RTG_a2_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+  max_lod_chr_i = max(RTG_a2_df[names(pmap_i),"pheno1"])
+  max_marker_chr_i = RTG_a2_df[which(RTG_a2_df$chr == chr_i & RTG_a2_df$pheno1 == max_lod_chr_i),"marker"]
+  RTG_a2_df[max_marker_chr_i,"label"] = ifelse(max_lod_chr_i > RTG_a2_five_percent,
+                                               paste(max_marker_chr_i, " at chr", chr_i,
+                                                     ":",round(RTG_a2_df[max_marker_chr_i,"pos"], 2),
+                                                     " Mb (LOD = ",round(max_lod_chr_i, 2),")", sep = ""),
+                                               "")
+  max_pos_i = max(pmap_i)
+  RTG_a2_min_max_mid[chr_i,"calc_min"] = min_chr_i
+  RTG_a2_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+  RTG_a2_min_max_mid[chr_i,"max"] = max_pos_i
+  min_chr_i = min_chr_i + max_pos_i + gap_Mb
+}
+RTG_a2_min_max_mid$calc_mid = RTG_a2_min_max_mid$calc_min + (0.5 * (RTG_a2_min_max_mid$calc_max - RTG_a2_min_max_mid$calc_min))
+RTG_a2_df$chr = factor(RTG_a2_df$chr, levels = chrs, ordered = TRUE)
+
+# Plotting RTG a2
+RTG_a2_mapping_plot = ggplot(data = RTG_a2_df, aes(x = calc_pos,
+                                                   y = pheno1,
+                                                   color = stagger,
+                                                   group = chr,
+                                                   label = label)) +
+  theme_bw() +
+  theme(legend.position = "none", panel.grid = element_line(color = "#FFFFFF")) +
+  geom_line(size = 0.5) +
+  scale_x_continuous(labels = RTG_a2_min_max_mid$chr,
+                     breaks = RTG_a2_min_max_mid$calc_mid,
+                     minor_breaks = c(RTG_a2_min_max_mid$calc_min, RTG_a2_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#002D72","#0085CA")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  geom_hline(yintercept = RTG_a2_five_percent, color = "#AB2328", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a2_ten_percent, color = "#ED8B00", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a2_suggestive, color = "#F1C400", linetype = "dashed", size = 1) +
+  annotate("text", label = expression(paste(alpha, " = 0.05")), x = 80, y = RTG_a2_five_percent + 0.25, color = "#AB2328") +
+  annotate("text", label = expression(paste(alpha, " = 0.10")), x = 80, y = RTG_a2_ten_percent + 0.25, color = "#ED8B00") +
+  annotate("text", label = "Suggestive", x = 80, y = RTG_a2_suggestive + 0.25, color = "#F1C400") +
+  geom_label_repel() +
+  ggtitle("RTG Analysis 2: Mapping Results")
+RTG_a2_mapping_plot
+```
+
+Plotting `RTG_a3` plot.
+
+```{r}
+# Getting QTL thresholds
+RTG_a3_permu_thresholds = quantile(RTG_a3_perms, probs = c(0, 1-0.63, 1-0.1, 1-0.05 ,1-0.01, 1))
+RTG_a3_suggestive = RTG_a3_permu_thresholds["37%"]
+RTG_a3_ten_percent = RTG_a3_permu_thresholds["90%"]
+RTG_a3_five_percent = RTG_a3_permu_thresholds["95%"]
+RTG_a3_one_percent = RTG_a3_permu_thresholds["99%"]
+
+# Getting information to plot
+gap_Mb = 20
+min_chr_i = 0
+chrs = as.character(c(1:19,"X"))
+RTG_a3_df = as.data.frame(RTG_a3_qtl)
+RTG_a3_df$marker = row.names(RTG_a3_df)
+RTG_a3_df$chr = rep(NA, times = nrow(RTG_a3_df))
+RTG_a3_df$stagger = rep(NA, times = nrow(RTG_a3_df))
+RTG_a3_df$pos = rep(-10, times = nrow(RTG_a3_df))
+RTG_a3_df$calc_pos = rep(-10, times = nrow(RTG_a3_df))
+RTG_a3_df$label = rep("", times = nrow(RTG_a3_df))
+RTG_a3_min_max_mid = data.frame(row.names = chrs,
+                                chr = chrs,
+                                max = rep(-10, times = length(chrs)),
+                                calc_min = rep(-10, times = length(chrs)),
+                                calc_mid = rep(-10, times = length(chrs)),
+                                calc_max = rep(-10, times = length(chrs)))
+
+# Getting data frame for plotting RTG a3 in ggplot2
+for (i in 1:length(chrs)) {
+  chr_i = chrs[i]
+  pmap_i = pmap[[chr_i]]
+  RTG_a3_df[names(pmap_i),"chr"] = chr_i
+  RTG_a3_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+  RTG_a3_df[names(pmap_i),"pos"] = pmap_i
+  RTG_a3_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+  max_lod_chr_i = max(RTG_a3_df[names(pmap_i),"pheno1"], na.rm = TRUE)
+  max_marker_chr_i = RTG_a3_df[which(RTG_a3_df$chr == chr_i & RTG_a3_df$pheno1 == max_lod_chr_i),"marker"]
+  RTG_a3_df[max_marker_chr_i,"label"] = ifelse(max_lod_chr_i > RTG_a3_five_percent,
+                                               paste(max_marker_chr_i, " at chr", chr_i,
+                                                     ":",round(RTG_a3_df[max_marker_chr_i,"pos"], 2),
+                                                     " Mb (LOD = ",round(max_lod_chr_i, 2),")", sep = ""),
+                                               "")
+  max_pos_i = max(pmap_i)
+  RTG_a3_min_max_mid[chr_i,"calc_min"] = min_chr_i
+  RTG_a3_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+  RTG_a3_min_max_mid[chr_i,"max"] = max_pos_i
+  min_chr_i = min_chr_i + max_pos_i + gap_Mb
+}
+RTG_a3_min_max_mid$calc_mid = RTG_a3_min_max_mid$calc_min + (0.5 * (RTG_a3_min_max_mid$calc_max - RTG_a3_min_max_mid$calc_min))
+RTG_a3_df$chr = factor(RTG_a3_df$chr, levels = chrs, ordered = TRUE)
+
+# Plotting RTG a3
+RTG_a3_mapping_plot = ggplot(data = RTG_a3_df, aes(x = calc_pos,
+                                                   y = pheno1,
+                                                   color = stagger,
+                                                   group = chr, 
+                                                   label = label)) +
+  theme_bw() +
+  theme(legend.position = "none", panel.grid = element_line(color = "#FFFFFF")) +
+  geom_line(size = 0.5) +
+  scale_x_continuous(labels = RTG_a3_min_max_mid$chr, 
+                     breaks = RTG_a3_min_max_mid$calc_mid, 
+                     minor_breaks = c(RTG_a3_min_max_mid$calc_min, RTG_a3_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#002D72","#0085CA")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  geom_hline(yintercept = RTG_a3_five_percent, color = "#AB2328", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a3_ten_percent, color = "#ED8B00", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = RTG_a3_suggestive, color = "#F1C400", linetype = "dashed", size = 1) +
+  annotate("text", label = expression(paste(alpha, " = 0.05")), x = 80, y = RTG_a3_five_percent + 0.25, color = "#AB2328") +
+  annotate("text", label = expression(paste(alpha, " = 0.10")), x = 80, y = RTG_a3_ten_percent + 0.25, color = "#ED8B00") +
+  annotate("text", label = "Suggestive", x = 80, y = RTG_a3_suggestive + 0.25, color = "#F1C400") +
+#   geom_label_repel() +
+  ggtitle("RTG Analysis 3: Mapping Results")
+RTG_a3_mapping_plot
+```
+
+Compiling all RTG traits table
+
+```{r}
+# 30
+SENS_COC_df$analysis = "Sensitization"
+RTG_a2_df$analysis = "IVSA Acquisition"
+RTG_a3_df$analysis = "IVSA All Traits"
+RTG_a3_df$label = ifelse(RTG_a3_df$label == "", NA, RTG_a3_df$label)
+
+qtl_plot_df = rbind(SENS_COC_df, RTG_a2_df, RTG_a3_df)
+
+qtl_plot_df$analysis = factor(qtl_plot_df$analysis,
+                              levels = c("Sensitization",
+                                         "IVSA Acquisition",
+                                         "IVSA All Traits"),
+                              ordered = TRUE)
+qtl_plot_df$chr_analysis = paste(qtl_plot_df$analysis, 
+                                 ifelse(qtl_plot_df$stagger == "lightblue",
+                                        "odd", "even"))
+
+qtl_plot_faceted = ggplot(data = qtl_plot_df, aes(x = calc_pos,
+                                                  y = pheno1,
+                                                  color = chr_analysis,
+                                                  group = chr,
+                                                  label = label)) +
+  theme_bw() +
+  theme(legend.position = "none", panel.grid = element_line(color = "#FFFFFF")) +
+  geom_line(size = 0.5) +
+  scale_x_continuous(labels = RTG_a3_min_max_mid$chr, 
+                     breaks = RTG_a3_min_max_mid$calc_mid, 
+                     minor_breaks = c(RTG_a3_min_max_mid$calc_min, RTG_a3_min_max_mid$calc_max)) +
+  # scale_color_manual(values = c("#66CC66","#448844",
+  #                               "#CC3333","#882222",
+  #                               "#3399CC","#226688")) +
+  scale_color_manual(values = c("#333333","#999999",
+                                "#333333","#999999",
+                                "#333333","#999999")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  geom_hline(yintercept = RTG_a3_five_percent, color = "#444444", linetype = "dashed", size = 1) +
+  facet_grid(analysis ~ ., scales = "free_y") +
+  theme(panel.spacing = unit(0, "mm"))
+
+qtl_plot_faceted
+```
+
+## Compiling QTL table
+
+Compiling table of QTL results
+
+```{r}
+# RTG_a1 peaks
+RTG_a1_peaks = find_peaks(RTG_a1_qtl, map = pmap, threshold = RTG_a1_suggestive, prob = 0.95)
+RTG_a1_peaks$lodcolumn = rep("RTG_a1", times = nrow(RTG_a1_peaks))
+RTG_a1_peaks$threshold = rep("suggestive", times = nrow(RTG_a1_peaks))
+RTG_a1_peaks$threshold = ifelse(RTG_a1_peaks$lod > RTG_a1_ten_percent, "ten_percent", RTG_a1_peaks$threshold)
+RTG_a1_peaks$threshold = ifelse(RTG_a1_peaks$lod > RTG_a1_five_percent, "five_percent", RTG_a1_peaks$threshold)
+RTG_a1_peaks$threshold = ifelse(RTG_a1_peaks$lod > RTG_a1_one_percent, "one_percent", RTG_a1_peaks$threshold)
+
+# RTG_a2 peaks
+RTG_a2_peaks = find_peaks(RTG_a2_qtl, map = pmap, threshold = RTG_a2_suggestive, prob = 0.95)
+RTG_a2_peaks$lodcolumn = rep("RTG_a2", times = nrow(RTG_a2_peaks))
+RTG_a2_peaks$threshold = rep("suggestive", times = nrow(RTG_a2_peaks))
+RTG_a2_peaks$threshold = ifelse(RTG_a2_peaks$lod > RTG_a2_ten_percent, "ten_percent", RTG_a2_peaks$threshold)
+RTG_a2_peaks$threshold = ifelse(RTG_a2_peaks$lod > RTG_a2_five_percent, "five_percent", RTG_a2_peaks$threshold)
+RTG_a2_peaks$threshold = ifelse(RTG_a2_peaks$lod > RTG_a2_one_percent, "one_percent", RTG_a2_peaks$threshold)
+
+# RTG_a3 peaks
+RTG_a3_peaks = find_peaks(RTG_a3_qtl, map = pmap, threshold = RTG_a3_suggestive, prob = 0.95)
+RTG_a3_peaks$lodcolumn = rep("RTG_a3", times = nrow(RTG_a3_peaks))
+RTG_a3_peaks$threshold = rep("suggestive", times = nrow(RTG_a3_peaks))
+RTG_a3_peaks$threshold = ifelse(RTG_a3_peaks$lod > RTG_a3_ten_percent, "ten_percent", RTG_a3_peaks$threshold)
+RTG_a3_peaks$threshold = ifelse(RTG_a3_peaks$lod > RTG_a3_five_percent, "five_percent", RTG_a3_peaks$threshold)
+RTG_a3_peaks$threshold = ifelse(RTG_a3_peaks$lod > RTG_a3_one_percent, "one_percent", RTG_a3_peaks$threshold)
+
+# SENS Cocaine peaks
+SENS_COC_peaks = find_peaks(SENS_COC_qtl, map = pmap, threshold = RTG_a3_suggestive, prob = 0.95)
+SENS_COC_peaks$lodcolumn = rep("SENS", times = nrow(SENS_COC_peaks))
+SENS_COC_peaks$threshold = rep("suggestive", times = nrow(SENS_COC_peaks))
+SENS_COC_peaks$threshold = ifelse(SENS_COC_peaks$lod > RTG_a3_ten_percent, "ten_percent", SENS_COC_peaks$threshold)
+SENS_COC_peaks$threshold = ifelse(SENS_COC_peaks$lod > RTG_a3_five_percent, "five_percent", SENS_COC_peaks$threshold)
+SENS_COC_peaks$threshold = ifelse(SENS_COC_peaks$lod > RTG_a3_one_percent, "one_percent", SENS_COC_peaks$threshold)
+
+# Making and displaying an RTG peaks table
+RTG_peaks = rbind(RTG_a1_peaks, RTG_a2_peaks, RTG_a3_peaks, SENS_COC_peaks)
+RTG_peaks = RTG_peaks[order(RTG_peaks$lod, decreasing = TRUE),]
+saveRDS(RTG_peaks[order(RTG_peaks$lod, decreasing = TRUE),], file = "./data/RTG_QTL_peaks.RDS")
+RTG_peaks
+```
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

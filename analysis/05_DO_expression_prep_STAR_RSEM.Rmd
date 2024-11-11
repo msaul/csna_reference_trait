@@ -1,0 +1,456 @@
+---
+title: "DO Drug-Na&iuml;ve Expression Summarize"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This analysis is performed to preprocess and summarize striatum expression data prior to expression correlation analysis.
+
+# Analysis
+
+## Setup
+
+### Current Date
+
+Getting current date
+
+```{r}
+current_date = format(Sys.time(),"%Y-%m-%d")
+```
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("limma")
+# library("GenomicRanges")
+library("tibble")
+library("tximport")
+library("edgeR")
+library("ggplot2")
+library("gplots")
+library("RColorBrewer")
+library("biomaRt")
+library("ggbeeswarm")
+```
+
+### `norm_rank_transform()` function
+
+Getting a normal rank transformation function that can handle `NA` values from the following formula:
+
+$Y^t_i={\phi}^{-1}({{r_i-c}\over{N-2c+1}})$
+
+where $r_i$ is the rank, $N$ is the number of ranked samples, $\phi^{-1}$ is the inverse normal funcion (equivalent to `qnorm()` in R). The original recommended value of $c=3/8$ was per [Beasley and Erickson, 2010](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2921808/), but we use $c=0$. Our work appears to meet their sample size recommendations.
+
+```{r norm_rank_transform, warning=FALSE}
+norm_rank_transform = function(x, c = 0) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+## Importing data
+
+### Importing demographic data
+
+Using the demographic data to generate a data frame that can hold phenotype data.
+
+The md5 checksum of the input file (`416_Matched_DO_Generation_and_Sex_Data.csv`) is: ``r tools::md5sum("./data/raw/416_Matched_DO_Generation_and_Sex_Data.csv")``.
+
+```{r}
+DO_demodata = read.csv("./data/raw/416_Matched_DO_Generation_and_Sex_Data.csv", stringsAsFactors = FALSE)
+row.names(DO_demodata) = as.character(DO_demodata$ExpSess.Subject)
+DO_pheno = DO_demodata[,c("Sex","Generation")]
+rm(list = c("DO_demodata"))
+```
+
+### Importing expression data
+
+*Note: the transcript EM results have been gzipped for use in this workflowr project.*
+
+```{r}
+# Preparing to read in aligned and summarized data
+DO_RSEM_dir = "./data/transcripts/"
+DO_RSEM_files = list.files(path = DO_RSEM_dir)
+DO_RSEM_files = data.frame(base = DO_RSEM_files,
+                           stringsAsFactors = FALSE)
+DO_RSEM_files$behavior_id = gsub("^16NGS-001-Chesler_(\\d{4})_[sS]t_(GT16-\\d{5})_\\w{6}_S\\d{1,3}_RSEM_quant.isoforms.results.gz$", "\\1", DO_RSEM_files$base)
+DO_RSEM_files$sample_id = gsub("^16NGS-001-Chesler_(\\d{4})_[sS]t_(GT16-\\d{5})_\\w{6}_S\\d{1,3}_RSEM_quant.isoforms.results.gz$", "\\2", DO_RSEM_files$base)
+row.names(DO_RSEM_files) = DO_RSEM_files$behavior_id
+
+file_i = read.table(paste(DO_RSEM_dir,DO_RSEM_files[1,"base"],sep=""), header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+DO_tx2gene = data.frame(TXNAME = file_i$transcript_id,
+                        GENEID = file_i$gene_id,
+                        stringsAsFactors = FALSE)
+DO_tx2gene = as_tibble(DO_tx2gene)
+
+txi_i = tximport(files = paste(DO_RSEM_dir,
+                               DO_RSEM_files[,"base"],
+                               sep=""),
+                 type = "rsem",
+                 tx2gene = DO_tx2gene,
+                 countsFromAbundance = "lengthScaledTPM",
+                 abundanceCol = "TPM",
+                 ignoreTxVersion = TRUE)
+
+gene_mat_i = txi_i$counts
+colnames(gene_mat_i) = row.names(DO_RSEM_files)
+DO_gene_counts = as.data.frame(gene_mat_i)
+rm(list = c("txi_i", "file_i", "gene_mat_i"))
+  
+DO_gene_counts = as.matrix(DO_gene_counts[which(rowSums(is.na(DO_gene_counts)) == 0),])
+DO_ERCC_counts = DO_gene_counts[grep("ERCC", row.names(DO_gene_counts)),]
+DO_gene_counts = DO_gene_counts[grep("^ENSMUSG", row.names(DO_gene_counts)),]
+row.names(DO_gene_counts) = gsub("^(ENSMUSG\\d{11})_.*$", "\\1", row.names(DO_gene_counts))
+```
+
+Preparing edgeR DGEList from the data at the gene level.
+
+```{r}
+DO_exprs_SubjectIDs = colnames(DO_gene_counts)
+DO_dge = DGEList(as.matrix(DO_gene_counts))
+DO_dge$samples = cbind(DO_dge$samples, DO_pheno[DO_exprs_SubjectIDs,])
+```
+
+### QC of expression data
+
+Starting with the data from the `Sex` factor.
+
+```{r}
+DGE_sex = DO_pheno[DO_exprs_SubjectIDs,"Sex"]
+plotMDS(DO_dge, col = ifelse(DGE_sex == "M","#66CC66","#3399CC"))
+```
+
+The MDS indicates that there are some weird points in the middle of males and females. The male samples 7998, 8497, 7993, 8080, 7732, 8496, 7977, 8077, 7731, 7981, 8081, 8605, and 7623 appear somewhere betwewen males (green) and females (blue).
+
+However, these points show a substantial amount of noise that is not distinguishing the sexes. Based upon previous investigations of striatum data, we found that a number of samples  have likely choroid plexus contamination. We can use samples with *Prlr* expression of greater than 10 CPM as a filter for this.
+
+```{r}
+high_choroid_plexus = colnames(DO_dge)[which(cpm(DO_dge)["ENSMUSG00000005268",] > 10)]
+choroid_plexus_color = ifelse(colnames(DO_dge) %in% high_choroid_plexus, "#CC3333", "#666666")
+plotMDS(DO_dge, col = choroid_plexus_color)
+```
+
+The samples in this location have choroid plexus contamination Building a nuissance covariate using the log-mean of an unambiguous set of markers for the choroid plexus contamination. Using the Sathyanesan et al., 2012 paper from *Translational Psychiatry*[^1], which reports that *Kl* and *Ttr* are good and unambiguous markers. Their Ensembl gene IDs are `ENSMUSG00000058488` and `ENSMUSG00000061808` respectively.
+
+```{r}
+choroid_plexus_genes = c("ENSMUSG00000058488","ENSMUSG00000061808")
+logmean = function(x) {
+  return(exp(mean(log(x))))
+}
+choroid_plexus_covariate = apply(cpm(DO_dge[choroid_plexus_genes,]), MARGIN = 2, FUN = logmean)
+DO_pheno$choroid_plexus_covariate = choroid_plexus_covariate[row.names(DO_pheno)]
+```
+
+For points assorting between males and females, the candidate hypothesis is that these are partial X duplication DO mice documented in Chesler et al., 2016[^2]. This can be tested by comparing how these mice cluster relative to other males on both chromosome X and chromosome 1.
+
+First, identifying these subjects and getting all genes in Ensembl on chromosomes 1, X, and Y.
+
+```{r}
+# Getting male subject IDs
+male_subjects = row.names(DO_pheno[which(DO_pheno$Sex == "M"),])
+male_subjects_exprs = male_subjects[which(male_subjects %in% colnames(DO_dge))]
+males_intermediate = as.character(c(7998,8497,7993,8080,7732,8496,7977,8077,7731,7981,8081,8605,7623))
+
+# Setting up biomaRt
+chr_maRt = useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+                   host = "https://jan2019.archive.ensembl.org",
+                   dataset = "mmusculus_gene_ensembl")
+chr_maRt_filter = "chromosome_name"
+chr_maRt_attributes = c("ensembl_gene_id")
+
+# Setting heatmap colors
+heatmapColors = colorRampPalette(c("#660066","#FFFFFF"))(n=299)
+
+# Getting genes on various combinations of chromosome
+chr1_genes = as.character(getBM(chr_maRt_attributes, chr_maRt_filter, c("1"), chr_maRt)$ensembl_gene_id)
+chrX_genes = as.character(getBM(chr_maRt_attributes, chr_maRt_filter, c("X"), chr_maRt)$ensembl_gene_id)
+chrY_genes = as.character(getBM(chr_maRt_attributes, chr_maRt_filter, c("Y"), chr_maRt)$ensembl_gene_id)
+autosomal_genes = as.character(getBM(chr_maRt_attributes, chr_maRt_filter, as.character(1:19), chr_maRt)$ensembl_gene_id)
+```
+
+Now clustering samples together based upon their chromosome 1 expression correlations.
+
+```{r}
+# Filtering chr1 genes and looking at heatmap
+chr1_genes = as.character(getBM(chr_maRt_attributes, chr_maRt_filter, c("1"), chr_maRt)$ensembl_gene_id)
+chr1_genes_dge = chr1_genes[which(chr1_genes %in% row.names(DO_dge))]
+males_chr1 = DO_dge[chr1_genes_dge,male_subjects_exprs]
+males_chr1 = cpm(males_chr1)
+males_chr1 = males_chr1[which(rowSums(males_chr1 >= 1) >= 13),]
+males_col1 = ifelse(colnames(males_chr1) %in% males_intermediate,
+                    "#66CC66","#AAAAAA")
+heatmap.2(cor(males_chr1),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          ColSideColors = males_col1,
+          RowSideColors = males_col1,
+          main = "chr1 male gene expression correlation")
+```
+
+Nothing looks too strange on chromosome 1 with respect to these samples. However, there does appear to be an outlier point or two. We will come back to that later.
+
+Clustering samples together based upon their chromosome X correlations.
+
+```{r}
+# Filtering chrX genes and looking at heatmap
+chrX_genes_dge = chrX_genes[which(chrX_genes %in% row.names(DO_dge))]
+males_chrX = DO_dge[chrX_genes_dge,male_subjects_exprs]
+males_chrX = cpm(males_chrX)
+males_chrX = males_chrX[which(rowSums(males_chrX >= 1) >= 13),]
+males_colX = ifelse(colnames(males_chrX) %in% males_intermediate,
+                    "#66CC66","#AAAAAA")
+heatmap.2(cor(males_chrX),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          ColSideColors = males_colX,
+          RowSideColors = males_colX,
+          main = "chrX male gene expression correlation")
+```
+
+This is pretty clear. The unusual samples are most likely partial X duplication. They cluster on chromosome X expression, but not on chromosome 1 expression.
+
+Chesler et al., 2016[^2] also documents the presence of XO females. Looking at the MDS in just females to see if there are any odd candidate samples.
+
+```{r}
+female_subjects = row.names(DO_pheno[which(DO_pheno$Sex == "F"),])
+female_subjects_exprs = female_subjects[which(female_subjects %in% colnames(DO_dge))]
+DO_female_dge = DO_dge[,female_subjects_exprs]
+plotMDS(DO_female_dge, col = rep("#3399CC", times = ncol(DO_female_dge)))
+```
+
+There are many points off the main cloud. Plotting female chromosomes 1 and X data like the male data to be certain.
+
+```{r}
+# Female chr1
+chr1_genes_dge = chr1_genes[which(chr1_genes %in% row.names(DO_female_dge))]
+females_chr1 = DO_dge[chr1_genes_dge,female_subjects_exprs]
+females_chr1 = cpm(females_chr1)
+females_chr1 = females_chr1[which(rowSums(females_chr1 >= 1) >= 13),]
+heatmap.2(cor(females_chr1),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          main = "chr1 female gene expression correlation")
+```
+
+Again, nothing unusual, though there is a single strange sample in the chromosome 1 data again that has low correlation with the rest.
+
+```{r}
+# Female chrX
+chrX_genes_dge = chrX_genes[which(chrX_genes %in% row.names(DO_female_dge))]
+females_chrX = DO_dge[chrX_genes_dge,female_subjects_exprs]
+females_chrX = cpm(females_chrX)
+females_chrX = females_chrX[which(rowSums(females_chrX >= 1) >= 13),]
+heatmap.2(cor(females_chrX),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          main = "chrX female gene expression correlation")
+```
+
+This looks reminiscent of the male data. Cutting the tree into 2 to identify outlier points.
+
+```{r}
+female_treeX = hclust(dist(cor(females_chrX)))
+female_cutX = cutree(female_treeX, k = 2)
+female_colX = ifelse(female_cutX == 1, "#3399CC","#AAAAAA")
+heatmap.2(cor(females_chrX),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          RowSideColors = female_colX,
+          ColSideColors = female_colX,
+          main = "chrX female gene expression correlation")
+```
+
+These samples do fall out together as a block. Trying the Y chromosome.
+
+```{r}
+# Female chrY
+chrY_genes_dge = chrY_genes[which(chrY_genes %in% row.names(DO_female_dge))]
+females_chrY = DO_dge[chrY_genes_dge,female_subjects_exprs]
+females_chrY = cpm(females_chrY)
+females_chrY = females_chrY[which(rowSums(females_chrY >= 1) >= 1),]
+heatmap.2(cor(females_chrY),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          RowSideColors = female_colX,
+          ColSideColors = female_colX,
+          main = "chrY female gene expression correlation")
+```
+
+These females may be XY, but it's hard to say off of 11 genes. Redoing MDS with new information.
+
+```{r}
+plotMDS(DO_female_dge, col = female_colX)
+```
+
+The presumed female XO samples do not seem to account for a large proportion of variance, but these samples should still be identified and dealt with through either censoring or an additive covariate. Also, these genomes are effectively a third and fourth sex. Creating new levels of the sex variable and creating a new phenotypic covariate that can be used to block out the X aneuoploidy independent of sex.
+
+```{r}
+males_partial_X_dup = males_intermediate
+females_XO = names(female_cutX[which(female_cutX == 1)])
+DO_pheno$XAneuploidy = rep(NA, times = nrow(DO_pheno))
+DO_pheno[which(row.names(DO_pheno) %in% colnames(DO_dge)),"XAneuploidy"] = "NotAneuoploid"
+DO_pheno[which(row.names(DO_pheno) %in% males_partial_X_dup),"XAneuploidy"] = "XPartialDup"
+DO_pheno[which(row.names(DO_pheno) %in% females_XO),"XAneuploidy"] = "XOFemale"
+DO_pheno[which(row.names(DO_pheno) %in% males_partial_X_dup),"Sex"] = "M_XPartialDup"
+DO_pheno[which(row.names(DO_pheno) %in% females_XO),"Sex"] = "F_XO"
+```
+
+To reassess the other samples, looking at correlations between samples for all highly expressed (> 1 CPM average expression) genes on autosomes.
+
+```{r}
+# Getting genes on autosomes
+autosomal_genes_dge = as.character(row.names(DO_dge))
+autosomal_genes_dge = autosomal_genes_dge[which(autosomal_genes_dge %in% autosomal_genes)]
+DO_dge_autosomal = DO_dge[autosomal_genes_dge,]
+DO_dge_autosomal = cpm(DO_dge_autosomal[which(rowMeans(cpm(DO_dge_autosomal)) >= 1),])
+DO_dge_autosomal_Sex = DO_pheno[colnames(DO_dge_autosomal),"Sex"]
+DO_dge_autosomal_XAneuploidy = DO_pheno[colnames(DO_dge_autosomal),"XAneuploidy"]
+DO_dge_autosomal_SubjectID = row.names(DO_pheno[colnames(DO_dge_autosomal),])
+
+heatmap.2(cor(DO_dge_autosomal),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          main = "autosomal expression correlation")
+```
+
+In the GBRS data, there was weird blockiness that was related to the rRNA 7S data. Seeing what the effects of black listing rRNA 7S is in this dataset.
+
+```{r}
+rRNA_7S_genes = c("ENSMUSG00000065037",
+                  "ENSMUSG00000099021",
+                  "ENSMUSG00000099250")
+
+# Getting genes on autosomes
+autosomal_genes_dge = as.character(row.names(DO_dge))
+autosomal_genes_dge = autosomal_genes_dge[which(autosomal_genes_dge %in% autosomal_genes)]
+DO_dge_autosomal = DO_dge[autosomal_genes_dge,]
+DO_dge_autosomal = cpm(DO_dge_autosomal[which(rowMeans(cpm(DO_dge_autosomal)) >= 1),])
+DO_dge_autosomal = DO_dge_autosomal[which(!(row.names(DO_dge_autosomal) %in% rRNA_7S_genes)),]
+DO_dge_autosomal_Sex = DO_pheno[colnames(DO_dge_autosomal),"Sex"]
+DO_dge_autosomal_XAneuploidy = DO_pheno[colnames(DO_dge_autosomal),"XAneuploidy"]
+DO_dge_autosomal_SubjectID = row.names(DO_pheno[colnames(DO_dge_autosomal),])
+
+heatmap.2(cor(DO_dge_autosomal),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          main = "autosomal expression correlation")
+```
+
+
+The samples 7613, 7624, 7641 are poorly correlated with the rest of the samples and can be considered outliers. They may be filtered out of the expression set for downstream work.
+
+```{r}
+heatmap.2(cor(DO_dge_autosomal[,(-1 * which(colnames(DO_dge_autosomal) %in% c("7624","7641","7613")))]),
+          trace = "none",
+          col = heatmapColors,
+          dendrogram = "both",
+          main = "autosomal expression correlation with exclusions")
+```
+
+This looks as clean as the dataset will get. Using these criteria for downstream analysis.
+
+*X aneuploidy may be interesting later, but for now, they are filtered out as adding variance that is not specifically of interest to the question of what genes' expression is correlated with the behaviors.* Using this and a number of other factors to generate a variable of columns that should not be used in downstream expression analyses.
+
+Because this is a correlational analysis, using a filtering criterion of at least 1 CPM in at least 50% of the samples.
+
+```{r}
+DO_col_filter = unique(c("7624","7641","7613",row.names(DO_pheno[which(DO_pheno$XAneuploidy != "NotAneuoploid"),])))
+DO_dge_filter = filterByExpr(DO_dge) # rowSums(cpm(DO_dge) > 1) > (ncol(DO_dge) / 2)
+DO_dge_filter[rRNA_7S_genes] = FALSE
+DO_dge_filter = DO_dge_filter[row.names(DO_dge)]
+DO_dge_notkept_rows = DO_dge[which(!(DO_dge_filter)),]
+DO_dge_notkept_cols = DO_dge[,which(colnames(DO_dge) %in% DO_col_filter)]
+DO_pheno$notkept_cols = rep("kept", times = nrow(DO_pheno))
+DO_pheno[DO_col_filter,"notkept_cols"] = "not_kept"
+DO_dge_unfiltered = DO_dge
+DO_dge = DO_dge[which(DO_dge_filter),]
+```
+
+Performing TMM normalization on the DGEList.
+
+```{r}
+DO_dge = calcNormFactors(DO_dge, method = "TMM")
+```
+
+Doing a log2 transform and a normal rank-transform of the data.
+
+```{r}
+DO_voom = voom(DO_dge)
+```
+
+```{r}
+DO_normrt = matrix(nrow = nrow(DO_voom), ncol = ncol(DO_voom))
+rownames(DO_normrt) = rownames(DO_voom)
+colnames(DO_normrt) = colnames(DO_voom)
+for (i in 1:nrow(DO_normrt)) {
+  gene_i = rownames(DO_normrt)[i]
+  DO_normrt[i,] = norm_rank_transform(DO_voom$E[gene_i,colnames(DO_normrt)])
+}
+DO_normrt = DO_normrt[,colnames(DO_voom)]
+```
+
+Collapsing and reordering the phenotype data to the same size as the `voom` object
+
+```{r}
+DO_pheno = DO_pheno[colnames(DO_voom),]
+```
+
+Preparing ERCC DGEList
+
+```{r}
+DO_ERCC_DGEList = DGEList(as.matrix(DO_ERCC_counts))
+DO_ERCC_DGEList$samples[colnames(DO_dge),"norm.factors"] = DO_dge$samples$norm.factors
+
+DO_ERCC_cpm = cpm(DO_ERCC_DGEList, normalized.lib.sizes = TRUE)
+```
+
+### Saving data for downstream analysis.
+
+Saving `voom` and `DGEList` objects as well as the phenotype data frame.
+
+```{r}
+saveRDS(DO_dge,paste("./data/DO_",ncol(DO_dge),"_DGEList.RDS",sep=""),compress="xz")
+saveRDS(DO_dge_unfiltered,paste("./data/DO_",ncol(DO_dge_unfiltered),"_DGEList_unfiltered.RDS",sep=""),compress="xz")
+saveRDS(DO_voom,paste("./data/DO_",ncol(DO_voom),"_voom.RDS",sep=""),compress="xz")
+saveRDS(DO_normrt,paste("./data/DO_",ncol(DO_normrt),"_normrt.RDS",sep=""),compress="xz")
+saveRDS(DO_pheno,paste("./data/DO_",nrow(DO_pheno),"_pheno.RDS",sep=""),compress="xz")
+saveRDS(DO_ERCC_cpm,paste("./data/DO_",nrow(DO_pheno),"_ERCC_cpm.RDS",sep=""),compress="xz")
+saveRDS(DO_ERCC_DGEList,paste("./data/DO_",nrow(DO_pheno),"_ERCC_DGEList.RDS",sep=""),compress="xz")
+```
+
+The md5 checksums for the output files are:
+
+file                                                                | md5 checksum
+--------------------------------------------------------------------|-----------------------------------------------------------------------------
+``r paste("./data/DO_",ncol(DO_dge),"_DGEList.RDS",sep="")``        | ``r tools::md5sum(paste("./data/DO_",ncol(DO_dge),"_DGEList.RDS",sep=""))``
+``r paste("./data/DO_",ncol(DO_voom),"_voom.RDS",sep="")``       | ``r tools::md5sum(paste("./data/DO_",ncol(DO_voom),"_voom.RDS",sep=""))``
+``r paste("./data/DO_",ncol(DO_normrt),"_normrt.RDS",sep="")``      | ``r tools::md5sum(paste("./data/DO_",ncol(DO_normrt),"_normrt.RDS",sep=""))``
+``r paste("./data/DO_",nrow(DO_pheno),"_pheno.RDS",sep="")``        | ``r tools::md5sum(paste("./data/DO_",nrow(DO_pheno),"_pheno.RDS",sep=""))``
+``r paste("./data/DO_",nrow(DO_pheno),"_ERCC_DGEList.RDS",sep="")`` | ``r tools::md5sum(paste("./data/DO_",nrow(DO_pheno),"_ERCC_DGEList.RDS",sep=""))``
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio. This document was imported into workflowr on 2020-05-04.
+
+[^1]: Sathyanesan M, Girgenti MJ, Banasr M, Stone K, Bruce C, Guilchicek E, Wilczak-Havill K, Nairn A, Williams K, Sass S, Duman JG, Newton SS. 2012. [A molecular characterization of the choroid plexus and stress-induced gene regulation.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3410626/) *Transl Psychiatry* 2:e139. [doi:10.1038/tp.2012.64](https://doi.org/10.1038/tp.2012.64)
+
+[^2]: Chesler EJ, Gatti DM, Morgan AP, Strobel M, Trepanier L, Oberbeck D, McWeeney S, Hitzemann R, Ferris M, McMullan R, Clayshultle A, Bell TA, Pardo-Manuel de Villena F, Churchill GA. 2016. [Diversity Outbred mice at 21: maintaining allelic variation in the face of selection.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5144960/) *G3: Genes, Genomes, Genetics* 6:3893–3902. [doi:10.1534/g3.116.035527](https://doi.org/10.1534/g3.116.035527)

@@ -1,0 +1,137 @@
+---
+title: "DO RTG Expression Interpretation"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to correlate RTG calculated traits to expression.
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("limma")
+library("edgeR")
+library("ggplot2")
+library("biomaRt")
+library("statmod")
+library("qvalue")
+```
+
+### Getting publication themes
+
+```{r}
+source("./code/ggplot_pub_themes.R")
+```
+
+### `norm_rank_transform()` function
+
+Getting a normal rank transformation function that can handle `NA` values.
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+### Importing data
+
+Importing data.
+
+```{r}
+DO_pheno       = readRDS("./data/DO_416_pheno.RDS")
+DO_dge         = readRDS("./data/DO_416_DGEList.RDS")
+DO_RTG_analysis_1 = readRDS("./data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS")
+DO_RTG_analysis_2 = readRDS("./data/DO_IVSA_prediction_a2_AQ_cancor.RDS")
+DO_RTG_analysis_3 = readRDS("./data/DO_IVSA_prediction_a3_ALL_cancor.RDS")
+DO_pheno$RTG_a1 = DO_RTG_analysis_1[row.names(DO_pheno)]
+DO_pheno$RTG_a2 = DO_RTG_analysis_2[row.names(DO_pheno),"IVSA_novelty_cancor"]
+DO_pheno$RTG_a3 = DO_RTG_analysis_3[row.names(DO_pheno),"IVSA_novelty_cancor"]
+has_RTG_a1_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"RTG_a1"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+has_RTG_a2_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"RTG_a2"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+has_RTG_a3_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"RTG_a3"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+```
+
+Getting top tables for RTG analyses 1-3.
+
+```{r}
+DO_RTG_a1_toptable = readRDS("./data/DO_rtg_a1_toptable_annotated.RDS")
+DO_RTG_a2_toptable = readRDS("./data/DO_rtg_a2_toptable_annotated.RDS")
+DO_RTG_a3_toptable = readRDS("./data/DO_rtg_a3_toptable_annotated.RDS")
+```
+
+## Gene Expression Interpretation
+
+### Top tables
+
+Looking at top genes in analyses 1-3.
+
+```{r}
+DO_RTG_a1_toptable[which(DO_RTG_a1_toptable$qvalue < 0.1),]
+```
+
+```{r}
+DO_RTG_a2_toptable[which(DO_RTG_a2_toptable$qvalue < 0.1),]
+```
+
+```{r}
+DO_RTG_a3_toptable[which(DO_RTG_a3_toptable$qvalue < 0.1),]
+```
+
+Particularly interesting genes from this perspective include *Gpr17*, which is significant in both analysis 1 and analysis 2. Because the interpretation of analysis 1 is the most straightforward, plotting the correlation of *Gpr17* expression and analysis 1.
+
+```{r}
+Gpr17_ensembl_id = "ENSMUSG00000052229"
+DO_pheno$Gpr17 = cpm(DO_dge)[Gpr17_ensembl_id,row.names(DO_pheno)]
+Gpr17_lm = lm(RTG_a3 ~ Gpr17, data = DO_pheno[has_RTG_a3_express,])
+Gpr17_cor = cor(DO_pheno[has_RTG_a1_express,"Gpr17"],
+                DO_pheno[has_RTG_a1_express,"RTG_a3"])
+Gpr17_xlab_title = expression(paste(italic("Gpr17"), " Striatum Expression", sep = ""))
+Gpr17_bivariate_plot = ggplot(data = DO_pheno[has_RTG_a3_express,], aes(x = Gpr17, y = RTG_a3, color = Sex)) +
+  geom_point(size = pt_to_mm * 2) +
+  scale_color_manual(values = c("#3399CC","#66CC66")) +
+  geom_abline(aes(intercept = Gpr17_lm$coefficients[1], 
+                  slope = Gpr17_lm$coefficients[2]),
+              color = "#000000", size = (pt_to_mm * 1)) +
+  ylab("Reference Trait Analysis: Analysis 3 (All IVSA Traits)") +
+  xlab(Gpr17_xlab_title) +
+  theme_classic()
+Gpr17_bivariate_plot
+```
+
+Saving the *Gpr17* bivariate plot.
+
+```{r}
+ggsave(file = "./data/figures/Gpr17_bivariate_a1_plot.pdf",
+       plot = Gpr17_bivariate_plot + pubtheme_classic,
+       width = 3, height = 3, units = "in")
+```
+
+### Looking at three-way intersection
+
+```{r}
+a1_q_0p10 = DO_RTG_a1_toptable[which(DO_RTG_a1_toptable$qvalue < 0.10),"ensembl_gene_id"]
+a2_q_0p10 = DO_RTG_a2_toptable[which(DO_RTG_a2_toptable$qvalue < 0.10),"ensembl_gene_id"]
+a3_q_0p10 = DO_RTG_a3_toptable[which(DO_RTG_a3_toptable$qvalue < 0.10),"ensembl_gene_id"]
+threeway_intersect_q_0p10 = intersect(intersect(a1_q_0p10,a2_q_0p10),a3_q_0p10)
+DO_RTG_a3_toptable[threeway_intersect_q_0p10,]
+```
+
+### Output
+
+The output data are saved in `./data/`.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

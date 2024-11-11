@@ -1,0 +1,272 @@
+---
+title: "DO Novelty Response Summarization"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output:
+  html_document:
+    df_print: paged
+    code_folding: show
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to summarize the novelty data upstream of using them for reference trait analysis.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r warning=FALSE}
+library("MASS")
+library("readxl")
+library("tidyr")
+library("lubridate")
+library("cowplot")
+library("ggplot2")
+library("grid")
+library("gridExtra")
+library("ggplotify")
+library("DiagrammeR")
+library("nlme")
+source("./code/ggplot_pub_themes.R")
+```
+
+Getting `norm_rank_transform()` function.
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+### Importing data
+
+#### Importing novelty response data
+
+Getting novelty data from raw file.
+
+```{r}
+# Novelty
+novelty_raw_file = "./data/raw/Novelty_raw_datarelease_JDO_07012020.csv"
+novelty_raw = read.table(novelty_raw_file, sep = ",",
+                         header = TRUE, stringsAsFactors = FALSE, comment.char = "%",
+                         na.strings = c("NA","#N/A",""))
+colnames(novelty_raw) = gsub("\\.","_",colnames(novelty_raw))
+colnames(novelty_raw) = gsub("^NoveltyPreference","NPP_NoveltyPreference",colnames(novelty_raw))
+row.names(novelty_raw) = novelty_raw$Mouse_ID
+DO_novelty = novelty_raw[,(-1 * grep("^X", colnames(novelty_raw)))]
+rm(list = c("novelty_raw"))
+```
+
+Identifying the column IDs for the various paradigms.
+
+```{r}
+# Getting column names of novelty response data
+OFA_cols = colnames(DO_novelty)[grep("^OFA", colnames(DO_novelty))]
+OFA_data_cols = OFA_cols[(-1 * which(OFA_cols %in% c("OFA_date_of_test","OFA_tester")))]
+LD_cols = colnames(DO_novelty)[grep("^LD", colnames(DO_novelty))]
+LD_data_cols = LD_cols[(-1 * which(LD_cols %in% c("LD_date_of_test","LD_tester")))]
+HB_cols = colnames(DO_novelty)[grep("^HB", colnames(DO_novelty))]
+HB_data_cols = HB_cols[(-1 * which(HB_cols %in% c("HB_Mouse_ID","HB_date_of_test","HB_tester")))]
+NPP_cols = colnames(DO_novelty)[grep("^NPP", colnames(DO_novelty))]
+NPP_data_cols = NPP_cols[(-1 * which(NPP_cols %in% c("NPP_date_of_test","NPP_tester")))]
+
+# Getting numeric columns
+DO_novelty_numeric_cols = c(OFA_data_cols, LD_data_cols, HB_data_cols, NPP_data_cols)
+```
+
+### Preprocessing data
+
+#### Identifying highly correlated novelty response data
+
+Identifying highly collinear novelty response columns.
+
+```{r}
+DO_novelty_collinear = which(abs(cor(DO_novelty[,DO_novelty_numeric_cols], use = "pairwise.complete.obs")) >= 0.95, arr.ind = TRUE)
+DO_novelty_collinear = DO_novelty_collinear[which(DO_novelty_collinear[,1] < DO_novelty_collinear[,2]),]
+DO_novelty_collinear = data.frame(ID_1 = DO_novelty_numeric_cols[DO_novelty_collinear[,1]],
+                                  ID_2 = DO_novelty_numeric_cols[DO_novelty_collinear[,2]],
+                                  cor = cor(DO_novelty[,DO_novelty_numeric_cols], use = "pairwise.complete.obs")[DO_novelty_collinear])
+DO_novelty_collinear
+```
+
+These highly collinear columns are not perfectly collinear.
+
+#### Identifying batch effect source
+
+The history of this dataset includes an event that substantially changed the behavioral data collection paradigms. Consequently, there is a known batch effect between the data collected before the start of the CSNA and data collected after the start of the CSNA.
+
+One remaining question is whether the batch effect is an investigator effect or whether the batch effect is related to factors that changed systematically when the CSNA began. Because Troy (investigator ID: `TW`) and Tyler (investigator ID: `TAR`) worked together without differentiating themselves in the pre-center data, we refer to them in the pre-center data as `TRTW` (sometimes referred to as the portmanteu Troyler).
+
+There were a number of steps taken to standardize all behavioral procedures at the initiation of the CSNA. Stacey Sukhoff-Rizzo became the Behavioral Phenotyping Core PI. She made some tweaks to novelty response paradigms and initiated rigorous validation protocols for all investigators.
+
+Consequently, it makes sense to examine the sources of differences between Troy and Tyler before the CSNA began (`precenter`, examining data collected by `TRTW`) compared to after the CSNA began (`CSNA`, examining data collected by either `TAR` or `TW`).
+
+```{r warning=FALSE}
+# Getting Troyler IDs
+TROY = "TW"
+TYLER = "TAR"
+TROYLER = "TRTW"
+
+DO_novelty$OFA_troyler_group = rep("", times = nrow(DO_novelty))
+DO_novelty$LD_troyler_group = DO_novelty$OFA_troyler_group
+DO_novelty$HB_troyler_group = DO_novelty$OFA_troyler_group
+DO_novelty$NPP_troyler_group = DO_novelty$OFA_troyler_group
+
+for (i in c("OFA", "LD", "HB", "NPP")) {
+  testers_col_i = paste(i, "_tester", sep="")
+  troyler_group_col_i = paste(i, "_troyler_group", sep = "")
+  DO_novelty[,troyler_group_col_i] = ifelse(is.na(DO_novelty[,testers_col_i]), NA, "")
+  DO_novelty[,troyler_group_col_i] = ifelse((DO_novelty[,testers_col_i] %in% c(TROY, TYLER, TROYLER)) & 
+                                                         (DO_novelty$Group == "post_center"),
+                                                         "Troyler CSNA", DO_novelty[,troyler_group_col_i])
+  DO_novelty[,troyler_group_col_i] = ifelse((DO_novelty[,testers_col_i] %in% c(TROY, TYLER, TROYLER)) & 
+                                                         (DO_novelty$Group == "pre_center"),
+                                                         "Troyler Pre-Center", DO_novelty[,troyler_group_col_i])
+  DO_novelty[,troyler_group_col_i] = ifelse((!(DO_novelty[,testers_col_i] %in% c(TROY, TYLER, TROYLER))) & 
+                                                         (DO_novelty$Group == "post_center"),
+                                                         "Others CSNA", DO_novelty[,troyler_group_col_i])
+}
+
+plots_order = character()
+plots_groblist = gList()
+
+for (i in c("OFA", "LD", "HB", "NPP")) {
+  vars_i = eval(parse(text = paste0(i, "_data_cols")))
+  for (j in vars_i) {
+    plots_order = c(plots_order, j)
+    df_j = data.frame(var_x = DO_novelty[,j],
+                      group_var = DO_novelty[,paste0(i,"_troyler_group")],
+                      stringsAsFactors = FALSE)
+    df_j = df_j[which(df_j$group_var != ""),]
+    csna_ranges_plot = ggplot(data = df_j, aes(x = var_x,
+                                               fill = group_var,
+                                               color = group_var)) +
+      geom_density(alpha = 0.5) +
+      geom_histogram(aes(y = ..density..), position="identity", alpha = 0.5, bins = 60)
+    max_ranges_plot_constant = max(ggplot_build(csna_ranges_plot)$layout$panel_scales_y[[1]]$range$range)
+    
+    csna_ranges_plot = csna_ranges_plot +
+      geom_boxplot(aes(y = (-1 * (max_ranges_plot_constant / 7.227529))), 
+                   alpha = 0.5, width = (max_ranges_plot_constant / 7.227529)) +
+      scale_fill_manual(values = c("#FFCC33","#66CC66","#3399CC")) +
+      scale_color_manual(values = c("#FFCC33","#66CC66","#3399CC")) +
+      theme_bw() +
+      labs(color = "Group", fill = "Group") +
+      ylab("Density") +
+      xlab(j) +
+      pubtheme_bw +
+      theme(panel.grid = element_line(color = "#FFFFFF"), 
+            legend.position = "none")
+    plots_groblist[[j]] = as.grob(csna_ranges_plot)
+    assign(paste0(j,"_grob"), as.grob(csna_ranges_plot))
+  }
+}
+
+
+csna_ranges_plot = ggplot(data = df_j, aes(x = var_x,
+                                           fill = group_var,
+                                           color = group_var)) +
+  geom_density(alpha = 0.5) +
+  geom_histogram(aes(y = ..density..), position="identity", alpha = 0.5, bins = 60)
+max_ranges_plot_constant = max(ggplot_build(csna_ranges_plot)$layout$panel_scales_y[[1]]$range$range)
+
+csna_ranges_plot = csna_ranges_plot +
+  geom_boxplot(aes(y = (-1 * (max_ranges_plot_constant / 7.227529))), 
+               alpha = 0.5, width = (max_ranges_plot_constant / 7.227529)) +
+  scale_fill_manual(values = c("#FFCC33","#66CC66","#3399CC")) +
+  scale_color_manual(values = c("#FFCC33","#66CC66","#3399CC")) +
+  theme_bw() +
+  labs(color = "Group", fill = "Group") +
+  ylab("Density") +
+  xlab(j) +
+  pubtheme_bw +
+  theme(panel.grid = element_line(color = "#FFFFFF"))
+
+legend_grob = as.grob(get_legend(csna_ranges_plot)) 
+
+plots_order = paste0(plots_order, "_grob")
+plots_order = c(plots_order, "legend_grob")
+# plots_order = paste(plots_order, sep = "", collapse = ", ")
+
+grid.arrange(OFA_total_distance_traveled_grob, OFA_distance_traveled_slope_grob, OFA_total_time_in_corner_grob,
+             OFA_total_time_in_perimeter_grob, OFA_total_time_in_center_grob, OFA_total_ambulatory_time_grob,
+             OFA_total_resting_time_in_corner_grob, OFA_total_resting_time_in_perimeter_grob, OFA_total_resting_time_in_center_grob,
+             OFA_total_resting_time_grob, OFA_total_distance_traveled_in_perimeter_grob, OFA_total_distance_traveled_in_center_grob,
+             OFA_total_distance_traveled_in_corner_grob, OFA_pct_dist_center_grob, OFA_pct_dist_corner_grob,
+             OFA_pct_dist_perimeter_grob, OFA_pct_time_center_grob, OFA_pct_time_corner_grob,
+             OFA_pct_time_perimeter_grob, OFA_pct_resting_time_center_grob, OFA_pct_resting_time_corner_grob,
+             OFA_pct_resting_time_perimeter_grob, OFA_distance_traveled_first_five_grob, OFA_distance_traveled_last_five_grob,
+             LD_pct_distance_traveled_in_light_grob, LD_pct_ambulatory_time_in_light_grob, LD_pct_resting_time_in_light_grob,
+             LD_pct_time_in_light_grob, LD_pct_ambulatory_Counts_in_light_grob, LD_total_transitions_grob,
+             HB_Total_Entries_grob, HB_Novel_Entries_grob, HB_Repeat_Entries_grob,
+             NPP_NoveltyPreference_ZoneTime_WhiteVsBlack_Total_grob, NPP_NoveltyPreference_ZoneTime_GreyWhiteBlack_Total_grob, legend_grob,
+             nrow = 6, ncol = 6)
+
+```
+
+With the except ion of the NPP dataset, where there are too few `TAR` or `TW` observations in CSNA to state the direction of the effect with certainty, the data demonstrate that where differences exist between precenter and CSNA data, they are accounted for not by the investigator (Troyler) but by the center status. We therefore assume that the difference between `precenter` and `CSNA` data is a batch and not a tester effect for analysis.
+
+**Note that the variable `HB_Novel_Entries` appears very different in pre-center vs CSNA datasets. In pre-center data, this is likely due to a 20 minute trial length, which is longer than the 10 minute trial length of CSNA data. This variable should not be used to fit models including both pre-center and CSNA datasets.**
+
+#### Pipeline for Novelty Response Data Transformation
+
+The data need transformation prior to use in correlational/linear modeling analysis. Transformation will:
+
+1) Account for the `precenter` vs `CSNA` batch effect.
+2) Coerce any non-normally distributed data into a normal distribution adequate for linear modeling analysis.
+3) Differentiate `HB_Novel_Entries` data from the two datasets.
+
+#### Transforming Data
+
+Applying the rank-normal transformation separately to `pre-center` and `CSNA` data for all variables. Adding notations of raw onto the untransformed data. Placing pre-center and CSNA a label to  `HB_Novel_Entries` batch-adjusted variables in separate columns.
+
+```{r}
+DO_novelty = DO_novelty[,grep("troyler_group$", colnames(DO_novelty), invert = TRUE)]
+CSNA_rows = which(DO_novelty$Group == "post_center")
+precenter_rows = which(DO_novelty$Group == "pre_center")
+
+split_precenter_postcenter = c("HB_Novel_Entries")
+
+for (i in DO_novelty_numeric_cols) {
+  if (i %in% split_precenter_postcenter) {
+    DO_novelty[,paste0(i,"_precenter_ranknorm")] = rep(NA, times = nrow(DO_novelty))
+    DO_novelty[precenter_rows,paste0(i,"_precenter_ranknorm")] = norm_rank_transform(DO_novelty[precenter_rows,i])
+    DO_novelty[,paste0(i,"_CSNA_ranknorm")] = rep(NA, times = nrow(DO_novelty))
+    DO_novelty[CSNA_rows,paste0(i,"_CSNA_ranknorm")] = norm_rank_transform(DO_novelty[CSNA_rows,i])
+    colnames(DO_novelty)[which(colnames(DO_novelty) == i)] = paste0(i,"_raw")
+  } else {
+    DO_novelty[,paste0(i,"_batch_ranknorm")] = rep(NA, times = nrow(DO_novelty))
+    DO_novelty[CSNA_rows,paste0(i,"_batch_ranknorm")] = norm_rank_transform(DO_novelty[CSNA_rows,i])
+    DO_novelty[precenter_rows,paste0(i,"_batch_ranknorm")] = norm_rank_transform(DO_novelty[precenter_rows,i])
+    colnames(DO_novelty)[which(colnames(DO_novelty) == i)] = paste0(i,"_raw")
+  }
+}
+```
+
+
+### Output
+
+Saving the DO novelty response data.
+
+```{r save_IVSA_LIMS}
+saveRDS(DO_novelty, file = "./data/DO_novelty_response_data.RDS")
+write.csv(DO_novelty, file = "./data/DO_novelty_response_data_with_transform.csv", row.names = FALSE, col.names = TRUE, quote = FALSE)
+```
+
+The output data are saved in `./data/`.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

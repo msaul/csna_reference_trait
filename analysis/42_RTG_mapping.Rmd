@@ -1,0 +1,1004 @@
+---
+title: "DO RTG Mapping Figures"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is to make RTG mapping figures.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r libraries}
+library("qtl2")
+library("ggplot2")
+library("cowplot")
+library("RColorBrewer")
+```
+
+### Making QTL RTA Figures
+
+#### IVSA Acquisition RTA
+
+```{r AQ_RTA_01}
+rm(list = ls()[grep("plot$",ls(),invert = TRUE)])
+load("./data/mapping/DO_RTG_a2_new.qtl.RData")
+load("./data/mapping/DO_RTG_a2_new_1000x.qtlpermu.RData")
+threshold = quantile(m2.permu[[1]], probs = 1 - c(0, 0.01, 0.05, 0.10, 0.63, 1))
+threshold_0p05 = threshold["95%"]
+threshold_sugg = threshold["37%"]
+pmap = readRDS("./data/DO_pmap.RDS")
+peaks = find_peaks(m2.qtl.out[[1]],
+                       map = pmap,
+                       threshold = threshold_sugg,
+                       prob = 0.95,
+                       peakdrop = 2)
+peaks$permutation_fdr = rep(-1, times = nrow(peaks))
+for (i in 1:nrow(peaks)) {
+  peaks[i,"permutation_fdr"] = (1 + length(which(m2.permu[[1]][,1] >= peaks[i,"lod"]))) / (1 + length((m2.permu[[1]][,1])))
+}
+peaks$threshold = ifelse(peaks$lod > threshold_0p05,
+                         "FDR < 0.05", "suggestive")
+peaks$lodcolumn = names(m2.qtl.out)
+peaks_plot = peaks
+names(m2.qtl.out)
+```
+
+
+```{r AQ_RTA_02}
+gap_Mb = 0
+chrs = as.character(c(1:19,"X"))
+
+phenotypes = names(m2.qtl.out)
+for (k in phenotypes) {
+  # Getting data frame for plotting RTG a1 in ggplot2
+  qtl_k_df = as.data.frame(m2.qtl.out[[k]])
+  qtl_k_df$phenotype = rep(gsub("_batch_ranknorm$","",k),
+                           times = nrow(qtl_k_df))
+  qtl_k_df$marker = row.names(qtl_k_df)
+  qtl_k_df$chr = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$stagger = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$pos = rep(-10, times = nrow(qtl_k_df))
+  qtl_k_df$calc_pos = rep(-10, times = nrow(qtl_k_df))
+  # qtl_k_df$label = rep("", times = nrow(qtl_k_df))
+  qtl_k_min_max_mid = data.frame(row.names = chrs,
+                                 chr = chrs,
+                                 max = rep(-10, times = length(chrs)),
+                                 calc_min = rep(-10, times = length(chrs)),
+                                 calc_mid = rep(-10, times = length(chrs)),
+                                 calc_max = rep(-10, times = length(chrs)))
+  min_chr_i = 0
+  for (i in 1:length(chrs)) {
+    chr_i = chrs[i]
+    pmap_i = pmap[[chr_i]]
+    qtl_k_df[names(pmap_i),"chr"] = chr_i
+    qtl_k_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+    qtl_k_df[names(pmap_i),"marker"] = names(pmap_i)
+    qtl_k_df[names(pmap_i),"pos"] = pmap_i
+    qtl_k_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+    max_pos_i = max(pmap_i)
+    qtl_k_min_max_mid[chr_i,"calc_min"] = min_chr_i
+    qtl_k_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+    qtl_k_min_max_mid[chr_i,"max"] = max_pos_i
+    min_chr_i = min_chr_i + max_pos_i + gap_Mb
+  }
+  qtl_k_min_max_mid$calc_mid = qtl_k_min_max_mid$calc_min + (0.5 * (qtl_k_min_max_mid$calc_max - qtl_k_min_max_mid$calc_min))
+  if(exists("qtl_df")) {
+    qtl_df = rbind(qtl_df,qtl_k_df)
+  } else {
+    qtl_df = qtl_k_df 
+  }
+}
+
+qtl_df = qtl_df[which(rowSums(is.na(qtl_df)) == 0),]
+qtl_df$phenotype = factor(qtl_df$phenotype,
+                          levels = gsub("_batch_ranknorm$","",phenotypes),
+                          ordered = TRUE)
+
+RTA_IVSA_AQ_plot = ggplot(data = qtl_df, aes(x = calc_pos,
+                                             y = pheno1,
+                                             color = stagger,
+                                             group = chr)) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm"),
+        strip.background = element_blank(),
+        strip.text.y = element_blank()) +
+  geom_line(size = 0.5) +
+  geom_hline(yintercept = threshold_0p05,
+             color = "#999999", 
+             linetype = "dashed", 
+             size = 1) +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  ggtitle("IVSA Acquisition RTA: Mapping Results")
+df_RTA_IVSA_AQ_plot = qtl_df
+threshold_plot = data.frame(source_df = "RTA_IVSA_AQ",
+                            threshold_0p05 = threshold_0p05,
+                            threshold_sugg = threshold_sugg)
+RTA_IVSA_AQ_plot
+```
+
+#### IVSA All Traits RTA
+
+```{r ALL_RTA_01}
+rm(list = ls()[grep("plot$",ls(),invert = TRUE)])
+load("./data/mapping/2024-03-27_DO_RTG_a3_new_mapping_1000x_01.RData")
+load("./data/mapping/DO_RTG_a3_new_1000x.qtlpermu.RData")
+threshold = quantile(m2.permu[[1]], probs = 1 - c(0, 0.01, 0.05, 0.10, 0.63, 1))
+threshold_0p05 = threshold["95%"]
+threshold_sugg = threshold["37%"]
+pmap = readRDS("./data/DO_pmap.RDS")
+peaks = find_peaks(m2.qtl.out[[1]],
+                       map = pmap,
+                       threshold = threshold_sugg,
+                       prob = 0.95,
+                       peakdrop = 2)
+peaks$permutation_fdr = rep(-1, times = nrow(peaks))
+for (i in 1:nrow(peaks)) {
+  peaks[i,"permutation_fdr"] = (1 + length(which(m2.permu[[1]][,1] >= peaks[i,"lod"]))) / (1 + length((m2.permu[[1]][,1])))
+}
+peaks$threshold = ifelse(peaks$lod > threshold_0p05,
+                         "FDR < 0.05", "suggestive")
+peaks$lodcolumn = names(m2.qtl.out)
+peaks_plot = rbind(peaks_plot, peaks)
+names(m2.qtl.out)
+```
+
+
+```{r ALL_RTA_02}
+gap_Mb = 0
+chrs = as.character(c(1:19,"X"))
+
+phenotypes = names(m2.qtl.out)
+for (k in phenotypes) {
+  # Getting data frame for plotting RTG a1 in ggplot2
+  qtl_k_df = as.data.frame(m2.qtl.out[[k]])
+  qtl_k_df$phenotype = rep(gsub("_batch_ranknorm$","",k),
+                           times = nrow(qtl_k_df))
+  qtl_k_df$marker = row.names(qtl_k_df)
+  qtl_k_df$chr = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$stagger = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$pos = rep(-10, times = nrow(qtl_k_df))
+  qtl_k_df$calc_pos = rep(-10, times = nrow(qtl_k_df))
+  # qtl_k_df$label = rep("", times = nrow(qtl_k_df))
+  qtl_k_min_max_mid = data.frame(row.names = chrs,
+                                 chr = chrs,
+                                 max = rep(-10, times = length(chrs)),
+                                 calc_min = rep(-10, times = length(chrs)),
+                                 calc_mid = rep(-10, times = length(chrs)),
+                                 calc_max = rep(-10, times = length(chrs)))
+  min_chr_i = 0
+  for (i in 1:length(chrs)) {
+    chr_i = chrs[i]
+    pmap_i = pmap[[chr_i]]
+    qtl_k_df[names(pmap_i),"chr"] = chr_i
+    qtl_k_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+    qtl_k_df[names(pmap_i),"marker"] = names(pmap_i)
+    qtl_k_df[names(pmap_i),"pos"] = pmap_i
+    qtl_k_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+    max_pos_i = max(pmap_i)
+    qtl_k_min_max_mid[chr_i,"calc_min"] = min_chr_i
+    qtl_k_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+    qtl_k_min_max_mid[chr_i,"max"] = max_pos_i
+    min_chr_i = min_chr_i + max_pos_i + gap_Mb
+  }
+  qtl_k_min_max_mid$calc_mid = qtl_k_min_max_mid$calc_min + (0.5 * (qtl_k_min_max_mid$calc_max - qtl_k_min_max_mid$calc_min))
+  if(exists("qtl_df")) {
+    qtl_df = rbind(qtl_df,qtl_k_df)
+  } else {
+    qtl_df = qtl_k_df 
+  }
+}
+
+qtl_df = qtl_df[which(rowSums(is.na(qtl_df)) == 0),]
+qtl_df$phenotype = factor(qtl_df$phenotype,
+                          levels = gsub("_batch_ranknorm$","",phenotypes),
+                          ordered = TRUE)
+
+RTA_IVSA_ALL_plot = ggplot(data = qtl_df, aes(x = calc_pos,
+                                              y = pheno1,
+                                              color = stagger,
+                                              group = chr)) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm"),
+        strip.background = element_blank(),
+        strip.text.y = element_blank()) +
+  geom_line(size = 0.5) +
+  geom_hline(yintercept = threshold_0p05,
+             color = "#999999", 
+             linetype = "dashed", 
+             size = 1) +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  ggtitle("IVSA All Traits RTA: Mapping Results")
+df_RTA_IVSA_ALL_plot = qtl_df
+threshold_plot = rbind(threshold_plot,
+                       data.frame(source_df = "RTA_IVSA_ALL",
+                                  threshold_0p05 = threshold_0p05,
+                                  threshold_sugg = threshold_sugg))
+RTA_IVSA_ALL_plot
+```
+
+#### Sensitization to Saline RTA
+
+```{r SAL_RTA_01}
+rm(list = ls()[grep("plot$",ls(),invert = TRUE)])
+load("./data/mapping/DO_SENSI_SALINE.qtl.RData")
+load("./data/mapping/DO_SENSI_SALINE_1000x.qtlpermu.RData")
+threshold = quantile(m2.permu[[1]], probs = 1 - c(0, 0.01, 0.05, 0.10, 0.63, 1))
+threshold_0p05 = threshold["95%"]
+threshold_sugg = threshold["37%"]
+pmap = readRDS("./data/DO_pmap.RDS")
+peaks = find_peaks(m2.qtl.out[[1]],
+                       map = pmap,
+                       threshold = threshold_sugg,
+                       prob = 0.95,
+                       peakdrop = 2)
+peaks$permutation_fdr = rep(-1, times = nrow(peaks))
+for (i in 1:nrow(peaks)) {
+  peaks[i,"permutation_fdr"] = (1 + length(which(m2.permu[[1]][,1] >= peaks[i,"lod"]))) / (1 + length((m2.permu[[1]][,1])))
+}
+peaks$threshold = ifelse(peaks$lod > threshold_0p05,
+                         "FDR < 0.05", "suggestive")
+peaks$lodcolumn = names(m2.qtl.out)
+peaks_plot = rbind(peaks_plot, peaks)
+names(m2.qtl.out)
+```
+
+
+```{r SAL_RTA_02}
+gap_Mb = 0
+chrs = as.character(c(1:19,"X"))
+
+phenotypes = names(m2.qtl.out)
+for (k in phenotypes) {
+  # Getting data frame for plotting RTG a1 in ggplot2
+  qtl_k_df = as.data.frame(m2.qtl.out[[k]])
+  qtl_k_df$phenotype = rep(gsub("_batch_ranknorm$","",k),
+                           times = nrow(qtl_k_df))
+  qtl_k_df$marker = row.names(qtl_k_df)
+  qtl_k_df$chr = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$stagger = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$pos = rep(-10, times = nrow(qtl_k_df))
+  qtl_k_df$calc_pos = rep(-10, times = nrow(qtl_k_df))
+  # qtl_k_df$label = rep("", times = nrow(qtl_k_df))
+  qtl_k_min_max_mid = data.frame(row.names = chrs,
+                                 chr = chrs,
+                                 max = rep(-10, times = length(chrs)),
+                                 calc_min = rep(-10, times = length(chrs)),
+                                 calc_mid = rep(-10, times = length(chrs)),
+                                 calc_max = rep(-10, times = length(chrs)))
+  min_chr_i = 0
+  for (i in 1:length(chrs)) {
+    chr_i = chrs[i]
+    pmap_i = pmap[[chr_i]]
+    qtl_k_df[names(pmap_i),"chr"] = chr_i
+    qtl_k_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+    qtl_k_df[names(pmap_i),"marker"] = names(pmap_i)
+    qtl_k_df[names(pmap_i),"pos"] = pmap_i
+    qtl_k_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+    max_pos_i = max(pmap_i)
+    qtl_k_min_max_mid[chr_i,"calc_min"] = min_chr_i
+    qtl_k_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+    qtl_k_min_max_mid[chr_i,"max"] = max_pos_i
+    min_chr_i = min_chr_i + max_pos_i + gap_Mb
+  }
+  qtl_k_min_max_mid$calc_mid = qtl_k_min_max_mid$calc_min + (0.5 * (qtl_k_min_max_mid$calc_max - qtl_k_min_max_mid$calc_min))
+  if(exists("qtl_df")) {
+    qtl_df = rbind(qtl_df,qtl_k_df)
+  } else {
+    qtl_df = qtl_k_df 
+  }
+}
+
+qtl_df = qtl_df[which(rowSums(is.na(qtl_df)) == 0),]
+qtl_df$phenotype = factor(qtl_df$phenotype,
+                          levels = gsub("_batch_ranknorm$","",phenotypes),
+                          ordered = TRUE)
+
+RTA_SENSI_SAL_plot = ggplot(data = qtl_df, aes(x = calc_pos,
+                                               y = pheno1,
+                                               color = stagger,
+                                               group = chr)) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm"),
+        strip.background = element_blank(),
+        strip.text.y = element_blank()) +
+  geom_line(size = 0.5) +
+  geom_hline(yintercept = threshold_0p05,
+             color = "#999999", 
+             linetype = "dashed", 
+             size = 1) +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  ggtitle("Sensitization to Saline RTA: Mapping Results")
+threshold_plot = rbind(threshold_plot,
+                       data.frame(source_df = "RTA_SENSI_SAL",
+                                  threshold_0p05 = threshold_0p05,
+                                  threshold_sugg = threshold_sugg))
+df_RTA_SENSI_SAL_plot = qtl_df
+RTA_SENSI_SAL_plot
+```
+
+#### Sensitization to Cocaine RTA
+
+```{r COC_RTA_01}
+rm(list = ls()[grep("plot$",ls(),invert = TRUE)])
+load("./data/mapping/DO_SENSI_COCAINE.qtl.RData")
+load("./data/mapping/DO_SENSI_SALINE_1000x.qtlpermu.RData")
+threshold = quantile(m2.permu[[1]], probs = 1 - c(0, 0.01, 0.05, 0.10, 0.63, 1))
+threshold_0p05 = threshold["95%"]
+threshold_sugg = threshold["37%"]
+pmap = readRDS("./data/DO_pmap.RDS")
+peaks = find_peaks(m2.qtl.out[[1]],
+                       map = pmap,
+                       threshold = threshold_sugg,
+                       prob = 0.95,
+                       peakdrop = 2)
+peaks$permutation_fdr = rep(-1, times = nrow(peaks))
+for (i in 1:nrow(peaks)) {
+  peaks[i,"permutation_fdr"] = (1 + length(which(m2.permu[[1]][,1] >= peaks[i,"lod"]))) / (1 + length((m2.permu[[1]][,1])))
+}
+peaks$threshold = ifelse(peaks$lod > threshold_0p05,
+                         "FDR < 0.05", "suggestive")
+peaks$lodcolumn = names(m2.qtl.out)
+peaks_plot = rbind(peaks_plot, peaks)
+names(m2.qtl.out)
+```
+
+
+```{r COC_RTA_02}
+gap_Mb = 0
+chrs = as.character(c(1:19,"X"))
+
+phenotypes = names(m2.qtl.out)
+for (k in phenotypes) {
+  # Getting data frame for plotting RTG a1 in ggplot2
+  qtl_k_df = as.data.frame(m2.qtl.out[[k]])
+  qtl_k_df$phenotype = rep(gsub("_batch_ranknorm$","",k),
+                           times = nrow(qtl_k_df))
+  qtl_k_df$marker = row.names(qtl_k_df)
+  qtl_k_df$chr = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$stagger = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$pos = rep(-10, times = nrow(qtl_k_df))
+  qtl_k_df$calc_pos = rep(-10, times = nrow(qtl_k_df))
+  # qtl_k_df$label = rep("", times = nrow(qtl_k_df))
+  qtl_k_min_max_mid = data.frame(row.names = chrs,
+                                 chr = chrs,
+                                 max = rep(-10, times = length(chrs)),
+                                 calc_min = rep(-10, times = length(chrs)),
+                                 calc_mid = rep(-10, times = length(chrs)),
+                                 calc_max = rep(-10, times = length(chrs)))
+  min_chr_i = 0
+  for (i in 1:length(chrs)) {
+    chr_i = chrs[i]
+    pmap_i = pmap[[chr_i]]
+    qtl_k_df[names(pmap_i),"chr"] = chr_i
+    qtl_k_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+    qtl_k_df[names(pmap_i),"marker"] = names(pmap_i)
+    qtl_k_df[names(pmap_i),"pos"] = pmap_i
+    qtl_k_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+    max_pos_i = max(pmap_i)
+    qtl_k_min_max_mid[chr_i,"calc_min"] = min_chr_i
+    qtl_k_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+    qtl_k_min_max_mid[chr_i,"max"] = max_pos_i
+    min_chr_i = min_chr_i + max_pos_i + gap_Mb
+  }
+  qtl_k_min_max_mid$calc_mid = qtl_k_min_max_mid$calc_min + (0.5 * (qtl_k_min_max_mid$calc_max - qtl_k_min_max_mid$calc_min))
+  if(exists("qtl_df")) {
+    qtl_df = rbind(qtl_df,qtl_k_df)
+  } else {
+    qtl_df = qtl_k_df 
+  }
+}
+
+qtl_df = qtl_df[which(rowSums(is.na(qtl_df)) == 0),]
+qtl_df$phenotype = factor(qtl_df$phenotype,
+                          levels = gsub("_batch_ranknorm$","",phenotypes),
+                          ordered = TRUE)
+
+RTA_SENSI_COC_plot = ggplot(data = qtl_df, aes(x = calc_pos,
+                                               y = pheno1,
+                                               color = stagger,
+                                               group = chr)) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm"),
+        strip.background = element_blank(),
+        strip.text.y = element_blank()) +
+  geom_line(size = 0.5) +
+  geom_hline(yintercept = threshold_0p05,
+             color = "#999999", 
+             linetype = "dashed", 
+             size = 1) +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  xlab(NULL) +
+  ylab("LOD Score") +
+  ggtitle("Sensitization to Cocaine RTA: Mapping Results")
+df_RTA_SENSI_COC_plot = qtl_df
+threshold_plot = rbind(threshold_plot,
+                       data.frame(source_df = "RTA_SENSI_COC",
+                                  threshold_0p05 = threshold_0p05,
+                                  threshold_sugg = threshold_sugg))
+RTA_SENSI_COC_plot
+```
+
+### Making QTL Multi-Trait Figures
+
+#### Getting Annotations
+
+```{r annotation_df}
+rename_df_plot = structure(list(pheno_old = c("HB_Total_Entries_batch_ranknorm", 
+"LD_pct_ambulatory_Counts_in_light_batch_ranknorm", "LD_pct_distance_traveled_in_light_batch_ranknorm", 
+"LD_total_transitions_batch_ranknorm", "LD_pct_ambulatory_time_in_light_batch_ranknorm", "NPP_NoveltyPreference_ZoneTime_WhiteVsBlack_Total_batch_ranknorm", 
+"NPP_NoveltyPreference_ZoneTime_GreyWhiteBlack_Total_batch_ranknorm", 
+"OFA_pct_resting_time_center_batch_ranknorm", "OFA_pct_resting_time_corner_batch_ranknorm", 
+"OFA_pct_time_center_batch_ranknorm", "OFA_pct_time_corner_batch_ranknorm", 
+"OFA_total_distance_traveled_in_center_batch_ranknorm", "OFA_total_distance_traveled_in_corner_batch_ranknorm", 
+"OFA_distance_traveled_last_five_batch_ranknorm", "OFA_total_distance_traveled_in_perimeter_batch_ranknorm", 
+"OFA_distance_traveled_slope_batch_ranknorm", "OFA_total_time_in_corner_batch_ranknorm", 
+"OFA_total_resting_time_in_center_batch_ranknorm", "OFA_total_resting_time_in_perimeter_batch_ranknorm", 
+"OFA_total_distance_traveled_batch_ranknorm", "OFA_total_time_in_center_batch_ranknorm"
+), pheno_new = c("HB Total Entries", "LD % Amb Count in Light", 
+"LD % Distance in Light", "LD Transitions", "LD % Amb Time in Light", "NP % New vs Old", 
+"NP % New vs Old (w/gray)", "OF % Resting Time in Center", "OF % Resting Time in Corner", 
+"OF % Time in Center", "OF % Time in Corner", "OF Distance in Center", 
+"OF Distance in Corner", "OF Distance in Last 5 min", "OF Perimeter Distance", 
+"OF Slope of Distance", "OF Time in Corner", "OF Time Resting in Center", 
+"OF Time Resting in Perimeter", "OF Total Distance", "OF Total Time in Center"
+)), class = "data.frame", row.names = c("HB_Total_Entries", "LD_pct_ambulatory_Counts_in_light", 
+"LD_pct_distance_traveled_in_light", "LD_total_transitions", "LD_pct_ambulatory_time_in_light",
+"NPP_NoveltyPreference_ZoneTime_WhiteVsBlack_Total", "NPP_NoveltyPreference_ZoneTime_GreyWhiteBlack_Total", 
+"OFA_pct_resting_time_center", "OFA_pct_resting_time_corner", 
+"OFA_pct_time_center", "OFA_pct_time_corner", "OFA_total_distance_traveled_in_center", 
+"OFA_total_distance_traveled_in_corner", "OFA_distance_traveled_last_five", 
+"OFA_total_distance_traveled_in_perimeter", "OFA_distance_traveled_slope", 
+"OFA_total_time_in_corner", "OFA_total_resting_time_in_center", 
+"OFA_total_resting_time_in_perimeter", "OFA_total_distance_traveled", 
+"OFA_total_time_in_center"))
+```
+
+#### IVSA Acquisition Traits
+
+```{r IVSA_AQ_nov_01}
+rm(list = ls()[grep("plot$",ls(),invert = TRUE)])
+load("./data/mapping/DO_IVSA_AQ_nov.RData")
+pmap = readRDS("./data/DO_pmap.RDS")
+names(m2.qtl.out)
+```
+
+
+```{r IVSA_AQ_nov_02}
+gap_Mb = 0
+chrs = as.character(c(1:19,"X"))
+
+phenotypes = names(m2.qtl.out)
+for (k in phenotypes) {
+  # Getting data frame for plotting RTG a1 in ggplot2
+  qtl_k_df = as.data.frame(m2.qtl.out[[k]])
+  qtl_k_df$phenotype = rep(gsub("_batch_ranknorm$","",k),
+                           times = nrow(qtl_k_df))
+  qtl_k_df$marker = row.names(qtl_k_df)
+  qtl_k_df$chr = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$stagger = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$pos = rep(-10, times = nrow(qtl_k_df))
+  qtl_k_df$calc_pos = rep(-10, times = nrow(qtl_k_df))
+  # qtl_k_df$label = rep("", times = nrow(qtl_k_df))
+  qtl_k_min_max_mid = data.frame(row.names = chrs,
+                                 chr = chrs,
+                                 max = rep(-10, times = length(chrs)),
+                                 calc_min = rep(-10, times = length(chrs)),
+                                 calc_mid = rep(-10, times = length(chrs)),
+                                 calc_max = rep(-10, times = length(chrs)))
+  min_chr_i = 0
+  for (i in 1:length(chrs)) {
+    chr_i = chrs[i]
+    pmap_i = pmap[[chr_i]]
+    qtl_k_df[names(pmap_i),"chr"] = chr_i
+    qtl_k_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+    qtl_k_df[names(pmap_i),"marker"] = names(pmap_i)
+    qtl_k_df[names(pmap_i),"pos"] = pmap_i
+    qtl_k_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+    max_pos_i = max(pmap_i)
+    qtl_k_min_max_mid[chr_i,"calc_min"] = min_chr_i
+    qtl_k_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+    qtl_k_min_max_mid[chr_i,"max"] = max_pos_i
+    min_chr_i = min_chr_i + max_pos_i + gap_Mb
+  }
+  qtl_k_min_max_mid$calc_mid = qtl_k_min_max_mid$calc_min + (0.5 * (qtl_k_min_max_mid$calc_max - qtl_k_min_max_mid$calc_min))
+  if(exists("qtl_df")) {
+    qtl_df = rbind(qtl_df,qtl_k_df)
+  } else {
+    qtl_df = qtl_k_df 
+  }
+}
+
+qtl_df = qtl_df[which(rowSums(is.na(qtl_df)) == 0),]
+qtl_df$phenotype = factor(qtl_df$phenotype,
+                          levels = gsub("_batch_ranknorm$","",phenotypes),
+                          ordered = TRUE)
+
+annotation_df = rename_df_plot
+annotation_df$phenotype = gsub("_batch_ranknorm$","",annotation_df$pheno_old)
+annotation_df = annotation_df[which(annotation_df$phenotype %in% as.character(qtl_df$phenotype )),]
+annotation_df$phenotype = factor(annotation_df$phenotype,
+                                 levels = levels(qtl_df$phenotype),
+                                 ordered = TRUE)
+annotation_ypos = 0.9 * max(qtl_df$pheno1, na.rm = TRUE)
+
+IVSA_AQ_qtl_plot = ggplot(data = qtl_df) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm"),
+        strip.text.y = element_blank()) +
+  geom_line(aes(x = calc_pos,
+                y = pheno1,
+                color = stagger,
+                group = chr)) +
+  geom_text(data = annotation_df, aes(label = pheno_new),
+            x = 10, y = annotation_ypos, hjust = "left", vjust = "top",
+            fontface = "bold") +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  facet_grid(phenotype ~ .) +
+  xlab(NULL) +
+  ylab("LOD") +
+  ggtitle("IVSA Acquisition Novelty Response: Mapping Results")
+df_IVSA_AQ_qtl_plot = qtl_df
+plot_grid(RTA_IVSA_AQ_plot, 
+          IVSA_AQ_qtl_plot, 
+          ncol = 1, align = 'v', axis = "lr",
+          rel_heights = c(1,4))
+```
+
+#### IVSA All Traits
+
+```{r IVSA_ALL_nov_01}
+rm(list = ls()[grep("plot$",ls(),invert = TRUE)])
+load("./data/mapping/2024-05-08_DO_RTG_a3_new_noveltymapping.RData")
+pmap = readRDS("./data/DO_pmap.RDS")
+names(m2.qtl.out)
+```
+
+
+```{r IVSA_ALL_nov_02}
+gap_Mb = 0
+chrs = as.character(c(1:19,"X"))
+
+phenotypes = names(m2.qtl.out)
+phenotypes = grep("^Sex$", phenotypes, invert=TRUE, value=TRUE)
+for (k in phenotypes) {
+  # Getting data frame for plotting RTG a1 in ggplot2
+  qtl_k_df = as.data.frame(m2.qtl.out[[k]])
+  qtl_k_df$phenotype = rep(gsub("_batch_ranknorm$","",k),
+                           times = nrow(qtl_k_df))
+  qtl_k_df$marker = row.names(qtl_k_df)
+  qtl_k_df$chr = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$stagger = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$pos = rep(-10, times = nrow(qtl_k_df))
+  qtl_k_df$calc_pos = rep(-10, times = nrow(qtl_k_df))
+  # qtl_k_df$label = rep("", times = nrow(qtl_k_df))
+  qtl_k_min_max_mid = data.frame(row.names = chrs,
+                                 chr = chrs,
+                                 max = rep(-10, times = length(chrs)),
+                                 calc_min = rep(-10, times = length(chrs)),
+                                 calc_mid = rep(-10, times = length(chrs)),
+                                 calc_max = rep(-10, times = length(chrs)))
+  min_chr_i = 0
+  for (i in 1:length(chrs)) {
+    chr_i = chrs[i]
+    pmap_i = pmap[[chr_i]]
+    qtl_k_df[names(pmap_i),"chr"] = chr_i
+    qtl_k_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+    qtl_k_df[names(pmap_i),"marker"] = names(pmap_i)
+    qtl_k_df[names(pmap_i),"pos"] = pmap_i
+    qtl_k_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+    max_pos_i = max(pmap_i)
+    qtl_k_min_max_mid[chr_i,"calc_min"] = min_chr_i
+    qtl_k_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+    qtl_k_min_max_mid[chr_i,"max"] = max_pos_i
+    min_chr_i = min_chr_i + max_pos_i + gap_Mb
+  }
+  qtl_k_min_max_mid$calc_mid = qtl_k_min_max_mid$calc_min + (0.5 * (qtl_k_min_max_mid$calc_max - qtl_k_min_max_mid$calc_min))
+  if(exists("qtl_df")) {
+    qtl_df = rbind(qtl_df,qtl_k_df)
+  } else {
+    qtl_df = qtl_k_df 
+  }
+}
+
+qtl_df = qtl_df[which(rowSums(is.na(qtl_df)) == 0),]
+qtl_df$phenotype = factor(qtl_df$phenotype,
+                          levels = gsub("_batch_ranknorm$","",phenotypes),
+                          ordered = TRUE)
+
+annotation_df = rename_df_plot
+annotation_df$phenotype = gsub("_batch_ranknorm$","",annotation_df$pheno_old)
+annotation_df = annotation_df[which(annotation_df$phenotype %in% as.character(qtl_df$phenotype )),]
+annotation_df$phenotype = factor(annotation_df$phenotype,
+                                 levels = levels(qtl_df$phenotype),
+                                 ordered = TRUE)
+annotation_ypos = 0.9 * max(qtl_df$pheno1, na.rm = TRUE)
+
+IVSA_ALL_qtl_plot = ggplot(data = qtl_df) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm"),
+        strip.text.y = element_blank()) +
+  geom_line(aes(x = calc_pos,
+                y = pheno1,
+                color = stagger,
+                group = chr)) +
+  geom_text(data = annotation_df, aes(label = pheno_new),
+            x = 10, y = annotation_ypos, hjust = "left", vjust = "top",
+            fontface = "bold") +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  facet_grid(phenotype ~ .) +
+  xlab(NULL) +
+  ylab("LOD") +
+  ggtitle("IVSA All Novelty Response: Mapping Results")
+df_IVSA_ALL_qtl_plot = qtl_df
+plot_grid(RTA_IVSA_ALL_plot, 
+          IVSA_ALL_qtl_plot, 
+          ncol = 1, align = 'v', axis = "lr",
+          rel_heights = c(1,4))
+```
+
+#### SENSI Cocaine Traits
+
+```{r SENS_COC_nov_01}
+rm(list = ls()[grep("plot$",ls(),invert = TRUE)])
+load("./data/mapping/DO_SENSI_coc_nov.RData")
+pmap = readRDS("./data/DO_pmap.RDS")
+names(m2.qtl.out)
+```
+
+
+
+```{r SENS_COC_nov_02}
+gap_Mb = 0
+chrs = as.character(c(1:19,"X"))
+
+phenotypes = names(m2.qtl.out)
+for (k in phenotypes) {
+  # Getting data frame for plotting RTG a1 in ggplot2
+  qtl_k_df = as.data.frame(m2.qtl.out[[k]])
+  qtl_k_df$phenotype = rep(gsub("_batch_ranknorm$","",k),
+                           times = nrow(qtl_k_df))
+  qtl_k_df$marker = row.names(qtl_k_df)
+  qtl_k_df$chr = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$stagger = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$pos = rep(-10, times = nrow(qtl_k_df))
+  qtl_k_df$calc_pos = rep(-10, times = nrow(qtl_k_df))
+  # qtl_k_df$label = rep("", times = nrow(qtl_k_df))
+  qtl_k_min_max_mid = data.frame(row.names = chrs,
+                                 chr = chrs,
+                                 max = rep(-10, times = length(chrs)),
+                                 calc_min = rep(-10, times = length(chrs)),
+                                 calc_mid = rep(-10, times = length(chrs)),
+                                 calc_max = rep(-10, times = length(chrs)))
+  min_chr_i = 0
+  for (i in 1:length(chrs)) {
+    chr_i = chrs[i]
+    pmap_i = pmap[[chr_i]]
+    qtl_k_df[names(pmap_i),"chr"] = chr_i
+    qtl_k_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+    qtl_k_df[names(pmap_i),"marker"] = names(pmap_i)
+    qtl_k_df[names(pmap_i),"pos"] = pmap_i
+    qtl_k_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+    max_pos_i = max(pmap_i)
+    qtl_k_min_max_mid[chr_i,"calc_min"] = min_chr_i
+    qtl_k_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+    qtl_k_min_max_mid[chr_i,"max"] = max_pos_i
+    min_chr_i = min_chr_i + max_pos_i + gap_Mb
+  }
+  qtl_k_min_max_mid$calc_mid = qtl_k_min_max_mid$calc_min + (0.5 * (qtl_k_min_max_mid$calc_max - qtl_k_min_max_mid$calc_min))
+  if(exists("qtl_df")) {
+    qtl_df = rbind(qtl_df,qtl_k_df)
+  } else {
+    qtl_df = qtl_k_df 
+  }
+}
+
+qtl_df = qtl_df[which(rowSums(is.na(qtl_df)) == 0),]
+qtl_df$phenotype = factor(qtl_df$phenotype,
+                          levels = gsub("_batch_ranknorm$","",phenotypes),
+                          ordered = TRUE)
+
+annotation_df = rename_df_plot
+annotation_df$phenotype = gsub("_batch_ranknorm$","",annotation_df$pheno_old)
+annotation_df = annotation_df[which(annotation_df$phenotype %in% as.character(qtl_df$phenotype )),]
+annotation_df$phenotype = factor(annotation_df$phenotype,
+                                 levels = levels(qtl_df$phenotype),
+                                 ordered = TRUE)
+annotation_ypos = 0.9 * max(qtl_df$pheno1, na.rm = TRUE)
+
+SENSI_COC_qtl_plot = ggplot(data = qtl_df) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm"),
+        strip.text.y = element_blank()) +
+  geom_line(aes(x = calc_pos,
+                y = pheno1,
+                color = stagger,
+                group = chr)) +
+  geom_text(data = annotation_df, aes(label = pheno_new),
+            x = 10, y = annotation_ypos, hjust = "left", vjust = "top",
+            fontface = "bold") +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  facet_grid(phenotype ~ .) +
+  xlab(NULL) +
+  ylab("LOD") +
+  ggtitle("SENSI Cocaine Novelty Response: Mapping Results")
+df_SENSI_COC_qtl_plot = qtl_df
+plot_grid(RTA_SENSI_COC_plot, 
+          SENSI_COC_qtl_plot, 
+          ncol = 1, align = 'v', axis = "lr",
+          rel_heights = c(1,4))
+```
+
+#### SENSI Saline Traits
+
+```{r SENS_SAL_nov_01}
+rm(list = ls()[grep("plot$",ls(),invert = TRUE)])
+load("./data/mapping/DO_SENSI_sal_nov.RData")
+pmap = readRDS("./data/DO_pmap.RDS")
+names(m2.qtl.out)
+```
+
+
+```{r SENS_SAL_nov_02}
+gap_Mb = 0
+chrs = as.character(c(1:19,"X"))
+
+phenotypes = names(m2.qtl.out)
+for (k in phenotypes) {
+  # Getting data frame for plotting RTG a1 in ggplot2
+  qtl_k_df = as.data.frame(m2.qtl.out[[k]])
+  qtl_k_df$phenotype = rep(gsub("_batch_ranknorm$","",k),
+                           times = nrow(qtl_k_df))
+  qtl_k_df$marker = row.names(qtl_k_df)
+  qtl_k_df$chr = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$stagger = rep(NA, times = nrow(qtl_k_df))
+  qtl_k_df$pos = rep(-10, times = nrow(qtl_k_df))
+  qtl_k_df$calc_pos = rep(-10, times = nrow(qtl_k_df))
+  # qtl_k_df$label = rep("", times = nrow(qtl_k_df))
+  qtl_k_min_max_mid = data.frame(row.names = chrs,
+                                 chr = chrs,
+                                 max = rep(-10, times = length(chrs)),
+                                 calc_min = rep(-10, times = length(chrs)),
+                                 calc_mid = rep(-10, times = length(chrs)),
+                                 calc_max = rep(-10, times = length(chrs)))
+  min_chr_i = 0
+  for (i in 1:length(chrs)) {
+    chr_i = chrs[i]
+    pmap_i = pmap[[chr_i]]
+    qtl_k_df[names(pmap_i),"chr"] = chr_i
+    qtl_k_df[names(pmap_i),"stagger"] = ifelse(i %% 2 == 0, "darkblue", "lightblue")
+    qtl_k_df[names(pmap_i),"marker"] = names(pmap_i)
+    qtl_k_df[names(pmap_i),"pos"] = pmap_i
+    qtl_k_df[names(pmap_i),"calc_pos"] = min_chr_i + pmap_i
+    max_pos_i = max(pmap_i)
+    qtl_k_min_max_mid[chr_i,"calc_min"] = min_chr_i
+    qtl_k_min_max_mid[chr_i,"calc_max"] = min_chr_i + max_pos_i
+    qtl_k_min_max_mid[chr_i,"max"] = max_pos_i
+    min_chr_i = min_chr_i + max_pos_i + gap_Mb
+  }
+  qtl_k_min_max_mid$calc_mid = qtl_k_min_max_mid$calc_min + (0.5 * (qtl_k_min_max_mid$calc_max - qtl_k_min_max_mid$calc_min))
+  if(exists("qtl_df")) {
+    qtl_df = rbind(qtl_df,qtl_k_df)
+  } else {
+    qtl_df = qtl_k_df 
+  }
+}
+
+qtl_df = qtl_df[which(rowSums(is.na(qtl_df)) == 0),]
+qtl_df$phenotype = factor(qtl_df$phenotype,
+                          levels = gsub("_batch_ranknorm$","",phenotypes),
+                          ordered = TRUE)
+
+annotation_df = rename_df_plot
+annotation_df$phenotype = gsub("_batch_ranknorm$","",annotation_df$pheno_old)
+annotation_df = annotation_df[which(annotation_df$phenotype %in% as.character(qtl_df$phenotype )),]
+annotation_df$phenotype = factor(annotation_df$phenotype,
+                                 levels = levels(qtl_df$phenotype),
+                                 ordered = TRUE)
+annotation_ypos = 0.9 * max(qtl_df$pheno1, na.rm = TRUE)
+
+SENSI_SAL_qtl_plot = ggplot(data = qtl_df) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm"),
+        strip.text.y = element_blank()) +
+  geom_line(aes(x = calc_pos,
+                y = pheno1,
+                color = stagger,
+                group = chr)) +
+  geom_text(data = annotation_df, aes(label = pheno_new),
+            x = 10, y = annotation_ypos, hjust = "left", vjust = "top",
+            fontface = "bold") +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_color_manual(values = c("#999999","#000000")) +
+  facet_grid(phenotype ~ .) +
+  xlab(NULL) +
+  ylab("LOD") +
+  ggtitle("SENSI Saline Novelty Response: Mapping Results")
+df_SENSI_SAL_qtl_plot = qtl_df
+plot_grid(RTA_SENSI_SAL_plot, 
+          SENSI_SAL_qtl_plot, 
+          ncol = 1, align = 'v', axis = "lr",
+          rel_heights = c(1,4))
+```
+
+#### Overall RTA Mapping Plot
+
+```{r OVERALL_RTA_qtl}
+df_plot_ls =  ls(pattern = "^df_.*_plot$")
+# Data frames
+for (i in df_plot_ls) {
+  df_i = eval(parse(text = i))
+  df_i$source_df = gsub("^df_(.*)_plot$","\\1",i)
+  if (i != df_plot_ls[1]) {
+    mapping_df = rbind(mapping_df, df_i)
+  } else {
+    mapping_df = df_i
+  }
+}
+
+mapping_df_rta = mapping_df[grep("^RTA",mapping_df$source_df),]
+mapping_df_rta = mapping_df_rta[which(mapping_df_rta$source_df != "RTA_IVSA_AQ"),]
+mapping_df_rta$source_df = factor(as.character(mapping_df_rta$source_df),
+                                  levels = c("RTA_IVSA_ALL",
+                                             "RTA_SENSI_SAL",
+                                             "RTA_SENSI_COC"),
+                                  ordered = TRUE)
+colnames(mapping_df_rta)[1] = "LOD"
+threshold_plot_rta = threshold_plot[which(threshold_plot$source_df != "RTA_IVSA_AQ"),]
+
+rta_mapping_figure = ggplot(data = mapping_df_rta, aes(x = calc_pos,
+                                                       y = LOD,
+                                                       color = stagger,
+                                                       group = chr)) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm")) +
+  geom_line() +
+  # geom_hline(data = threshold_plot_rta, 
+  #            aes(yintercept = threshold_0p05),
+  #            color = "#999999", linetype = "dashed") +
+    # geom_hline(data = threshold_plot, 
+    #          aes(yintercept = threshold_sugg),
+    #          color = "#999999", linetype = "dotted") +
+  facet_grid(source_df ~ ., scales = "fixed", switch = "y") +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_y_continuous(position = "right") +
+  scale_color_manual(values = c("#999999","#000000")) +
+  xlab(NULL) +
+  ylab(NULL) +
+  ggtitle(NULL)
+rta_mapping_figure
+```
+
+#### Overall Novelty Response Plot
+
+```{r OVERALL_NOV_qtl}
+mapping_df_filtered = mapping_df[grep("qtl$",mapping_df$source_df),]
+mapping_df_filtered = mapping_df_filtered[which(mapping_df_filtered$source_df != "IVSA_AQ_qtl"),]
+mapping_df_filtered$phenotype = as.character(rename_df_plot[as.character(mapping_df_filtered$phenotype),"pheno_new"])
+colnames(mapping_df_filtered)[1] = "LOD"
+mapping_df_filtered$source_df = factor(mapping_df_filtered$source_df, 
+                                       levels = c("IVSA_ALL_qtl","SENSI_COC_qtl","SENSI_SAL_qtl"), ordered = TRUE)
+
+nov_mapping_figure = ggplot(data = mapping_df_filtered, aes(x = calc_pos,
+                                                            y = phenotype,
+                                                            color = LOD,
+                                                            group = chr)) +
+  theme_bw() +
+  theme(legend.position = "bottom", 
+        panel.grid = element_line(color = "#FFFFFF"),
+        panel.spacing = unit(0, "mm")) +
+  geom_tile() +
+  facet_grid(source_df ~ .,scales = "free_y", space = "free_y", switch = "y") +
+  scale_x_continuous(labels = qtl_k_min_max_mid$chr,
+                     breaks = qtl_k_min_max_mid$calc_mid,
+                     minor_breaks = c(qtl_k_min_max_mid$calc_min, qtl_k_min_max_mid$calc_max)) +
+  scale_y_discrete(position = "right") +
+  scale_color_gradient(low = "#FFFFFF", high = "#000000") +
+  # scale_color_viridis_c(direction = -1, option = "inferno") + 
+  # scale_color_gradientn(colors = brewer.pal(n = 9, name = "YlOrRd")) +
+  xlab(NULL) +
+  ylab(NULL) +
+  ggtitle(NULL)
+nov_mapping_figure
+```
+
+#### Plotting both together
+
+```{r plot_all, fig.asp = 1}
+grid_plot = plot_grid(rta_mapping_figure, 
+          nov_mapping_figure, 
+          ncol = 1, align = 'v', axis = "lr",
+          rel_heights = c(1,2))
+grid_plot
+```
+
+### Saving output
+
+```{r save_stuff}
+saveRDS(peaks_plot, "./data/figures/DO_peaks.RDS")
+saveRDS(qtl_k_min_max_mid, "./data/figures/DO_ggplot_scales.RDS")
+saveRDS(mapping_df,"./data/figures/DO_mapping_df.RDS")
+saveRDS(threshold_plot,"./data/figures/DO_thresholds_df.RDS")
+
+# RTA
+saveRDS(rta_mapping_figure, "./data/figures/DO_RTA_all_traits_plot.RDS")
+
+# IVSA
+saveRDS(RTA_IVSA_AQ_plot,"./data/figures/DO_IVSA_AQ_QTL_RTA_plot.RDS")
+saveRDS(RTA_IVSA_ALL_plot,"./data/figures/DO_IVSA_ALL_QTL_RTA_plot.RDS")
+
+# SENSI
+saveRDS(RTA_SENSI_COC_plot,"./data/figures/DO_SENSI_COC_QTL_RTA_plot.RDS")
+saveRDS(RTA_SENSI_SAL_plot,"./data/figures/DO_SENSI_SAL_QTL_RTA_plot.RDS")
+
+# novelty response plots
+saveRDS(nov_mapping_figure, "./data/figures/overall_novelty_response_plot.RDS")
+saveRDS(IVSA_AQ_qtl_plot,"./data/figures/DO_IVSA_AQ_QTL_nov_plot.RDS")
+saveRDS(IVSA_ALL_qtl_plot,"./data/figures/DO_IVSA_ALL_QTL_nov_plot.RDS")
+saveRDS(SENSI_COC_qtl_plot,"./data/figures/DO_SENSI_COC_QTL_nov_plot.RDS")
+saveRDS(SENSI_SAL_qtl_plot,"./data/figures/DO_SENSI_SAL_QTL_nov_plot.RDS")
+```
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

@@ -1,0 +1,700 @@
+---
+title: "20_predict_acquisition_from_novelty"
+author: "Robyn L Ball,  PhD"
+date: "9/17/2020"
+output: workflowr::wflow_html
+---
+
+
+# PURPOSE 
+
+Using DO_novelty.RDS data derived in 11, predict aquisition
+
+# METHODS
+
+1. import DO_novelty_response_data.RDS as novelty response data from "11_DO_novelty_response_summarize"
+2. import DO_IVSA_raw_data and preprocess similar to "12_DO_IVSA_novelty_cancor"
+3. assess which novelty response variables predict aquisition using elastic net using a multivariate response:
+
+Y is a matrix of
++ Rate of acquistion: 1 - proportion of sessions to acquisition (or end of the pipeline)
++ Amount of cocaine: total infused divided by the number of sessions to acquistion (or end of the pipeline)
++ Amount of active lever presses, accounting for activity: ratio of total active lever presses to total inactive lever presses over all sessions
++ Consistency: coefficient of variation of active lever presses across all sessions
+
+4. Predict Y for all animals with novelty response data
+5. Export for analysis
+
+For details on IVSA protocol, see file:///Users/rlb/Documents/saul/doc/60cocaineivsa2019.pdf
+
+# CODE
+
+set options, load packages
+
+```{r}
+options(stringsAsFactors = FALSE)
+library(ggplot2)
+library(glmnet)
+library(knitr)
+knitr::opts_chunk$set(fig.width=12, fig.height=8) 
+```
+
+read in novelty data and raw IVSA data
+
+```{r}
+DO_novelty = readRDS("./data/DO_novelty_response_data.RDS")
+nov_raw <- read.csv("./data/raw/Novelty_raw_datarelease_JDO_Q12020.0.1.csv", comment.char = "%",
+                                     na.strings = c("NA","#N/A",""))
+
+# for raw data, group = dataset
+nov_raw$dataset <- rep("precenter", nrow(nov_raw))
+nov_raw$dataset[which(nov_raw$Group=="post_center")] <- "CSNA"
+nov_raw$DE_Sex <- "F"
+nov_raw$DE_Sex[which(nov_raw$Sex=="Male")] <- "M"
+
+colnames(nov_raw) <- gsub("\\.", "_", colnames(nov_raw))
+DO_IVSA = readRDS("./data/DO_IVSA_raw_data.RDS")
+IVSA_metadata = readRDS("./data/IVSA_metadata_sheet.RDS")
+```
+
+## Explore 
+
+```{r}
+dim(DO_novelty)
+#colnames(DO_novelty)
+dim(DO_IVSA)
+dim(nov_raw)
+```
+
+find Troyler
+
+```{r}
+tcols <- grep("tester", colnames(DO_novelty))
+table(DO_novelty[, tcols[1]])
+```
+
+tag any that are "TAR" or "TRTW" as Trowler
+
+```{r}
+DO_novelty$Troyler <- as.numeric(DO_novelty[, tcols[1]] %in% c("TAR", "TRTW") | DO_novelty[, tcols[2]] %in% c("TAR", "TRTW") |
+                                   DO_novelty[, tcols[3]] %in% c("TAR", "TRTW")
+                                   )
+table(DO_novelty$Troyler)
+```
+
+```{r}
+table(DO_novelty[, c("Group", "Troyler")])
+```
+
+```{r}
+apply(IVSA_metadata[IVSA_metadata$vartype=="Acquisition", ], 2, function(x) {length(unique(x))})
+```
+ 2 doses, 51 sessions, 9 blocks
+ 
+```{r}
+unique(IVSA_metadata[IVSA_metadata$vartype=="Acquisition", 4:7])
+```
+ what are the NA blocks? 
+ 
+```{r}
+table(IVSA_metadata[IVSA_metadata$vartype=="Acquisition", c("block", "session")], useNA = "ifany")
+```
+ 
+It seems the NA block is really the 9th block. let's see 
+
+```{r}
+is_set <- which(IVSA_metadata$vartype=="Acquisition" & is.na(IVSA_metadata$block) &!is.na(IVSA_metadata$session))
+unique(IVSA_metadata$is_total[is_set])
+```
+not all are totals
+
+```{r}
+is_set <- which(IVSA_metadata$vartype=="Acquisition" & is.na(IVSA_metadata$block) & !IVSA_metadata$is_total)
+unique(IVSA_metadata$long_varname[is_set])
+```
+
+if block == NA, it is either a total or it is the SessionsToAquisition
+
+Is it the same for sessions?
+
+```{r}
+is_set <- which(IVSA_metadata$vartype=="Acquisition" & is.na(IVSA_metadata$session))
+unique(IVSA_metadata$long_varname[is_set])
+```
+
+so if block == NA && session == NA, it is the SessionsToAcquisition
+
+```{r}
+is_set <- which(IVSA_metadata$vartype=="DoseResponse" & is.na(IVSA_metadata$block) & is.na(IVSA_metadata$session) & IVSA_metadata$is_total & IVSA_metadata$dose_mgperkg==1)
+is_set2 <- is_set[grep("Inf", IVSA_metadata$variable[is_set])]
+IVSA_metadata[is_set2, c("variable", "long_varname")]
+```
+
+Could use the percentage of active lever presses per session: AQ_pAP_Total_s{01}
+```{r}
+is_set <- which(IVSA_metadata$vartype=="DoseResponse" & is.na(IVSA_metadata$block) & is.na(IVSA_metadata$session) & IVSA_metadata$is_total & IVSA_metadata$dose_mgperkg==1)
+is_set2 <- is_set[grep("ILP", IVSA_metadata$variable[is_set])]
+IVSA_metadata[is_set2, c("variable", "long_varname")]
+```
+
+```{r}
+is_set <- which(IVSA_metadata$vartype=="DoseResponse" & is.na(IVSA_metadata$block) & is.na(IVSA_metadata$session)  & IVSA_metadata$dose_mgperkg==1)
+is_set2 <- is_set[grep("CoV", IVSA_metadata$variable[is_set])]
+IVSA_metadata[is_set2, c("variable", "long_varname")]
+```
+
+### Multivariate response, Y
+
+For active lever presses, accounting for activity, use : DR_ALP_TfASoTD_1p0mgkg (Dose Response FR1-Active_LeverPresses_TotalForAllSessionsOnThisDose-1.0 mg/kg) divided by 
+DR_ILP_TfASoTD_1p0mgkg (Dose Response FR1-InactiveLeverPresses_TotalForAllSessionsOnThisDose-1.0 mg/kg)
+
+For mean amount of cocaine per session use: DR_Inf_TfASoTD_1p0mgkg: Dose Response FR1-Infusions_TotalForAllSessionsOnThisDose-1.0 mg/kg divided by the number of sessions
+
+For consistency, use: DR_IEI_CoV_ALP_Total_1p0mgkg: Dose response FR1-InterEventInterval_CoefOfVariation_ActiveLeverPresses_Total-1.0 mg/kg
+
+For rate of acquistion, use 1 - SessionsToAcquisition/28
+
+### Getting IVSA metadata.
+
+```{r}
+IVSA_DE_vars = IVSA_metadata[which(IVSA_metadata$vartype == "Descriptive"),"variable"]
+
+# Removing data columns broken down by sessions and blocks
+IVSA_AQ_vars_noblocks_nosessions = IVSA_metadata[which(is.na(IVSA_metadata$session) &
+                                                         is.na(IVSA_metadata$block) &
+                                                         IVSA_metadata$vartype == "Acquisition"),
+                                                 "variable"]
+
+# Removing data columns not at 0.032, 0.1, 0.32, and 1 mg/kg
+# this make a compatible dataset between precenter and center data
+IVSA_DR_currentdoses = c(0.032, 0.1, 0.32, 1.0)
+
+IVSA_DR_vars_currentprotocol = IVSA_metadata[which(is.na(IVSA_metadata$session) &
+                                                     is.na(IVSA_metadata$block) &
+                                                     IVSA_metadata$vartype == "DoseResponse" &
+                                                     IVSA_metadata$dose_mgperkg %in% IVSA_DR_currentdoses),
+                                             "variable"]
+
+IVSA_EX_noblocks = IVSA_metadata[which(is.na(IVSA_metadata$block) &
+                                         IVSA_metadata$vartype == "Extinction"),
+                                 "variable"]
+
+IVSA_RI_noblocks = IVSA_metadata[which(is.na(IVSA_metadata$block) &
+                                         IVSA_metadata$vartype == "Reinstatement"),
+                                 "variable"]
+
+IVSA_data_vars = c(IVSA_AQ_vars_noblocks_nosessions,
+                   IVSA_DR_vars_currentprotocol,
+                   IVSA_EX_noblocks,
+                   IVSA_RI_noblocks)
+```
+
+Appending the value of `28` to IVSA animals that did not acquire.
+
+This is the maximum number of sessions and indicates they finshed the pipeline
+
+## TODO: Fix this in case there were differences. Check Troy's email.
+
+```{r}
+summary(DO_IVSA$AQ_SessionsToAcquisition)
+DO_IVSA$AQ_SessionsToAcquisition = ifelse(DO_IVSA$DE_Exit_Reason == "IVSA Acquisition Only",
+                                          28, DO_IVSA$AQ_SessionsToAcquisition)
+summary(DO_IVSA$AQ_SessionsToAcquisition)
+```
+
+#### Novelty response: consider precenter confounding
+
+We know there is confounding with precenter vs CSNA data. Use rank Z normalization separately for precenter and CSNA data and include a indicator variable for 'precenter' in the analysis.
+
+
+```{r}
+# Getting behavior novelty columns
+DO_novelty_cols = colnames(DO_novelty)
+
+# Open field
+DO_novelty_OFA_cols = DO_novelty_cols[grep("^OFA_.*$",DO_novelty_cols)]
+DO_novelty_OFA_cols = DO_novelty_OFA_cols[-1 * which(DO_novelty_OFA_cols %in% c("OFA_date_of_test","OFA_tester"))]
+
+# Light/Dark
+DO_novelty_LD_cols = DO_novelty_cols[grep("^LD_.*$",DO_novelty_cols)]
+DO_novelty_LD_cols = DO_novelty_LD_cols[-1 * which(DO_novelty_LD_cols %in% c("LD_date_of_test","LD_tester"))]
+
+# Hole board
+DO_novelty_HB_cols = DO_novelty_cols[grep("^HB_.*$",DO_novelty_cols)]
+DO_novelty_HB_cols = DO_novelty_HB_cols[-1 * which(DO_novelty_HB_cols %in% c("HB_Mouse_ID","HB_date_of_test","HB_tester"))]
+
+# Novel place preference
+DO_novelty_NPP_cols = DO_novelty_cols[grep("^NPP_.*$",DO_novelty_cols)]
+DO_novelty_NPP_cols = DO_novelty_NPP_cols[-1 * which(DO_novelty_NPP_cols %in% c("NPP_date_of_test","NPP_tester"))]
+
+# Getting numeric columns
+DO_novelty_numeric_cols = c(DO_novelty_OFA_cols, DO_novelty_LD_cols, DO_novelty_HB_cols, DO_novelty_NPP_cols)
+
+DO_novelty_data_cols = DO_novelty_numeric_cols
+```
+
+Making data frame to carry novelty and IVSA data
+
+```{r}
+novelty_vars = c(DO_novelty_data_cols, "Group", "OFA_tester", "LD_tester",  "HB_tester")
+
+# for raw data, group = dataset
+nov_raw$dataset <- rep("precenter", nrow(nov_raw))
+nov_raw$dataset[which(nov_raw$Group=="post_center")] <- "CSNA"
+nov_raw$DE_Sex <- "F"
+nov_raw$DE_Sex[which(nov_raw$Sex=="Male")] <- "M"
+
+IVSA_vars = c(IVSA_data_vars, "AQ_SessionsToAcquisition")
+
+DO_novelty_IVSA_IDs = intersect(row.names(DO_IVSA), row.names(DO_novelty))
+# DE_Subject
+DO_novelty_only_IDs <- setdiff(DO_novelty$Mouse_ID, row.names(DO_IVSA))
+
+DO_novelty_IVSA = cbind(DO_IVSA[DO_novelty_IVSA_IDs,c(IVSA_DE_vars, IVSA_vars)],
+                        DO_novelty[DO_novelty_IVSA_IDs,novelty_vars])
+
+# Filtering for only animals that acquired IVSA or were acquisition-only.
+DO_novelty_IVSA_raw = DO_novelty_IVSA
+
+table(DO_novelty_IVSA$DE_Exit_Reason)
+DO_novelty_IVSA = DO_novelty_IVSA[which(DO_novelty_IVSA$DE_Exit_Reason == "Finished Pipeline" |
+                                          DO_novelty_IVSA$DE_Exit_Reason == "IVSA Acquisition Only"),]
+```
+
+Add in those that do not have IVSA data
+
+```{r}
+DO_novelty$DE_Subject = DO_novelty$Mouse_ID
+DO_novelty$DE_Sex = gsub("^([FM])\\w+$","\\1",DO_novelty$Sex)
+include <- DO_novelty[ which(DO_novelty$DE_Subject %in% DO_novelty_only_IDs), 
+                                                   c("DE_Subject", "DE_Sex", novelty_vars)]
+add <- which(!(colnames(DO_novelty_IVSA) %in% colnames(include)))
+addto <- data.frame(array(NA, dim=c(nrow(include), length(add)), dimnames = list(NULL, colnames(DO_novelty_IVSA)[add])))
+include <- cbind(DE_Subject=include$DE_Subject, DE_Sex=include$DE_Sex, addto, include[, -c(1,2)])
+
+DO_novelty_IVSA <- rbind(DO_novelty_IVSA, include)
+DO_novelty_IVSA$nov_only <- as.numeric(DO_novelty_IVSA$DE_Subject %in% DO_novelty_only_IDs)
+DO_novelty_IVSA$dataset = ifelse(DO_novelty_IVSA$Group == "post_center","CSNA","precenter")
+```
+
+Look at the distribution of acquisition variables
+
+For active lever presses, accounting for activity, use : DR_ALP_TfASoTD_1p0mgkg (Dose Response FR1-Active_LeverPresses_TotalForAllSessionsOnThisDose-1.0 mg/kg) divided by 
+DR_ILP_TfASoTD_1p0mgkg (Dose Response FR1-InactiveLeverPresses_TotalForAllSessionsOnThisDose-1.0 mg/kg)
+
+For mean amount of cocaine per session use: DR_Inf_TfASoTD_1p0mgkg: Dose Response FR1-Infusions_TotalForAllSessionsOnThisDose-1.0 mg/kg divided by the number of sessions
+
+For consistency, use: DR_IEI_CoV_ALP_Total_1p0mgkg: Dose response FR1-InterEventInterval_CoefOfVariation_ActiveLeverPresses_Total-1.0 mg/kg
+
+For rate of acquisition, use 1 - DO_novelty_IVSA$AQ_SessionsToAcquisition/28
+
+```{r}
+DO_novelty_IVSA$AQ_lever_ratio <- (DO_novelty_IVSA$DR_ALP_TfASoTD_1p0mgkg +1) / (DO_novelty_IVSA$DR_ILP_TfASoTD_1p0mgkg + 1)
+DO_novelty_IVSA$AQ_mean_inf <- DO_novelty_IVSA$DR_Inf_TfASoTD_1p0mgkg / DO_novelty_IVSA$AQ_SessionsToAcquisition
+DO_novelty_IVSA$AQ_active_CoV <- DO_novelty_IVSA$DR_IEI_CoV_ALP_Total_1p0mgkg
+DO_novelty_IVSA$AQ_rate <- 1 - DO_novelty_IVSA$AQ_SessionsToAcquisition/28
+ys <- c('AQ_lever_ratio', 'AQ_mean_inf', 'AQ_active_CoV', 'AQ_rate') 
+summary(DO_novelty_IVSA[, ys])
+#
+summary(DO_novelty_IVSA$AQ_SessionsToAcquisition)
+summary( DO_novelty_IVSA$DR_ALP_TfASoTD_1p0mgkg)
+summary(DO_novelty_IVSA$DR_ILP_TfASoTD_1p0mgkg)
+#
+summary(DO_novelty_IVSA$AQ_rate)
+#
+DO_novelty_IVSA$AQ_rate[which( DO_novelty_IVSA$DR_ALP_TfASoTD_1p0mgkg == 0)]
+DO_novelty_IVSA$AQ_rate[which( DO_novelty_IVSA$DR_ILP_TfASoTD_1p0mgkg == 0)]
+
+# some mice have 0 active or 0 inactive lever presses --- should these be removed?
+#
+summary(DO_novelty_IVSA$DR_IEI_CoV_ALP_Total_1p0mgkg)
+#
+
+vars <- c(ys, 'dataset')
+nas <- NULL
+for (v in vars) {
+  nas <- c(nas, which(is.na(DO_novelty_IVSA[, v])))
+}
+to_plot <- DO_novelty_IVSA[-nas, vars]
+par(mfrow=c(2,2))
+for (i in 1:length(ys)) {
+  boxplot(to_plot[, ys[i]] ~ to_plot$dataset , xlab='dataset', ylab=ys[i])
+}
+
+```
+
+Certainly there is confounding here. We should normalize separately and have 'precenter' in the model
+
+```{r}
+table(to_plot[, 'dataset'])
+```
+
+
+### Exclusions
+
+Require they finish the pipeline and add include 'dataset' in the model.
+
+```{r}
+excluded <- intersect(which(DO_novelty_IVSA$nov_only==0), 
+                      which(!(DO_novelty_IVSA$DE_Exit_Reason %in% c("Finished Pipeline", "IVSA Acquisition Only") &
+                                !is.na(DO_novelty_IVSA$AQ_SessionsToAcquisition)))
+)
+print(paste0(length(excluded), " were excluded due to not finishing the pipeline."))
+# df_all includes precenter data
+df_all <- DO_novelty_IVSA[-excluded, ]
+print(paste0(length(which(df_all$dataset=='precenter' & df_all$nov_only==0)), " were precenter."))
+```
+
+exclude NAs in the predictors
+
+```{r}
+#vars <- c(ys, novelty_vars[-which(novelty_vars=='dataset')], 'DE_Sex')
+vars <- c(novelty_vars, 'DE_Sex')
+vars <- vars[grep("tester", vars, invert = TRUE)]
+vars <- vars[grep("_ranknorm$", vars, invert = TRUE)]
+vars <- vars[grep("HB_Novel_Entries", vars, invert = TRUE)]
+vars <- c(vars, "dataset")
+nas <- NULL
+n_nas <- rep(0, length(vars))
+names(n_nas) <- vars
+for (i in 1:length(vars)) {
+  nas <- union(nas, which(is.na(df_all[, vars[i]])))
+  n_nas[i] <- length(which(is.na(df_all[, vars[i]])))
+}
+print(paste0(length(nas), " were excluded do to missing data in the predictors. The dataset included ", nrow(df_all) - length(nas), " mice."))
+```
+
+### build the multivariate model
+
+Elastic net is a predictive model that idenitfies which novelty variables are predictive and allows for highly correlated predictors.
+
+### Elastic net
+
+scale everything using rank Z normalization, separetely vy 'dataset'
+
+```{r}
+norm_rank_transform = function(x, c = 0) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+Need to transform with everything in there, not just those we use to build the model
+
+```{r}
+vars <- c(vars, ys)
+vars <- c(vars, colnames(df_all)[grepl("tester", colnames(df_all))])
+dd <- df_all[ -nas, vars]
+dd$HB_tester <- as.numeric(dd$HB_tester %in% c("TAR", "TRTW"))
+dd$OFA_tester <- as.numeric(dd$OFA_tester %in% c("TAR", "TRTW"))
+dd$LD_tester <- as.numeric(dd$LD_tester %in% c("TAR", "TRTW"))
+#rownames(dd) <- rownames(y) <- df_all$DE_Subject[-nas]
+rownames(dd) <- df_all$DE_Subject[-nas]
+#
+fvars <- c("DE_Sex", "dataset","HB_tester", "OFA_tester", "LD_tester","Group")
+#
+nvars <- setdiff(colnames(dd), fvars)
+is.center <- which(dd$dataset=="CSNA")
+x <- apply(dd[is.center, nvars], 2, norm_rank_transform)
+is.pre <- setdiff(1:nrow(dd), is.center)
+xx <- apply(dd[is.pre, nvars], 2, norm_rank_transform)
+x <- rbind(x, xx)
+#
+rr <- cbind(rownames(x), rownames(dd))
+all(rr[,1]==rr[,2])
+idx <- match(rownames(x), rownames(dd))
+rr <- cbind(rownames(x), rownames(dd)[idx])
+all(rr[,1]==rr[,2])
+dd <- dd[idx, ]
+rr <- cbind(rownames(x), rownames(dd))
+all(rr[,1]==rr[,2])
+#
+# it's in the right order now
+#
+```
+
+```{r}
+library(reshape2)
+library(ggpubr)
+##### plot the troyler effect after normalizing
+is_set <- which(grepl("HB", colnames(x)))
+dx <- data.frame(x[, is_set], dataset=dd$dataset, troyler=dd$HB_tester)
+mm <- melt(dx, id.vars = c("dataset", "troyler"))
+mm$troyler <- as.factor(mm$troyler)
+jj <- length(is_set)
+par(mfrow=c(1,jj))
+gg <- ggplot(mm, aes(x=value))
+
+gg1 <- gg+ geom_histogram(aes(color = dataset, fill = dataset, y = stat(width*density)),
+                   position = "identity", bins=30, alpha=.3) +
+  facet_wrap(~variable) + theme_bw() + 
+  scale_color_manual(values=c("#d6604d", "#4393c3")) + 
+  scale_fill_manual(values=c("#d6604d", "#4393c3")) +
+  theme(strip.text.x = element_text(size = 4))
+
+gg2 <- gg+ geom_histogram(aes(color = troyler, fill = troyler, y = stat(width*density)),
+                   position = "identity", bins=30, alpha=.3) +
+  facet_wrap(~variable) + theme_bw() +
+  scale_color_manual(values=c("#9970ab", "#5aae61")) + 
+  scale_fill_manual(values=c("#9970ab", "#5aae61")) +
+  theme(strip.text.x = element_text(size = 4))
+ggarrange(gg1, gg2,
+                    labels = c("", ""),
+                    ncol = 1, nrow = 2)
+```
+
+clearly something amiss with HB novel entries
+
+```{r}
+is_set <- which(grepl("LD", colnames(x)))
+dx <- data.frame(x[, is_set], dataset=dd$dataset, troyler=dd$LD_tester)
+mm <- melt(dx, id.vars = c("dataset", "troyler"))
+mm$troyler <- as.factor(mm$troyler)
+jj <- length(is_set)
+
+gg <- ggplot(mm, aes(x=value))
+
+gg1 <- gg+ geom_histogram(aes(color = dataset, fill = dataset, y = stat(width*density)),
+                   position = "identity", bins=30, alpha=.3) +
+  facet_wrap(~variable) + theme_bw() + 
+  scale_color_manual(values=c("#d6604d", "#4393c3")) + 
+  scale_fill_manual(values=c("#d6604d", "#4393c3"))+
+  theme(strip.text.x = element_text(size = 4))
+
+gg2 <- gg+ geom_histogram(aes(color = troyler, fill = troyler, y = stat(width*density)),
+                   position = "identity", bins=30, alpha=.3) +
+  facet_wrap(~variable) + theme_bw() +
+  scale_color_manual(values=c("#9970ab", "#5aae61")) + 
+  scale_fill_manual(values=c("#9970ab", "#5aae61")) +
+  theme(strip.text.x = element_text(size = 4))
+ggarrange(gg1, gg2,
+                    labels = c("", ""),
+                    ncol = 1, nrow = 2)
+```
+
+```{r}
+is_set <- which(grepl("OFA", colnames(x)))
+dx <- data.frame(x[, is_set], dataset=dd$dataset, troyler=dd$OFA_tester)
+mm <- melt(dx, id.vars = c("dataset", "troyler"))
+mm$troyler <- as.factor(mm$troyler)
+jj <- length(is_set)
+
+gg <- ggplot(mm, aes(x=value))
+
+gg1 <- gg+ geom_histogram(aes(color = dataset, fill = dataset, y = stat(width*density)),
+                   position = "identity", bins=30, alpha=.3) +
+  facet_wrap(~variable) + theme_bw() + 
+  scale_color_manual(values=c("#d6604d", "#4393c3")) + 
+  scale_fill_manual(values=c("#d6604d", "#4393c3"))
+
+gg2 <- gg+ geom_histogram(aes(color = troyler, fill = troyler, y = stat(width*density)),
+                   position = "identity", bins=30, alpha=.3) +
+  facet_wrap(~variable) + theme_bw() +
+  scale_color_manual(values=c("#9970ab", "#5aae61")) + 
+  scale_fill_manual(values=c("#9970ab", "#5aae61"))
+
+print(gg1)
+print(gg2)
+# ggarrange(gg1, gg2,
+#                     labels = c("", ""),
+#                     ncol = 1, nrow = 2)
+```
+
+```{r}
+for (i in 1:length(fvars)) {
+  levels <- unique(dd[, fvars[i]])
+  for (j in 1:length(levels)) {
+    xx <- as.numeric(dd[, fvars[i]] == levels[j])
+    x <- cbind(x, norm_rank_transform(xx))
+    colnames(x)[ncol(x)] <- paste0(fvars[i], "=", levels[j])
+  }
+}
+y <- as.matrix(x[, ys])
+x <- as.matrix(x[, setdiff(colnames(x), ys)])
+```
+
+```{r}
+no_y <- as.numeric(which(apply(y, 1, function(x) any(is.na(x)))))
+x_all <- x; y_all <- y;
+x <- x[-no_y, ]; y <- y[-no_y, ]
+```
+
+```{r}
+alpha <- seq(0, 1, by=.1)
+nfolds <- 5
+set.seed(1216)
+foldid=sample(1:nfolds, nrow(y), replace=TRUE)
+```
+
+```{r}
+get_best <- function(x, y, alpha, family) {
+  lmin <- best <- rep(NA, nfolds)
+  cvfit <- list()
+  for (i in 1:length(alpha)) {
+    cvfit[[i]] <- cv.glmnet(x=x, y=y, alpha = alpha[i], 
+                            family=family,
+                            nfolds=nfolds, foldid=foldid) 
+    lmin[i] <- cvfit[[i]]$lambda.min
+    # cvm is the mean CV error (minimize this with lambda.min)
+    best[i] <- min(cvfit[[i]]$cvm[which(cvfit[[i]]$lambda==lmin[i])])
+  }
+  is_best <- which.min(best)
+  print(paste0("The best mean CV error was reached with alpha = ", alpha[is_best]))
+  # pred <- predict(cvfit[[is_best]], s=lmin[is_best], type="response", newx=x)
+  # boxplot(pred ~ y)
+  if (family=="mgaussian") {
+    res <- coef(cvfit[[is_best]], s=lmin[is_best])
+    results <- NULL
+    for (i in 1:length(res)) {
+      results <- cbind(results, res[[i]][,1])
+    }
+    colnames(results) <- paste0("coef_", colnames(y))
+  } else {
+    results <- data.frame(coef=coef(cvfit[[is_best]], s=lmin[is_best])[,1])
+    results$abs_coef <- abs(results[,1])
+    results <- results[order(-results[, 2]), ]
+    zs <- which(results[,1]==0)[1]
+    if (!is.na(zs)) {
+      results$rank <- NA
+      results$rank[1:(zs-1)] <- 1:(zs-1)
+    } else {
+      results$rank <- 1:nrow(results)
+    }
+  }
+  return(list(results=results, model=cvfit[[is_best]], lambda=lmin[is_best]))
+}
+
+```
+
+```{r}
+res <- get_best(x, y, alpha, family = "mgaussian")
+results <- res$results
+m <- res$model
+lmin <- res$lambda
+```
+nearly a ridge regression
+
+```{r}
+plot(m)
+```
+
+this is the cross-validation results across a range of lambda. We choose the lambda that yields the lowest MSE (lambda.min).
+
+```{r}
+results
+```
+
+
+```{r}
+results <- as.data.frame(results)
+minmax <- c(min(results), max(results))
+column=1
+#plot_coef <- function(column, results=results, minmax=minmax) {
+  notit <- setdiff(1:ncol(results), column)
+  par(mfrow=c(1, length(notit)))
+  for (i in 1:length(notit)) {
+    plot(results[, column], results[, notit[i]], xlab=colnames(results)[column], ylab=colnames(results)[notit[i]],
+         xlim=minmax, ylim=minmax)
+  }
+#}
+```
+
+```{r}
+column=2
+#plot_coef <- function(column, results=results, minmax=minmax) {
+  notit <- setdiff(1:ncol(results), column)
+  par(mfrow=c(1, length(notit)))
+  for (i in 1:length(notit)) {
+    plot(results[, column], results[, notit[i]], xlab=colnames(results)[column], ylab=colnames(results)[notit[i]],
+         xlim=minmax, ylim=minmax)
+  }
+```
+
+```{r}
+column=3
+#plot_coef <- function(column, results=results, minmax=minmax) {
+  notit <- setdiff(1:ncol(results), column)
+  par(mfrow=c(1, length(notit)))
+  for (i in 1:length(notit)) {
+    plot(results[, column], results[, notit[i]], xlab=colnames(results)[column], ylab=colnames(results)[notit[i]],
+         xlim=minmax, ylim=minmax)
+  }
+```
+
+```{r}
+column=4
+#plot_coef <- function(column, results=results, minmax=minmax) {
+  notit <- setdiff(1:ncol(results), column)
+  par(mfrow=c(1, length(notit)))
+  for (i in 1:length(notit)) {
+    plot(results[, column], results[, notit[i]], xlab=colnames(results)[column], ylab=colnames(results)[notit[i]],
+         xlim=minmax, ylim=minmax)
+  }
+```
+
+from these plots, we can see that the coefficients for the ratio of active to inactive lever presses are a bit noisier than the other measures of acquisition coefficients but they all correlate well with one another. The coefficient of variation coefficients correlate very well with mean infusion and rate of acquistion.
+
+```{r}
+for (i in 1:ncol(results)) {
+  ac <- data.frame(abs_coef=abs(results[, i]), rank=rep(0, nrow(results)))
+  rownames(ac) <- rownames(results)
+  ac <- ac[order(-ac$abs_coef), ]
+  ac$rank <- 1:nrow(results)
+  idx <- match(rownames(results), rownames(ac))
+  results <- cbind(results, ac$rank[idx])
+}
+colnames(results)[(i+1):ncol(results)] <- paste0("rank_", colnames(y))
+results <- results[order(results$rank_AQ_active_CoV, results$rank_AQ_lever_ratio, results$rank_AQ_mean_inf, results$coef_AQ_rate), ]
+results$median_rank <- apply(results[, 5:8], 1, median)
+results <- results[order(results$median_rank), ]
+results
+#write.csv(results, "./data/20_elastic_mv_results.csv")
+```
+
+### figures
+
+```{r}
+require(reshape2)
+results$pred <- rownames(results)
+rr <- max(results$median_rank[which(abs(results$coef_AQ_lever_ratio) > 0)])
+cc <- results[which(results$median_rank <= rr), 1:4]
+#cc$rank <- results$median_rank
+cc$pred <- rownames(cc)
+mm <- melt(cc, id.vars = 'pred')
+```
+
+```{r}
+library(RColorBrewer)
+cols <- brewer.pal(4, "Paired")
+gg <- ggplot(mm, aes(x = value, y=reorder(pred, abs(value)), colour=variable)) + geom_point(size=2) 
+gg + theme_bw() + geom_vline(xintercept =0) + xlim(-max(minmax), max(minmax)) + 
+  xlab("standardized coefficient") + ylab("") + labs(colour="Acquistion measure") +
+  scale_fill_manual(values = cols, aesthetics=c('colour'), labels = c("Active/inactive presses", "Mean cocaine infusion", "CoV active presses", "Rate of acquisition")) + theme(legend.position=c(-.05,1.05), legend.background=element_blank(),
+                                                                                                                                                                                legend.direction = "horizontal", legend.title = element_blank(), plot.margin = unit(c(1,1,1,1), "cm"))
+  #theme(legend.position = "top", legend.title = element_blank(), legend.)
+```
+
+```{r}
+ggout <- gg + theme_bw() + geom_vline(xintercept =0) + xlim(-max(minmax), max(minmax)) + 
+  xlab("standardized coefficient") + ylab("") + labs(colour="Acquistion measure") +
+  scale_fill_manual(values = cols, aesthetics=c('colour'), labels = c("Active/inactive presses", "Mean cocaine infusion", "CoV active presses", "Rate of acquisition")) + theme(legend.position=c(-.05,1.05), legend.background=element_blank(),
+                                                                                                                                                                                legend.direction = "horizontal", legend.title = element_blank(), plot.margin = unit(c(1,1,1,1), "cm"))
+ggout
+fn <- paste0("./data/figures/20_elasticnet_coef.png")
+png(fn, res=200, height = 5, width = 7, units = "in")
+print(ggout)
+dev.off()
+```
+
+# Predict on all data
+
+```{r}
+pred <- predict(m, newx=x_all, s="lambda.min", gamma="gamma.min", type="response")
+out <- data.frame(DE_Subject=rownames(pred), 
+                  in_model=as.numeric(rownames(pred) %in% rownames(y)), pred[,,1])
+saveRDS(out, file="./data/20_elasticnet_predictions.RDS")
+```
+

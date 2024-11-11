@@ -1,0 +1,511 @@
+---
+title: "DO Cocaine and Saline Sensitization Canonical Correlations"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This analysis is performed to process the novelty data, sensitization saline data, and sensitization cocaine data.
+2) Strain-by-sex means and standard errors for plotting
+
+**These data were collected by the CSNA behavioral phenotyping core.**
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r warning=FALSE, message=FALSE}
+library("dplyr")
+library("tidyr")
+library("tidyverse")
+library("lubridate")
+library("ggplot2")
+library("cowplot")
+library("MASS")
+library("ggbeeswarm")
+```
+
+### Current Date
+
+Getting current date
+
+```{r}
+current_date = format(Sys.time(),"%Y-%m-%d")
+current_date
+```
+
+## Importing data
+
+### Getting MPD Site Information
+
+Currently using internal access to the JAX MPD curation site.
+
+```{r mpd_old_prefix, eval=FALSE}
+MPD_prefix = "http://mpdcuration.jax.org:82/api/pheno/animalvals/"
+MPD_suffix = "?csv=yes"
+```
+
+### Importing raw saline and cocaine response data from MPD
+
+First, getting table of saline and cocaine measures in MPD
+
+```{r}
+saline_cocaine_measures = read.table("./data/mpd_measures_saline_cocaine.txt",
+                                     header = TRUE, sep = "\t")
+# filtering to only post-injection data
+saline_measures_post = saline_cocaine_measures[which(saline_cocaine_measures$injection_time == "post" &
+                                                     saline_cocaine_measures$saline_cocaine == "saline"),]
+cocaine_measures_post = saline_cocaine_measures[which(saline_cocaine_measures$injection_time == "post" &
+                                                      saline_cocaine_measures$saline_cocaine == "cocaine"),]
+```
+
+Next, getting cocaine and saline datasets from MPD.
+
+```{r new_mpd}
+# Getting a base for the MPD measures
+mpd_series_base = "https://phenome.jax.org/api/pheno/animalvals/series/MEASURE?csv=1"
+
+# Getting cocaine sensitization MPD measures IDs
+cocaine_sensi_measures = c("90309","90315","90321","90327",
+                           "90442","90333","90387")
+cocaine_sensi_colnames = c("animal_id", cocaine_measures_post$measure)
+
+# Getting saline sensitization MPD measures IDs
+saline_sensi_measures = c("90306","90312","90318","90324",
+                          "90439","90330","90384")
+saline_sensi_colnames = c("animal_id", saline_measures_post$measure)
+
+# Pulling data from MPD for cocaine locomotor sensitization
+for (i in seq_len(length(cocaine_sensi_measures))) {
+  mpd_csv_i = gsub("MEASURE", cocaine_sensi_measures[i], mpd_series_base)
+  mpd_table_i = read_csv(mpd_csv_i)
+  if (i == 1) {
+    mpd_cocaine_table_long = mpd_table_i
+  } else {
+    mpd_cocaine_table_long = rbind(mpd_cocaine_table_long, mpd_table_i)
+  }
+}
+
+# Getting cocaine measure names
+cocaine_measure_names = unique(pull(mpd_cocaine_table_long, varname))
+
+# Making a wide format table for cocaine measures
+mpd_cocaine_sensi_table = mpd_cocaine_table_long |>
+  pivot_wider(id_cols = c(animal_id, animal_projid, strain,
+                          sex, stocknum, strainid),
+              names_from = varname,
+              values_from = value) |>
+  filter(strain == "J:DO") |>
+  as.data.frame()
+row.names(mpd_cocaine_sensi_table) = mpd_cocaine_sensi_table$animal_id
+cocaine_measures_data = mpd_cocaine_sensi_table[,cocaine_sensi_colnames]
+
+# Pulling data from MPD for saline locomotor sensitization
+for (i in seq_len(length(saline_sensi_measures))) {
+  mpd_csv_i = gsub("MEASURE", saline_sensi_measures[i], mpd_series_base)
+  mpd_table_i = read_csv(mpd_csv_i)
+  if (i == 1) {
+    mpd_saline_table_long = mpd_table_i
+  } else {
+    mpd_saline_table_long = rbind(mpd_saline_table_long, mpd_table_i)
+  }
+}
+
+# Getting saline measure names
+saline_measure_names = unique(pull(mpd_saline_table_long, varname))
+
+# Making a wide format table for saline measures
+mpd_saline_sensi_table = mpd_saline_table_long |>
+  pivot_wider(id_cols = c(animal_id, animal_projid, strain,
+                          sex, stocknum, strainid),
+              names_from = varname,
+              values_from = value) |>
+  filter(strain == "J:DO") |>
+  as.data.frame()
+row.names(mpd_saline_sensi_table) = mpd_saline_sensi_table$animal_id
+saline_measures_data = mpd_saline_sensi_table[,saline_sensi_colnames]
+```
+
+### Importing novelty response data
+
+Loading novelty response data and preparing for RTA.
+
+```{r}
+DO_novelty_response = readRDS("./data/DO_novelty_response_data.RDS")
+DO_novelty_response$Sex = gsub("^([MF])\\w+$","\\1",DO_novelty_response$Sex)
+DO_saline_novelty = DO_novelty_response[row.names(saline_measures_data),]
+DO_saline_novelty = cbind(DO_saline_novelty, saline_measures_data[,-1])
+DO_cocaine_novelty = DO_novelty_response[row.names(cocaine_measures_data),]
+DO_cocaine_novelty = cbind(DO_cocaine_novelty, cocaine_measures_data[,-1])
+
+# Getting columns of each type of measure
+saline_columns = colnames(saline_measures_data[,-1])
+cocaine_columns = colnames(cocaine_measures_data[,-1])
+novelty_columns = colnames(DO_novelty_response)
+novelty_columns = novelty_columns[grep("batch_ranknorm$",novelty_columns)]
+```
+
+### Saline RTA
+
+```{r}
+# Getting highest correlation variables to start out
+highest_cor = cor(DO_saline_novelty[,"dist_d3_d11_auc_cont_do"], 
+                  DO_saline_novelty[,novelty_columns],
+                  use = "pairwise.complete.obs")
+highest_cor_r = max(abs(highest_cor))
+highest_cor_ind = which(abs(highest_cor) == highest_cor_r, arr.ind = TRUE)
+saline_highcor_id = "dist_d3_d11_auc_cont_do"
+novelty_highcor_id = colnames(highest_cor)[highest_cor_ind[1,"col"]]
+
+paste0("The highest correlation (", round(highest_cor_r, 2),") is between ", saline_highcor_id, " and ",
+       novelty_highcor_id, ".")
+```
+
+Running canonical correlation on saline-treated animals
+
+```{r}
+# Starting with these as best novelty and IVSA variables
+best_novelty_vars = novelty_highcor_id
+best_saline_vars = saline_highcor_id
+noNA_rows = which(rowSums(is.na(DO_saline_novelty[,c(best_novelty_vars, best_saline_vars)])) == 0)
+starting_cancor =  stats::cancor(DO_saline_novelty[noNA_rows,best_novelty_vars], 
+                                 DO_saline_novelty[noNA_rows,best_saline_vars],
+                                 xcenter = TRUE, ycenter = TRUE)
+
+# Selecting appropriate saline variables
+saline_vars_unselected = c("dist_d3_d2_cont_do","dist_d5_d3_cont_do","dist_d12_d2_cont_do","dist_d19_d11_cont_do")
+novelty_vars_unselected = novelty_columns[(-1 * which(novelty_columns == best_novelty_vars))]
+
+
+not_optimized = TRUE
+min_obs = 225
+max_var = 10
+
+while (not_optimized) {
+  best_cancor = starting_cancor$cor[1]
+  best_var = ""
+  best_paradigm = ""
+  
+  for (i in novelty_vars_unselected) {
+    noNA_rows = which(rowSums(is.na(DO_saline_novelty[,c(best_novelty_vars, i, best_saline_vars)])) == 0)
+    if (length(noNA_rows) >= min_obs) {
+      cancor_i = stats::cancor(DO_saline_novelty[noNA_rows, c(best_novelty_vars, i)], DO_saline_novelty[noNA_rows, best_saline_vars],
+                        xcenter = TRUE, ycenter = TRUE)
+      if (cancor_i$cor[1] > best_cancor) {
+        best_cancor = cancor_i$cor[1]
+        best_var = i
+        best_paradigm = "novelty"
+      }
+    }
+  }
+  
+  for (j in saline_vars_unselected) {
+    noNA_rows = which(rowSums(is.na(DO_saline_novelty[,c(best_novelty_vars, j, best_saline_vars)])) == 0)
+    if (length(noNA_rows) >= min_obs) {
+      cancor_j = stats::cancor(DO_saline_novelty[noNA_rows, best_novelty_vars], DO_saline_novelty[noNA_rows,c(best_saline_vars, j)],
+                        xcenter = TRUE, ycenter = TRUE)
+      if (cancor_j$cor[1] > best_cancor) {
+        best_cancor = cancor_j$cor[1]
+        best_var = j
+        best_paradigm = "saline"
+      }
+    }
+  }
+  
+  if (best_paradigm == "novelty") {
+    novelty_vars_test = c(best_novelty_vars, best_var)
+    saline_vars_test = best_saline_vars
+  } else if (best_paradigm == "saline") {
+    novelty_vars_test = best_novelty_vars
+    saline_vars_test = c(best_saline_vars, best_var)
+  }
+  
+  noNA_rows = which(rowSums(is.na(DO_saline_novelty[,c(novelty_vars_test, saline_vars_test)])) == 0)
+  k_gtr = c()
+  
+  B = 1e4
+  for (k in 1:B) {
+    cancor_k =  stats::cancor(DO_saline_novelty[sample(noNA_rows), novelty_vars_test], 
+                      DO_saline_novelty[noNA_rows, saline_vars_test],
+                      xcenter = TRUE, ycenter = TRUE)
+    k_gtr = c(k_gtr, cancor_k$cor[1])
+  }
+  p_value_improvement = (length(which(k_gtr > best_cancor)) + 1) / (B + 1)
+  
+  if ((length(best_novelty_vars) + length(best_saline_vars)) > max_var) {
+    not_optimized = FALSE
+  } else if (p_value_improvement < 0.001) {
+    if (best_paradigm == "novelty") {
+      best_novelty_vars = c(best_novelty_vars, best_var)
+      novelty_vars_unselected = novelty_vars_unselected[-1 * which(novelty_vars_unselected == best_var)]
+    } else if (best_paradigm == "saline") {
+      best_saline_vars = c(best_saline_vars, best_var)
+      saline_vars_unselected = saline_vars_unselected[-1 * which(saline_vars_unselected == best_var)]
+    }
+    starting_cancor =  stats::cancor(DO_saline_novelty[noNA_rows,best_novelty_vars], DO_saline_novelty[noNA_rows,best_saline_vars],
+                             xcenter = TRUE, ycenter = TRUE)
+  } else {
+    not_optimized = FALSE
+  }
+}
+noNA_rows = which(rowSums(is.na(DO_saline_novelty[,c(best_novelty_vars, best_saline_vars)])) == 0)
+
+cat("Best novelty variables:\n", paste(best_novelty_vars, sep = "", collapse = "\n"),"\n\n", sep = "")
+cat("Best saline variables:\n", paste(best_saline_vars, sep = "", collapse = "\n"), "\n\n", sep = "")
+cat("First canonical correlate magnitude: ", round(starting_cancor$cor[1], 4), "\n\n", sep = "")
+cat("Canonical correlation trained on ", length(noNA_rows), " complete observations.", sep = "")
+```
+
+Adjusting this canonical correlation for sex.
+
+```{r}
+DO_saline_novelty$DE_Sex = DO_saline_novelty$Sex
+DO_saline_novelty$Sex = ifelse(DO_saline_novelty$DE_Sex == "M", 1, 0)
+novelty_cancor_vars_SAL = c(best_novelty_vars,"Sex")
+saline_cancor_vars_SAL = c(best_saline_vars,"Sex")
+
+saline_cancor_rows_SAL = which(rowSums(is.na(DO_saline_novelty[,c(novelty_cancor_vars_SAL,saline_cancor_vars_SAL)])) == 0)
+
+saline_novelty_cancor_SAL =  stats::cancor(DO_saline_novelty[saline_cancor_rows_SAL,saline_cancor_vars_SAL],
+                                 DO_saline_novelty[saline_cancor_rows_SAL,novelty_cancor_vars_SAL],
+                                 xcenter = TRUE, ycenter = TRUE)
+paste("The first canonical correlate of these saline variables to novelty variables has a magnitude of ", 
+      round(saline_novelty_cancor_SAL$cor[2], digits = 3), 
+      ".", sep = "")
+paste("This canonical correlation is based upon ",
+      length(saline_cancor_rows_SAL), " complete observations.", sep = "")
+```
+
+This is an adequate fit for the canonical correlation. Plotting the variables.
+
+```{r}
+source("./code/ggplot_pub_themes.R")
+
+saline_cancor = as.matrix(DO_saline_novelty[saline_cancor_rows_SAL,saline_cancor_vars_SAL]) %*% saline_novelty_cancor_SAL$xcoef[,2]
+novelty_cancor = as.matrix(DO_saline_novelty[saline_cancor_rows_SAL,novelty_cancor_vars_SAL]) %*% saline_novelty_cancor_SAL$ycoef[,2]
+
+saline_novelty_cancor_SAL_df = data.frame(saline_cancor = saline_cancor, novelty_cancor = novelty_cancor)
+saline_novelty_cancor_SAL_df$Sex = DO_saline_novelty[row.names(saline_novelty_cancor_SAL_df),"DE_Sex"]
+saline_novelty_cancor_SAL_df$Subject = as.numeric(as.character(row.names(saline_novelty_cancor_SAL_df)))
+saline_novelty_cancor_SAL_df$Acquired = DO_saline_novelty[row.names(saline_novelty_cancor_SAL_df),"DE_Exit_Reason"]
+saline_novelty_cancor_lm = lm(saline_cancor ~ novelty_cancor, data = saline_novelty_cancor_SAL_df)
+novelty_saline_SAL_cancor_plot = ggplot(data = saline_novelty_cancor_SAL_df, aes(x = novelty_cancor, y = saline_cancor, color = Sex)) +
+  geom_point(size = (pt_to_mm * 1.5)) +
+  geom_abline(slope = saline_novelty_cancor_lm$coefficients["novelty_cancor"], 
+              intercept = saline_novelty_cancor_lm$coefficients["(Intercept)"],
+              size = (1 * pt_to_mm)) +
+  scale_color_manual(values = c("#3399CC","#66CC66")) +
+  xlab("Novelty Canonical Correlate") +
+  ylab("Saline Canonical Correlate")
+novelty_saline_SAL_cancor_plot + theme_bw() + theme(panel.grid = element_line(color = "#FFFFFF"))
+```
+
+### Cocaine RTA
+
+```{r}
+# Getting highest correlation variables to start out
+highest_cor = cor(DO_cocaine_novelty[,"dist_d3_d11_auc_cocaine_do"], 
+                  DO_cocaine_novelty[,novelty_columns],
+                  use = "pairwise.complete.obs")
+highest_cor_r = max(abs(highest_cor))
+highest_cor_ind = which(abs(highest_cor) == highest_cor_r, arr.ind = TRUE)
+cocaine_highcor_id = "dist_d3_d11_auc_cocaine_do"
+novelty_highcor_id = colnames(highest_cor)[highest_cor_ind[1,"col"]]
+
+paste0("The highest correlation (", round(highest_cor_r, 2),") is between ", cocaine_highcor_id, " and ",
+       novelty_highcor_id, ".")
+```
+
+Running canonical correlation on cocaine-treated animals
+
+```{r}
+# Starting with these as best novelty and IVSA variables
+best_novelty_vars = novelty_highcor_id
+best_cocaine_vars = cocaine_highcor_id
+noNA_rows = which(rowSums(is.na(DO_cocaine_novelty[,c(best_novelty_vars, best_cocaine_vars)])) == 0)
+starting_cancor =  stats::cancor(DO_cocaine_novelty[noNA_rows,best_novelty_vars], 
+                                 DO_cocaine_novelty[noNA_rows,best_cocaine_vars],
+                                 xcenter = TRUE, ycenter = TRUE)
+
+# Selecting cocaine sensi variables
+cocaine_vars_unselected = c("dist_d3_d2_cocaine_do","dist_d5_d3_cocaine_do","dist_d12_d2_cocaine_do","dist_d19_d11_cocaine_do")
+novelty_vars_unselected = novelty_columns[(-1 * which(novelty_columns == best_novelty_vars))]
+
+not_optimized = TRUE
+min_obs = 225
+max_var = 10
+
+while (not_optimized) {
+  best_cancor = starting_cancor$cor[1]
+  best_var = ""
+  best_paradigm = ""
+  
+  for (i in novelty_vars_unselected) {
+    noNA_rows = which(rowSums(is.na(DO_cocaine_novelty[,c(best_novelty_vars, i, best_cocaine_vars)])) == 0)
+    if (length(noNA_rows) >= min_obs) {
+      cancor_i = stats::cancor(DO_cocaine_novelty[noNA_rows, c(best_novelty_vars, i)], DO_cocaine_novelty[noNA_rows, best_cocaine_vars],
+                        xcenter = TRUE, ycenter = TRUE)
+      if (cancor_i$cor[1] > best_cancor) {
+        best_cancor = cancor_i$cor[1]
+        best_var = i
+        best_paradigm = "novelty"
+      }
+    }
+  }
+  
+  for (j in cocaine_vars_unselected) {
+    noNA_rows = which(rowSums(is.na(DO_cocaine_novelty[,c(best_novelty_vars, j, best_cocaine_vars)])) == 0)
+    if (length(noNA_rows) >= min_obs) {
+      cancor_j = stats::cancor(DO_cocaine_novelty[noNA_rows, best_novelty_vars], DO_cocaine_novelty[noNA_rows,c(best_cocaine_vars, j)],
+                        xcenter = TRUE, ycenter = TRUE)
+      if (cancor_j$cor[1] > best_cancor) {
+        best_cancor = cancor_j$cor[1]
+        best_var = j
+        best_paradigm = "cocaine"
+      }
+    }
+  }
+  
+  if (best_paradigm == "novelty") {
+    novelty_vars_test = c(best_novelty_vars, best_var)
+    cocaine_vars_test = best_cocaine_vars
+  } else if (best_paradigm == "cocaine") {
+    novelty_vars_test = best_novelty_vars
+    cocaine_vars_test = c(best_cocaine_vars, best_var)
+  }
+  
+  noNA_rows = which(rowSums(is.na(DO_cocaine_novelty[,c(novelty_vars_test, cocaine_vars_test)])) == 0)
+  k_gtr = c()
+  
+  B = 1e4
+  for (k in 1:B) {
+    cancor_k =  stats::cancor(DO_cocaine_novelty[sample(noNA_rows), novelty_vars_test], 
+                      DO_cocaine_novelty[noNA_rows, cocaine_vars_test],
+                      xcenter = TRUE, ycenter = TRUE)
+    k_gtr = c(k_gtr, cancor_k$cor[1])
+  }
+  p_value_improvement = (length(which(k_gtr > best_cancor)) + 1) / (B + 1)
+  
+  if ((length(best_novelty_vars) + length(best_cocaine_vars)) > max_var) {
+    not_optimized = FALSE
+  } else if (p_value_improvement < 0.001) {
+    if (best_paradigm == "novelty") {
+      best_novelty_vars = c(best_novelty_vars, best_var)
+      novelty_vars_unselected = novelty_vars_unselected[-1 * which(novelty_vars_unselected == best_var)]
+    } else if (best_paradigm == "cocaine") {
+      best_cocaine_vars = c(best_cocaine_vars, best_var)
+      cocaine_vars_unselected = cocaine_vars_unselected[-1 * which(cocaine_vars_unselected == best_var)]
+    }
+    starting_cancor =  stats::cancor(DO_cocaine_novelty[noNA_rows,best_novelty_vars], DO_cocaine_novelty[noNA_rows,best_cocaine_vars],
+                             xcenter = TRUE, ycenter = TRUE)
+  } else {
+    not_optimized = FALSE
+  }
+}
+noNA_rows = which(rowSums(is.na(DO_cocaine_novelty[,c(best_novelty_vars, best_cocaine_vars)])) == 0)
+
+cat("Best novelty variables:\n", paste(best_novelty_vars, sep = "", collapse = "\n"),"\n\n", sep = "")
+cat("Best cocaine variables:\n", paste(best_cocaine_vars, sep = "", collapse = "\n"), "\n\n", sep = "")
+cat("First canonical correlate magnitude: ", round(starting_cancor$cor[1], 4), "\n\n", sep = "")
+cat("Canonical correlation trained on ", length(noNA_rows), " complete observations.", sep = "")
+```
+
+Adjusting this canonical correlation for sex.
+
+```{r}
+DO_cocaine_novelty$DE_Sex = DO_cocaine_novelty$Sex
+DO_cocaine_novelty$Sex = ifelse(DO_cocaine_novelty$DE_Sex == "M", 1, 0)
+novelty_cancor_vars_COC = c(best_novelty_vars,"Sex")
+cocaine_cancor_vars_COC = c(best_cocaine_vars,"Sex")
+
+cocaine_cancor_rows_COC = which(rowSums(is.na(DO_cocaine_novelty[,c(novelty_cancor_vars_COC,cocaine_cancor_vars_COC)])) == 0)
+
+cocaine_novelty_cancor_COC =  stats::cancor(DO_cocaine_novelty[cocaine_cancor_rows_COC,cocaine_cancor_vars_COC],
+                                 DO_cocaine_novelty[cocaine_cancor_rows_COC,novelty_cancor_vars_COC],
+                                 xcenter = TRUE, ycenter = TRUE)
+paste("The first canonical correlate of these cocaine variables to novelty variables has a magnitude of ", 
+      round(cocaine_novelty_cancor_COC$cor[2], digits = 3), 
+      ".", sep = "")
+paste("This canonical correlation is based upon ",
+      length(cocaine_cancor_rows_COC), " complete observations.", sep = "")
+```
+
+This is an adequate fit for the canonical correlation. Plotting the variables.
+
+```{r}
+source("./code/ggplot_pub_themes.R")
+
+cocaine_cancor = as.matrix(DO_cocaine_novelty[cocaine_cancor_rows_COC,cocaine_cancor_vars_COC]) %*% cocaine_novelty_cancor_COC$xcoef[,2]
+novelty_cancor = as.matrix(DO_cocaine_novelty[cocaine_cancor_rows_COC,novelty_cancor_vars_COC]) %*% cocaine_novelty_cancor_COC$ycoef[,2]
+
+cocaine_novelty_cancor_COC_df = data.frame(cocaine_cancor = cocaine_cancor, novelty_cancor = novelty_cancor)
+cocaine_novelty_cancor_COC_df$Sex = DO_cocaine_novelty[row.names(cocaine_novelty_cancor_COC_df),"DE_Sex"]
+cocaine_novelty_cancor_COC_df$Subject = as.numeric(as.character(row.names(cocaine_novelty_cancor_COC_df)))
+cocaine_novelty_cancor_COC_df$Acquired = DO_cocaine_novelty[row.names(cocaine_novelty_cancor_COC_df),"DE_Exit_Reason"]
+cocaine_novelty_cancor_lm = lm(cocaine_cancor ~ novelty_cancor, data = cocaine_novelty_cancor_COC_df)
+novelty_cocaine_COC_cancor_plot = ggplot(data = cocaine_novelty_cancor_COC_df, aes(x = novelty_cancor, y = cocaine_cancor, color = Sex)) +
+  geom_point(size = (pt_to_mm * 1.5)) +
+  geom_abline(slope = cocaine_novelty_cancor_lm$coefficients["novelty_cancor"], 
+              intercept = cocaine_novelty_cancor_lm$coefficients["(Intercept)"],
+              size = (1 * pt_to_mm)) +
+  scale_color_manual(values = c("#3399CC","#66CC66")) +
+  xlab("Novelty Canonical Correlate") +
+  ylab("Cocaine Sensitization Canonical Correlate")
+novelty_cocaine_COC_cancor_plot + theme_bw() + theme(panel.grid = element_line(color = "#FFFFFF"))
+```
+
+
+### Making Predictions
+
+Generating predicted variables from these data.
+
+```{r}
+DO_novelty = DO_novelty_response
+DO_novelty$Sex = ifelse(DO_novelty$Sex == "M", 1, 0)
+
+# saline
+DO_predict_rows_SAL = row.names(DO_novelty)[which(rowSums(is.na(DO_novelty[,novelty_cancor_vars_SAL])) == 0)]
+saline_prediction_SAL = as.numeric(as.matrix(DO_novelty[DO_predict_rows_SAL,novelty_cancor_vars_SAL]) %*% saline_novelty_cancor_SAL$ycoef[,2])
+names(saline_prediction_SAL) = DO_predict_rows_SAL
+
+# cocaine
+DO_predict_rows_COC = row.names(DO_novelty)[which(rowSums(is.na(DO_novelty[,novelty_cancor_vars_COC])) == 0)]
+cocaine_prediction_COC = as.numeric(as.matrix(DO_novelty[DO_predict_rows_COC,novelty_cancor_vars_COC]) %*% cocaine_novelty_cancor_COC$ycoef[,2])
+names(cocaine_prediction_COC) = DO_predict_rows_COC
+
+# union
+DO_predict_rows_ALL = unique(c(DO_predict_rows_SAL, DO_predict_rows_COC))
+
+saline_cocaine_pred = data.frame(row.names = DO_predict_rows_ALL,
+                                 Mouse_ID = DO_predict_rows_ALL,
+                                 Sex = DO_novelty[DO_predict_rows_ALL,"Sex"],
+                                 Generation = DO_novelty[DO_predict_rows_ALL,"Generation"],
+                                 saline_novelty_cancor = saline_prediction_SAL[DO_predict_rows_ALL],
+                                 cocaine_novelty_cancor = cocaine_prediction_COC[DO_predict_rows_ALL],
+                                 stringsAsFactors = FALSE)
+
+today = as.character(lubridate::today())
+saveRDS(saline_cocaine_pred, paste0("./data/DO_novelty_saline_cocaine_cancor_",today,".RDS"))
+saveRDS(cocaine_novelty_cancor_COC, paste0("./data/DO_novelty_COC_cancor_",today,".RDS"))
+saveRDS(saline_novelty_cancor_SAL, paste0("./data/DO_novelty_SAL_cancor_",today,".RDS"))
+```
+
+### R session and OS information
+
+```{r sessionInfo}
+novelty_saline_cancor_sessionInfo = sessionInfo()
+novelty_saline_cancor_sessionInfo
+```
+
+## Document Control
+
+This document was prepared using RMarkdown in RStudio.

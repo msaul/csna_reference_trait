@@ -1,0 +1,447 @@
+---
+title: "DO Drug-Na&iuml;ve Novelty Behavior Summarization"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This analysis is to summarize the novelty response behavioral data.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r libraries}
+library("readxl")
+library("ggplot2")
+library("lubridate")
+```
+
+# Data Import
+
+## Importing data
+
+### Importing basic mouse demographic data
+
+Importing basic demographic data.
+
+The md5 checksum of the input file (`DO_demographic_data_df.RDS`) is: ``r tools::md5sum("./data/DO_demographic_data_df.RDS")``.
+
+```{r demodata_import}
+DO_demodata = readRDS("./data/DO_demographic_data_df.RDS")
+```
+
+These are the measures used, and they are already summarized as a data frame.
+
+Measure Name    | Measure Description
+----------------|-----------------------------------------------------
+`Strain`        | Mouse strain used in in study
+`DOB`           | Mouse date of birth
+`Sex`           | Sex of mouse
+
+### Importing and summarizing holeboard data
+
+Importing DO holeboard data as cleaned up, properly data typed, and deduplicated in the `DO_holeboard_summarize.Rmd` script.
+
+The md5 checksum of the input file (`DO_holeboard_summarized.RDS`) is: ``r tools::md5sum("./data/DO_holeboard_summarized.RDS")``.
+
+```{r holeboarddata_import}
+DO_holeboard_raw = readRDS("./data/DO_holeboard_summarized.RDS")
+
+DO_holeboard_data_cols = c("Distance_Traveled","Time_Ambulatory_sec","Ambulatory_Count",
+                           "Time_Stereotypic_sec","Stereotypic_Count","Time_Resting_sec",
+                           "Jump_Count","Time_Jumping_sec","Average_Velocity","Ambulatory_Episodes",
+                           "Latency_To_First_Hole_sec","Novel_Entries","Repeat_Entries",
+                           "Total_Entries","Avg_Novel_Total_IRT")
+
+DO_holeboard = DO_holeboard_raw[,DO_holeboard_data_cols]
+rm(list = c("DO_holeboard_raw","DO_holeboard_data_cols"))
+
+# Saving holeboard data
+saveRDS(DO_holeboard,"./data/DO_holeboard_data_df.RDS",compress="xz")
+```
+
+The md5 checksum of the output file (`DO_holeboard_data_df.RDS`) is: ``r tools::md5sum("./data/DO_holeboard_data_df.RDS")``
+
+These are the measures used, and they are already summarized as a data frame.
+
+Measure Name                | Measure Description
+----------------------------|----------------------------------------------------------
+`Distance_Traveled`         | Distance travelled in the holeboard apparatus (cm)
+`Time_Ambulatory_sec`       | Time spent traveling in the holeboard apparatus (sec)
+`Ambulatory_Count`          | Count of ambulatory activity
+`Time_Stereotypic_sec`      | Time spent engaged in stereotypic behavior (sec)
+`Stereotypic_Count`         | Count of sterotypic behavior
+`Time_Resting_sec`          | Time spent resting in the apparatus (sec)
+`Jump_Count`                | Count of jumps
+`Time_Jumping_sec`          | Time spent jumping (sec)
+`Average_Velocity`          | Average speed the mouse was moving (unsure of units)
+`Ambulatory_Episodes`       | Count of episodes moving
+`Latency_To_First_Hole_sec` | Time in seconds until first hole dip (1200 = no dip)
+`Novel_Entries`             | Count of entries into novel holes
+`Repeat_Entries`            | Count of entries into holes previously entered
+`Total_Entries`             | Count of total hole board entries
+`Avg_Novel_Total_IRT`       | An inter-task measure of time for novel entries
+
+The holeboard trials are each 20 minutes (1200 seconds) long.
+
+### Importing light-dark data
+
+Importing and cleaning up DO light-dark data (note: original version of file was named `DO LightDark modified.xlsx` with spaces included, but file name was changed to add underscores on 2020-05-01).
+
+The md5 checksum of the input file (`DO_LightDark_modified.xlsx`) is: ``r tools::md5sum("./data/raw/DO_LightDark_modified.xlsx")``
+
+```{r lightdarkdata_import}
+DO_lightdark_raw = as.data.frame(read_excel("./data/raw/DO_LightDark_modified.xlsx"),
+                                 stringsAsFactors = FALSE)
+row.names(DO_lightdark_raw) = as.character(DO_lightdark_raw[,"Subject"])
+DO_lightdark_raw = DO_lightdark_raw[,(-1 * which(colnames(DO_lightdark_raw) == "Subject"))]
+colnames(DO_lightdark_raw) = gsub(" ", "_", colnames(DO_lightdark_raw))
+```
+
+### Summarizing light-dark data
+
+Zone 1 is light; zone 2 is dark.
+
+Deriving the following measures into a data frame:
+
+Measure Name            | Measure Description
+------------------------|---------------------------------------------------------------
+`Light_Dist`            | Distance traveled in light compartment
+`Dark_Dist`             | Distance traveled in dark compartment
+`Total_Dist`            | Total distance traveled in both compartments
+`P_Light_Dist`          | Proportion of distance traveled in light compartment
+`P_Dark_Dist`           | Proportion of distance traveled in dark compartment
+`Light_Sec`             | Seconds spent ambulating in light compartment
+`Dark_Sec`              | Seconds spent ambulating in dark compartment
+`Total_Sec`             | Total seconds spent ambulating in both compartments
+`P_Light_Sec`           | Proportion of ambulating seconds spent in light compartment
+`P_Dark_Sec`            | Proportion of ambulating seconds spent in dark compartment
+`Transitions`           | Total transitions between light and dark
+`P_Stereotypic_Light`   | Proportion of stereotypic time in light
+`Sec_Stereotypic_Dark`  | Number of seconds spent in stereotypic behavior in dark
+`Light_Resting_Sec`     | Total resting time in the light
+`Dark_Resting_Sec`      | Total resting time in the dark
+`Light_Amb_Counts`      | Ambulatory counts in light
+`Dark_Amb_Counts`       | Ambulatory counts in dark
+`Total_Amb_Counts`      | Ambulatory counts total
+`P_Amb_Counts_Light`    | Proportion of ambulatory counts in light
+`P_Amb_Counts_Dark`     | Proportion of ambulatory counts in dark
+`Light_Duration`        | Duration spent in light
+`Dark_Duration`         | Duration spent in dark
+`Total_Duration`        | Total duration spent in light/dark box
+`P_Duration_Light`      | Proportion of duration spent in light
+`P_Duration_Dark`       | Proportion of duration spent in dark
+
+To integrate:
+LD_pct_time_in_light
+
+Distances are centimeters.
+
+```{r lightdarkdata_summarize}
+# Using initial columns for information
+DO_lightdark = rbind(DO_lightdark_raw[,1:19])
+DO_lightdark_noinfo = which(colSums(is.na(DO_lightdark)) == nrow(DO_lightdark))
+DO_lightdark = DO_lightdark[,(-1 * DO_lightdark_noinfo)]
+rm(list = c("DO_lightdark_noinfo"))
+
+# Calculating distance-related measures
+Light_Dist_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Distance_Bin_\\d{1,2}_Zone_1$", colnames(DO_lightdark_raw))]
+Dark_Dist_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Distance_Bin_\\d{1,2}_Zone_2$", colnames(DO_lightdark_raw))]
+Total_Dist_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Distance_Bin_\\d{1,2}$", colnames(DO_lightdark_raw))]
+Light_Stereotypic_Time_cols = colnames(DO_lightdark_raw)[grep("^Stereotypic_Time_Bin_\\d{1,2}_Zone_1$", colnames(DO_lightdark_raw))]
+Dark_Stereotypic_Time_cols = colnames(DO_lightdark_raw)[grep("^Stereotypic_Time_Bin_\\d{1,2}_Zone_2$", colnames(DO_lightdark_raw))]
+Light_Resting_Time_cols = colnames(DO_lightdark_raw)[grep("^Resting_Time_Bin_\\d{1,2}_Zone_1$", colnames(DO_lightdark_raw))]
+Dark_Resting_Time_cols = colnames(DO_lightdark_raw)[grep("^Resting_Time_Bin_\\d{1,2}_Zone_2$", colnames(DO_lightdark_raw))]
+
+DO_lightdark$Light_Dist = rowSums(as.matrix(DO_lightdark_raw[,Light_Dist_cols]))
+DO_lightdark$Dark_Dist = rowSums(as.matrix(DO_lightdark_raw[,Dark_Dist_cols]))
+DO_lightdark$Total_Dist = rowSums(as.matrix(DO_lightdark_raw[,Total_Dist_cols]))
+DO_lightdark$P_Light_Dist = DO_lightdark$Light_Dist / DO_lightdark$Total_Dist
+DO_lightdark$P_Dark_Dist = DO_lightdark$Dark_Dist / DO_lightdark$Total_Dist
+
+# Calculating time-related measures
+Light_Sec_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Time_Bin_\\d{1,2}_Zone_1$", colnames(DO_lightdark_raw))]
+Dark_Sec_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Time_Bin_\\d{1,2}_Zone_2$", colnames(DO_lightdark_raw))]
+Total_Sec_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Time_Bin_\\d{1,2}$", colnames(DO_lightdark_raw))]
+DO_lightdark$Light_Sec = rowSums(as.matrix(DO_lightdark_raw[,Light_Sec_cols]))
+DO_lightdark$Dark_Sec = rowSums(as.matrix(DO_lightdark_raw[,Dark_Sec_cols]))
+DO_lightdark$Total_Sec = rowSums(as.matrix(DO_lightdark_raw[,Total_Sec_cols]))
+DO_lightdark$P_Light_Sec = DO_lightdark$Light_Sec / DO_lightdark$Total_Sec
+DO_lightdark$P_Dark_Sec = DO_lightdark$Dark_Sec / DO_lightdark$Total_Sec
+DO_lightdark$P_Stereotypic_Light = rowSums(as.matrix(DO_lightdark_raw[,Light_Stereotypic_Time_cols])) / (rowSums(as.matrix(DO_lightdark_raw[,Light_Stereotypic_Time_cols])) + rowSums(as.matrix(DO_lightdark_raw[,Dark_Stereotypic_Time_cols])))
+DO_lightdark$Sec_Stereotypic_Dark = rowSums(as.matrix(DO_lightdark_raw[,Dark_Stereotypic_Time_cols]))
+DO_lightdark$Light_Resting_Sec = rowSums(as.matrix(DO_lightdark_raw[,Light_Resting_Time_cols]))
+DO_lightdark$Dark_Resting_Sec = rowSums(as.matrix(DO_lightdark_raw[,Dark_Resting_Time_cols]))
+
+# Calculating transitions
+Transitions_cols = colnames(DO_lightdark_raw)[grep("^Zone_Entries_Bin_\\d{1,2}$", colnames(DO_lightdark_raw))]
+DO_lightdark$Transitions = rowSums(as.matrix(DO_lightdark_raw[,Transitions_cols]))
+
+# Calculating ambulatory counts
+Light_Counts_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Counts_Bin_\\d{1,2}_Zone_1$", colnames(DO_lightdark_raw))]
+Dark_Counts_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Counts_Bin_\\d{1,2}_Zone_2$", colnames(DO_lightdark_raw))]
+Total_Counts_cols = colnames(DO_lightdark_raw)[grep("^Ambulatory_Counts_Bin_\\d{1,2}$", colnames(DO_lightdark_raw))]
+DO_lightdark$Light_Amb_Counts = rowSums(as.matrix(DO_lightdark_raw[,Light_Counts_cols]))
+DO_lightdark$Dark_Amb_Counts = rowSums(as.matrix(DO_lightdark_raw[,Dark_Counts_cols]))
+DO_lightdark$Total_Amb_Counts = rowSums(as.matrix(DO_lightdark_raw[,Total_Counts_cols]))
+DO_lightdark$P_Amb_Counts_Light = DO_lightdark$Light_Amb_Counts / DO_lightdark$Total_Amb_Counts
+DO_lightdark$P_Amb_Counts_Dark = DO_lightdark$Dark_Amb_Counts / DO_lightdark$Total_Amb_Counts
+
+# Calculating duration
+Light_Duration_cols = colnames(DO_lightdark_raw)[grep("^Duration_Bin_\\d{1,2}_Zone_1$", colnames(DO_lightdark_raw))]
+Dark_Duration_cols = colnames(DO_lightdark_raw)[grep("^Duration_Bin_\\d{1,2}_Zone_2$", colnames(DO_lightdark_raw))]
+Total_Duration_cols = colnames(DO_lightdark_raw)[grep("^Duration_Bin_\\d{1,2}$", colnames(DO_lightdark_raw))]
+DO_lightdark$Light_Duration = rowSums(as.matrix(DO_lightdark_raw[,Light_Duration_cols]))
+DO_lightdark$Dark_Duration = rowSums(as.matrix(DO_lightdark_raw[,Dark_Duration_cols]))
+DO_lightdark$Total_Duration = rowSums(as.matrix(DO_lightdark_raw[,Total_Duration_cols]))
+DO_lightdark$P_Duration_Light = DO_lightdark$Light_Duration / DO_lightdark$Total_Duration
+DO_lightdark$P_Duration_Dark = DO_lightdark$Dark_Duration / DO_lightdark$Total_Duration
+
+# Removing helper vectors
+rm(list = ls()[grep("cols$",ls())])
+
+# Saving raw data
+saveRDS(DO_lightdark_raw, "./data/raw/DO_lightdark_raw.RDS", compress = "xz")
+rm(list = c("DO_lightdark_raw"))
+
+# Saving light-dark data
+saveRDS(DO_lightdark,"./data/DO_lightdark_data_df.RDS",compress="xz")
+```
+
+The md5 checksum of the output file (`DO_lightdark_raw.RDS`) is: ``r tools::md5sum("./data/raw/DO_lightdark_raw.RDS")``
+
+The md5 checksum of the output file (`DO_lightdark_data_df.RDS`) is: ``r tools::md5sum("./data/DO_lightdark_data_df.RDS")``
+
+### Importing open field data
+
+(note: original version of file was named `DO Open field modified.xlsx` with spaces included, but file name was changed to add underscores on 2020-05-01)
+
+The md5 checksum of the input file (`DO_Open_field_modified.xlsx`) is: ``r tools::md5sum("./data/raw/DO_Open_field_modified.xlsx")``.
+
+```{r openfielddata_import}
+DO_openfield_raw = as.data.frame(read_excel("./data/raw/DO_Open_field_modified.xlsx"),
+                                 stringsAsFactors = FALSE)
+row.names(DO_openfield_raw) = as.character(DO_openfield_raw$Subject)
+DO_openfield_raw = DO_openfield_raw[,(-1 * which(colnames(DO_openfield_raw) == "Subject"))]
+colnames(DO_openfield_raw) = gsub(" ", "_", colnames(DO_openfield_raw))
+```
+
+### Summarizing open field data
+
+Deriving the following measures into a data frame:
+
+Measure Name            | Measure Description
+------------------------|-----------------------------------------------------
+`Perimeter_Dist`        | Total distance traveled in the perimeter
+`Corner_Dist`           | Total distance traveled in the corner
+`Center_Dist`           | Total distance traveled in the center
+`Total_Dist`            | Total distance traveled in open field
+`P_Perimeter_Dist`      | Proportion of distance spent in perimeter
+`P_Corner_Dist`         | Proportion of distance spent in corner
+`P_Center_Dist`         | Proportion of distance spent in center
+`Perimeter_Time`        | Seconds spent ambulating in perimeter
+`Corner_Time`           | Seconds spent ambulating in corner
+`Center_Time`           | Seconds spent ambulating in center
+`Total_Time`            | Total seconds spent ambulating in the open field
+`Rest_Time_Corner`      | Seconds spent resting in the corner
+`Rest_Time_Center`      | Seconds spent resting in the center
+`Rest_Time_Perimeter`   | Seconds spent resting in the perimeter
+`Rest_Time_Total`       | Total seconds spent resting in the open field
+`P_Corner_Rest_Time`    | Proportion of rest time spent in corner
+`P_Center_Rest_Time`    | Proportion of rest time spent in center
+`P_Perimeter_Rest_Time` | Proportion of rest time spent in perimeter
+`P_Perimeter_Time`      | Proportion of seconds spent ambulating in perimeter
+`P_Corner_Time`         | Proportion of seconds spent ambulating in corner
+`P_Center_Time`         | Proportion of seconds spent ambulating in center
+`Ambulatory_Counts`     | Number of ambulatory counts
+`Dist_Slope`            | Slope of open field distance
+`Dist_Last_Five`        | Distance travelled in last 5 minutes
+`Dist_First_Five`       | Distance travelled in first 5 minutes
+
+```{r openfielddata_summarize}
+# Using initial columns for information
+DO_openfield = DO_openfield_raw[,1:19]
+DO_openfield_noinfo = which(colSums(is.na(DO_openfield)) == nrow(DO_openfield))
+DO_openfield = DO_openfield[,(-1 * DO_openfield_noinfo)]
+rm(list = c("DO_openfield_noinfo"))
+
+# Calculating open field distances
+Perimeter_Dist_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Distance_Bin_\\d{1,2}_Zone_\\w{3,6}_Perimeter$", colnames(DO_openfield_raw))]
+Corner_Dist_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Distance_Bin_\\d{1,2}_Zone_\\w{3,6}_\\w{4,5}_Corner$", colnames(DO_openfield_raw))]
+Center_Dist_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Distance_Bin_\\d{1,2}_Zone_Center$", colnames(DO_openfield_raw))]
+Total_Dist_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Distance_Bin_\\d{1,2}$", colnames(DO_openfield_raw))]
+
+Total_Dist_slopevals = as.numeric(gsub("Ambulatory_Distance_Bin_","",Total_Dist_cols))
+
+DO_openfield$Perimeter_Dist = rowSums(as.matrix(DO_openfield_raw[,Perimeter_Dist_cols]))
+DO_openfield$Corner_Dist = rowSums(as.matrix(DO_openfield_raw[,Corner_Dist_cols]))
+DO_openfield$Center_Dist = rowSums(as.matrix(DO_openfield_raw[,Center_Dist_cols]))
+DO_openfield$Total_Dist = rowSums(as.matrix(DO_openfield_raw[,Total_Dist_cols]))
+DO_openfield$P_Perimeter_Dist = DO_openfield$Perimeter_Dist / DO_openfield$Total_Dist
+DO_openfield$P_Corner_Dist = DO_openfield$Corner_Dist / DO_openfield$Total_Dist
+DO_openfield$P_Center_Dist = DO_openfield$Center_Dist / DO_openfield$Total_Dist
+DO_openfield$Dist_Slope = rep(NA, times = nrow(DO_openfield))
+for (i in row.names(DO_openfield)) {
+  DO_lm_i = summary(lm(as.numeric(DO_openfield_raw[i,Total_Dist_cols]) ~ Total_Dist_slopevals))
+  DO_openfield[i,"Dist_Slope"] = DO_lm_i$coefficients["Total_Dist_slopevals","Estimate"]
+}
+DO_openfield$Dist_Last_Five = DO_openfield_raw[row.names(DO_openfield),"Ambulatory_Distance_Bin_12"]
+DO_openfield$Dist_First_Five = DO_openfield_raw[row.names(DO_openfield),"Ambulatory_Distance_Bin_1"]
+
+# Calculating open field times
+Perimeter_Time_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Time_Bin_\\d{1,2}_Zone_\\w{3,6}_Perimeter$", colnames(DO_openfield_raw))]
+Corner_Time_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Time_Bin_\\d{1,2}_Zone_\\w{3,6}_\\w{4,5}_Corner$", colnames(DO_openfield_raw))]
+Center_Time_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Time_Bin_\\d{1,2}_Zone_Center$", colnames(DO_openfield_raw))]
+Total_Time_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Time_Bin_\\d{1,2}$", colnames(DO_openfield_raw))]
+DO_openfield$Perimeter_Time = rowSums(as.matrix(DO_openfield_raw[,Perimeter_Time_cols]))
+DO_openfield$Corner_Time = rowSums(as.matrix(DO_openfield_raw[,Corner_Time_cols]))
+DO_openfield$Center_Time = rowSums(as.matrix(DO_openfield_raw[,Center_Time_cols]))
+DO_openfield$Total_Time = rowSums(as.matrix(DO_openfield_raw[,Total_Time_cols]))
+DO_openfield$P_Perimeter_Time = DO_openfield$Perimeter_Time / DO_openfield$Total_Time
+DO_openfield$P_Corner_Time = DO_openfield$Corner_Time / DO_openfield$Total_Time
+DO_openfield$P_Center_Time = DO_openfield$Center_Time / DO_openfield$Total_Time
+
+# Calculating open field rest times
+Perimeter_Rest_Time_cols = colnames(DO_openfield_raw)[grep("^Resting_Time_Bin_\\d{1,2}_Zone_\\w{3,6}_Perimeter$", colnames(DO_openfield_raw))]
+Corner_Rest_Time_cols = colnames(DO_openfield_raw)[grep("^Resting_Time_Bin_\\d{1,2}_Zone_\\w{3,6}_\\w{4,5}_Corner$", colnames(DO_openfield_raw))]
+Center_Rest_Time_cols = colnames(DO_openfield_raw)[grep("^Resting_Time_Bin_\\d{1,2}_Zone_Center$", colnames(DO_openfield_raw))]
+Total_Rest_Time_cols = colnames(DO_openfield_raw)[grep("^Resting_Time_Bin_\\d{1,2}$", colnames(DO_openfield_raw))]
+DO_openfield$Rest_Time_Perimeter = rowSums(as.matrix(DO_openfield_raw[,Perimeter_Rest_Time_cols]))
+DO_openfield$Rest_Time_Corner = rowSums(as.matrix(DO_openfield_raw[,Corner_Rest_Time_cols]))
+DO_openfield$Rest_Time_Center = rowSums(as.matrix(DO_openfield_raw[,Center_Rest_Time_cols]))
+DO_openfield$Rest_Time_Total = rowSums(as.matrix(DO_openfield_raw[,Total_Rest_Time_cols]))
+DO_openfield$P_Perimeter_Rest_Time = DO_openfield$Rest_Time_Perimeter / DO_openfield$Rest_Time_Total
+DO_openfield$P_Corner_Rest_Time = DO_openfield$Rest_Time_Corner / DO_openfield$Rest_Time_Total
+DO_openfield$P_Center_Rest_Time = DO_openfield$Rest_Time_Center / DO_openfield$Rest_Time_Total
+
+# Calculating ambulatory counts
+Ambulatory_Counts_cols = colnames(DO_openfield_raw)[grep("^Ambulatory_Counts_Bin_\\d{1,2}$", colnames(DO_openfield_raw))]
+DO_openfield$Ambulatory_Counts = rowSums(as.matrix(DO_openfield_raw[,Ambulatory_Counts_cols]))
+
+# Removing helper vectors
+rm(list = ls()[grep("cols$",ls())])
+
+# Saving raw data
+saveRDS(DO_openfield_raw, "./data/raw/DO_openfield_raw.RDS", compress = "xz")
+rm(list = c("DO_openfield_raw"))
+
+# Saving open field data
+saveRDS(DO_openfield,"./data/DO_openfield_data_df.RDS",compress="xz")
+```
+
+The md5 checksum of the output file (`DO_openfield_raw.RDS`) is: ``r tools::md5sum("./data/raw/DO_openfield_raw.RDS")``.
+
+The md5 checksum of the output file (`DO_openfield_data_df.RDS`) is: ``r tools::md5sum("./data/DO_openfield_data_df.RDS")``.
+
+### Importing novel place preference data
+
+The novel place preference behavioral paradigm contains the following phases:
+
+1) Habituation: the animal spends 5 minutes in the grey zone
+2) Exposure: the animal is exposed to the non-novel side for 20 minutes
+3) Rest: the animal spends 5 minutes in the grey zone
+4) Test: the animal spends 10-20 minutes with access to all three zones
+
+In these tests, the animals had a 20-minute exposure to all three zones, but the data are summarized at 10 minutes to be compatible with later iterations of the paradigm, which had a 10 minute novelty test phase.
+
+(note: original version of file was named `DO NPP 2_multivariate_file.xlsx` with spaces included, but file name was changed to add underscores on 2020-05-01)
+
+The md5 checksum of the input file (`DO_NPP_2_multivariate_file.xlsx`) is: ``r tools::md5sum("./data/raw/DO_NPP_2_multivariate_file.xlsx")``.
+
+```{r novelplacepreference_import}
+DO_novelplace_raw = as.data.frame(read_excel("./data/raw/DO_NPP_2_multivariate_file.xlsx"),
+                                  stringsAsFactors = FALSE)
+```
+
+### Summarizing novel place preference data
+
+Deriving the following measures into a data frame:
+
+Measure Name                              | Measure Description
+------------------------------------------|----------------------------------------------------------------------------------------
+`Box`                                     | Box ID used for the animal
+`ExposureSide`                            | Zone of the apparatus used for the exposure (WHITE or BLACK)
+`ZoneTime_WhiteVsBlack_Total`             | Time spent in test zone relative to exposure zone during full test
+`ZoneTime_GreyWhiteBlack_Total`           | Time spent in test zone relative to exposure and grey zones during full test
+`Grey_Time_First_Ten`                     | Time spent in grey zone during first ten minutes of test phase
+`White_Time_First_Ten`                    | Time spent in white zone during first ten minutes of test phase
+`Black_Time_First_Ten`                    | Time spent in black zone during first ten minutes of test phase
+`ZoneTime_WhiteVsBlack_Total_FirstTen`    | Time spent in test zone relative to exposure zone during first 10 minutes
+`ZoneTime_GreyWhiteBlack_Total_FirstTen`  | Time spent in test zone relative to exposure and grey zones during first 10 minutes
+
+
+Note that the newer data use 10-minute NPP data instead of 20-minute.
+
+```{r novelplacepreference_process}
+# Using initial columns for information
+DO_novelplace = DO_novelplace_raw[,1:12]
+DO_novelplace_noinfo = which(colSums(is.na(DO_novelplace)) == nrow(DO_novelplace))
+DO_novelplace = DO_novelplace[,(-1 * DO_novelplace_noinfo)]
+rm(list = c("DO_novelplace_noinfo"))
+colnames(DO_novelplace) = gsub("^Exposure - ","",colnames(DO_novelplace))
+colnames(DO_novelplace) = gsub(" ","_",colnames(DO_novelplace))
+colnames(DO_novelplace) = gsub("\\)","",colnames(DO_novelplace))
+colnames(DO_novelplace) = gsub("\\(","",colnames(DO_novelplace))
+DO_novelplace$ExposureSide = gsub("^Novelty_Preference_EXPOSURE_","",DO_novelplace$MEDState_Notation_Program_Name)
+DO_novelplace$ZoneTime_WhiteVsBlack_Total = DO_novelplace_raw[,"NoveltyPreference - ZoneTime_WhiteVsBlack_Total"]
+DO_novelplace$ZoneTime_GreyWhiteBlack_Total = DO_novelplace_raw[,"NoveltyPreference - ZoneTime_GreyWhiteBlack_Total"]
+
+NPP_White_zonetime_cols = colnames(DO_novelplace_raw)[grep("^Test - ZoneTime_WhiteZone_Block\\d{2}$",colnames(DO_novelplace_raw))]
+names(NPP_White_zonetime_cols) = gsub("^Test - ZoneTime_WhiteZone_Block(\\d{2})$","\\1",NPP_White_zonetime_cols)
+NPP_White_zonetime_cols = NPP_White_zonetime_cols[which(as.numeric(names(NPP_White_zonetime_cols)) %in% 1:10)]
+DO_novelplace$White_Time_First_Ten = rowSums(as.matrix(DO_novelplace_raw[,NPP_White_zonetime_cols]))
+
+NPP_Black_zonetime_cols = colnames(DO_novelplace_raw)[grep("^Test - ZoneTime_BlackZone_Block\\d{2}$",colnames(DO_novelplace_raw))]
+names(NPP_Black_zonetime_cols) = gsub("^Test - ZoneTime_BlackZone_Block(\\d{2})$","\\1",NPP_Black_zonetime_cols)
+NPP_Black_zonetime_cols = NPP_Black_zonetime_cols[which(as.numeric(names(NPP_Black_zonetime_cols)) %in% 1:10)]
+DO_novelplace$Black_Time_First_Ten = rowSums(as.matrix(DO_novelplace_raw[,NPP_Black_zonetime_cols]))
+
+NPP_Grey_zonetime_cols = colnames(DO_novelplace_raw)[grep("^Test - ZoneTime_GreyZone_Block\\d{2}$",colnames(DO_novelplace_raw))]
+names(NPP_Grey_zonetime_cols) = gsub("^Test - ZoneTime_GreyZone_Block(\\d{2})$","\\1",NPP_Grey_zonetime_cols)
+NPP_Grey_zonetime_cols = NPP_Grey_zonetime_cols[which(as.numeric(names(NPP_Grey_zonetime_cols)) %in% 1:10)]
+DO_novelplace$Grey_Time_First_Ten = rowSums(as.matrix(DO_novelplace_raw[,NPP_Grey_zonetime_cols]))
+
+DO_novelplace$ZoneTime_WhiteVsBlack_Total_FirstTen = ifelse(DO_novelplace$ExposureSide == "WHITE",
+                                                            DO_novelplace$Black_Time_First_Ten / (DO_novelplace$Black_Time_First_Ten + 
+                                                                                                    DO_novelplace$White_Time_First_Ten),
+                                                            DO_novelplace$White_Time_First_Ten / (DO_novelplace$Black_Time_First_Ten + 
+                                                                                                    DO_novelplace$White_Time_First_Ten))
+DO_novelplace$ZoneTime_GreyWhiteBlack_Total_FirstTen = ifelse(DO_novelplace$ExposureSide == "WHITE",
+                                                              DO_novelplace$Black_Time_First_Ten / (DO_novelplace$Black_Time_First_Ten + 
+                                                                                                      DO_novelplace$Grey_Time_First_Ten  + 
+                                                                                                      DO_novelplace$White_Time_First_Ten),
+                                                              DO_novelplace$White_Time_First_Ten / (DO_novelplace$Black_Time_First_Ten + 
+                                                                                                      DO_novelplace$Grey_Time_First_Ten + 
+                                                                                                      DO_novelplace$White_Time_First_Ten))
+row.names(DO_novelplace) = DO_novelplace$Subject
+
+# Removing helper vectors
+rm(list = ls()[grep("cols$",ls())])
+
+# Saving raw data
+saveRDS(DO_novelplace_raw, "./data/raw/DO_novelplace_raw.RDS", compress = "xz")
+rm(list = c("DO_novelplace_raw"))
+
+# Saving open field data
+saveRDS(DO_novelplace,"./data/DO_novelplace_data_df.RDS",compress="xz")
+```
+
+The md5 checksum of the output file (`DO_novelplace_raw.RDS`) is: ``r tools::md5sum("./data/raw/DO_novelplace_raw.RDS")``.
+
+The md5 checksum of the output file (`DO_novelplace_data_df.RDS`) is: ``r tools::md5sum("./data/DO_novelplace_data_df.RDS")``.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio and imported into workflowr on 2020-05-01.
+
+(file was formerly saved as [DO_drug_naive_behavior_data_summarize.html](DO_drug_naive_behavior_data_summarize.html))

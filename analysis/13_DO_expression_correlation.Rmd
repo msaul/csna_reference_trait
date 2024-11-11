@@ -1,0 +1,297 @@
+---
+title: "DO RTG to Expression Analysis"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to correlate RTG calculated traits to expression.
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("limma")
+library("edgeR")
+library("ggplot2")
+library("biomaRt")
+library("statmod")
+library("qvalue")
+```
+
+### `norm_rank_transform()` function
+
+Getting a normal rank transformation function that can handle `NA` values.
+
+```{r}
+norm_rank_transform = function(x, c = (0)) {
+  stopifnot(is.numeric(x) & is.vector(x))
+  x_noNA = which(!is.na(x))
+  N = length(x_noNA)
+  x[x_noNA] = qnorm((rank(x[x_noNA], ties.method = "average") - c) / (N - (2 * c) + 1))
+  return(x)
+}
+```
+
+### Importing data
+
+Importing data.
+
+```{r}
+DO_pheno          = readRDS("./data/DO_416_pheno.RDS")
+DO_voom           = readRDS("./data/DO_416_voom.RDS")
+DO_dge            = readRDS("./data/DO_416_DGEList.RDS")
+DO_RTG_analysis_1 = readRDS("./data/DO_IVSA_prediction_a1_ACQUISITION_logit.RDS")
+DO_RTG_analysis_2 = readRDS("./data/DO_IVSA_prediction_a2_AQ_cancor.RDS")
+DO_RTG_analysis_3 = readRDS("./data/DO_IVSA_prediction_a3_ALL_cancor_2024-03-29.RDS")
+```
+
+### Reconciling behavior and expression data
+
+```{r}
+DO_pheno$RTG_a1 = DO_RTG_analysis_1[row.names(DO_pheno)]
+DO_pheno$RTG_a2 = DO_RTG_analysis_2[row.names(DO_pheno),"IVSA_novelty_cancor"]
+DO_pheno$RTG_a3 = DO_RTG_analysis_3[row.names(DO_pheno),"IVSA_novelty_cancor"]
+
+has_RTG_a1_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"RTG_a1"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+has_RTG_a2_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"RTG_a2"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+has_RTG_a3_express = row.names(DO_pheno[which((!is.na(DO_pheno[,"RTG_a3"])) & (DO_pheno$Sex == "M" | DO_pheno$Sex == "F")),])
+
+paste("There are ",length(has_RTG_a1_express)," RTG analysis 1 samples with expression data.",sep="")
+paste("There are ",length(has_RTG_a2_express)," RTG analysis 2 samples with expression data.",sep="")
+paste("There are ",length(has_RTG_a3_express)," RTG analysis 3 samples  with expression data.",sep="")
+```
+
+## Gene Expression Analysis
+
+### RTG analysis 1 analysis: setup
+
+Getting factors for RTG analysis 1.
+
+```{r}
+# analysis factors for overall eigentraits
+DO_rtg_a1_Generation = DO_pheno[has_RTG_a1_express,"Generation"]
+DO_rtg_a1_ChoroidPlexus = DO_pheno[has_RTG_a1_express,"choroid_plexus_covariate"]
+DO_rtg_a1_Sex = DO_pheno[has_RTG_a1_express,"Sex"]
+DO_rtg_a1_Predict = DO_pheno[has_RTG_a1_express,"RTG_a1"]
+
+# Gene expression list for rtg trait
+DO_rtg_a1_voom = DO_voom[,has_RTG_a1_express]
+```
+
+Writing model matrix for RTG.
+
+```{r}
+DO_rtg_a1_modmat = model.matrix(~ DO_rtg_a1_ChoroidPlexus +
+                                  DO_rtg_a1_Sex + 
+                                  DO_rtg_a1_Generation +
+                                  DO_rtg_a1_Predict)
+colnames(DO_rtg_a1_modmat) = gsub("DO_rtg_a1_","",colnames(DO_rtg_a1_modmat))
+colnames(DO_rtg_a1_modmat)
+```
+
+Fitting the model for the `DO_rtg_a1_modmat`.
+
+```{r}
+DO_rtg_a1_lmFit = lmFit(DO_rtg_a1_voom, design = DO_rtg_a1_modmat, method = "robust", weights = NULL)
+DO_rtg_a1_lmFit = eBayes(DO_rtg_a1_lmFit, trend = TRUE, robust = TRUE)
+```
+
+Summarizing the genes correlated with predicted IVSA data using `DO_rtg_a1_modmat`.
+
+```{r}
+DO_rtg_a1_toptable = as.data.frame(topTable(DO_rtg_a1_lmFit, 
+                                            coef = grep("^Predict$", colnames(DO_rtg_a1_modmat)), 
+                                            number = nrow(DO_rtg_a1_voom)))
+DO_rtg_a1_toptable$qvalue = qvalue(DO_rtg_a1_toptable$P.Value)$qvalues
+paste(length(which(DO_rtg_a1_toptable$qvalue < 0.01)), " genes correlated with RTG analysis 1 prediction at q < 0.01.", sep = "")
+paste(length(which(DO_rtg_a1_toptable$qvalue < 0.05)), " genes correlated with RTG analysis 1 prediction at q < 0.05.", sep = "")
+paste(length(which(DO_rtg_a1_toptable$qvalue < 0.10)), " genes correlated with RTG analysis 1 prediction at q < 0.10.", sep = "")
+paste(length(which(DO_rtg_a1_toptable$qvalue < 0.20)), " genes correlated with RTG analysis 1 prediction at q < 0.20.", sep = "")
+```
+
+Plotting RTG analysis 1 p-value histogram.
+
+```{r}
+DO_rtg_a1_hist = ggplot(data = DO_rtg_a1_toptable, aes(x = P.Value)) +
+  geom_histogram(fill = "#66CC66", bins = 50) +
+  theme_classic()
+DO_rtg_a1_hist
+```
+
+### RTG analysis 2 analysis: setup
+
+Getting factors for RTG analysis 2.
+
+```{r}
+# analysis factors for overall eigentraits
+DO_rtg_a2_Generation = DO_pheno[has_RTG_a2_express,"Generation"]
+DO_rtg_a2_ChoroidPlexus = DO_pheno[has_RTG_a2_express,"choroid_plexus_covariate"]
+DO_rtg_a2_Sex = DO_pheno[has_RTG_a2_express,"Sex"]
+DO_rtg_a2_Predict = DO_pheno[has_RTG_a2_express,"RTG_a2"]
+
+# Gene expression list for rtg trait
+DO_rtg_a2_voom = DO_voom[,has_RTG_a2_express]
+```
+
+Writing model matrix for RTG.
+
+```{r}
+DO_rtg_a2_modmat = model.matrix(~ DO_rtg_a2_ChoroidPlexus +
+                                  DO_rtg_a2_Sex + 
+                                  DO_rtg_a2_Generation +
+                                  DO_rtg_a2_Predict)
+colnames(DO_rtg_a2_modmat) = gsub("DO_rtg_a2_","",colnames(DO_rtg_a2_modmat))
+colnames(DO_rtg_a2_modmat)
+```
+
+Fitting the model for the `DO_rtg_a2_modmat`.
+
+```{r}
+DO_rtg_a2_lmFit = lmFit(DO_rtg_a2_voom, design = DO_rtg_a2_modmat, method = "robust", weights = NULL)
+DO_rtg_a2_lmFit = eBayes(DO_rtg_a2_lmFit, trend = TRUE, robust = TRUE)
+```
+
+Summarizing the genes correlated with predicted IVSA data using `DO_rtg_a2_modmat`.
+
+```{r}
+DO_rtg_a2_toptable = as.data.frame(topTable(DO_rtg_a2_lmFit, 
+                                            coef = grep("^Predict$", colnames(DO_rtg_a2_modmat)), 
+                                            number = nrow(DO_rtg_a2_voom)))
+DO_rtg_a2_toptable$qvalue = qvalue(DO_rtg_a2_toptable$P.Value)$qvalues
+paste(length(which(DO_rtg_a2_toptable$qvalue < 0.01)), " genes correlated with RTG analysis 1 prediction at q < 0.01.", sep = "")
+paste(length(which(DO_rtg_a2_toptable$qvalue < 0.05)), " genes correlated with RTG analysis 1 prediction at q < 0.05.", sep = "")
+paste(length(which(DO_rtg_a2_toptable$qvalue < 0.10)), " genes correlated with RTG analysis 1 prediction at q < 0.10.", sep = "")
+paste(length(which(DO_rtg_a2_toptable$qvalue < 0.20)), " genes correlated with RTG analysis 1 prediction at q < 0.20.", sep = "")
+```
+
+Plotting RTG analysis 2 p-value histogram.
+
+```{r}
+DO_rtg_a2_hist = ggplot(data = DO_rtg_a2_toptable, aes(x = P.Value)) +
+  geom_histogram(fill = "#66CC66", bins = 50) +
+  theme_classic()
+DO_rtg_a2_hist
+```
+
+### RTG analysis 3 analysis: setup
+
+Getting factors for RTG analysis 3.
+
+```{r}
+# analysis factors for overall eigentraits
+DO_rtg_a3_Generation = DO_pheno[has_RTG_a3_express,"Generation"]
+DO_rtg_a3_ChoroidPlexus = DO_pheno[has_RTG_a3_express,"choroid_plexus_covariate"]
+DO_rtg_a3_Sex = DO_pheno[has_RTG_a3_express,"Sex"]
+DO_rtg_a3_Predict = DO_pheno[has_RTG_a3_express,"RTG_a3"]
+
+# Gene expression list for rtg trait
+DO_rtg_a3_voom = DO_voom[,has_RTG_a3_express]
+```
+
+Writing model matrix for RTG.
+
+```{r}
+DO_rtg_a3_modmat = model.matrix(~ DO_rtg_a3_ChoroidPlexus +
+                                  DO_rtg_a3_Sex + 
+                                  DO_rtg_a3_Generation +
+                                  DO_rtg_a3_Predict)
+colnames(DO_rtg_a3_modmat) = gsub("DO_rtg_a3_","",colnames(DO_rtg_a3_modmat))
+colnames(DO_rtg_a3_modmat)
+```
+
+Fitting the model for the `DO_rtg_a3_modmat`.
+
+```{r}
+DO_rtg_a3_lmFit = lmFit(DO_rtg_a3_voom, design = DO_rtg_a3_modmat, method = "robust", weights = NULL)
+DO_rtg_a3_lmFit = eBayes(DO_rtg_a3_lmFit, trend = TRUE, robust = TRUE)
+```
+
+Summarizing the genes correlated with predicted IVSA data using `DO_rtg_a3_modmat`.
+
+```{r}
+DO_rtg_a3_toptable = as.data.frame(topTable(DO_rtg_a3_lmFit, 
+                                            coef = grep("^Predict$", colnames(DO_rtg_a3_modmat)), 
+                                            number = nrow(DO_rtg_a3_voom)))
+DO_rtg_a3_toptable$qvalue = qvalue(DO_rtg_a3_toptable$P.Value)$qvalues
+paste(length(which(DO_rtg_a3_toptable$qvalue < 0.01)), " genes correlated with RTG analysis 1 prediction at q < 0.01.", sep = "")
+paste(length(which(DO_rtg_a3_toptable$qvalue < 0.05)), " genes correlated with RTG analysis 1 prediction at q < 0.05.", sep = "")
+paste(length(which(DO_rtg_a3_toptable$qvalue < 0.10)), " genes correlated with RTG analysis 1 prediction at q < 0.10.", sep = "")
+paste(length(which(DO_rtg_a3_toptable$qvalue < 0.20)), " genes correlated with RTG analysis 1 prediction at q < 0.20.", sep = "")
+```
+
+Plotting RTG analysis 3 p-value histogram.
+
+```{r}
+DO_rtg_a3_hist = ggplot(data = DO_rtg_a3_toptable, aes(x = P.Value)) +
+  geom_histogram(fill = "#66CC66", bins = 50) +
+  theme_classic()
+DO_rtg_a3_hist
+```
+
+### Annotating toptables
+
+Using `biomaRt` to annotate the three toptables.
+
+```{r}
+DO_rtg_a1_genes = row.names(DO_rtg_a1_toptable)
+DO_rtg_a2_genes = row.names(DO_rtg_a2_toptable)
+DO_rtg_a3_genes = row.names(DO_rtg_a3_toptable)
+
+DO_rtg_genes = unique(c(DO_rtg_a1_genes,
+                        DO_rtg_a2_genes,
+                        DO_rtg_a3_genes))
+
+maRt = useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+               host = "https://nov2020.archive.ensembl.org",
+               dataset = "mmusculus_gene_ensembl")
+maRt_filter = "ensembl_gene_id"
+maRt_attributes = c("mgi_symbol","mgi_description","mgi_id","chromosome_name","start_position",
+                    "end_position","strand","band","ensembl_gene_id")
+
+maRt_annotation_raw = getBM(maRt_attributes, maRt_filter, DO_rtg_genes, maRt)
+row.names(maRt_annotation_raw) = as.character(maRt_annotation_raw$ensembl_gene_id)
+
+# analysis 1
+DO_rtg_a1_toptable_annotated = cbind(maRt_annotation_raw[DO_rtg_a1_genes,],
+                                     DO_rtg_a1_toptable)
+DO_rtg_a1_toptable_annotated$ensembl_gene_id = DO_rtg_a1_genes; row.names(DO_rtg_a1_toptable_annotated) = DO_rtg_a1_genes
+
+# analysis 2
+DO_rtg_a2_toptable_annotated = cbind(maRt_annotation_raw[DO_rtg_a2_genes,],
+                                     DO_rtg_a2_toptable)
+DO_rtg_a2_toptable_annotated$ensembl_gene_id = DO_rtg_a2_genes; row.names(DO_rtg_a2_toptable_annotated) = DO_rtg_a2_genes
+
+# analysis 3
+DO_rtg_a3_toptable_annotated = cbind(maRt_annotation_raw[DO_rtg_a3_genes,],
+                                     DO_rtg_a3_toptable)
+DO_rtg_a3_toptable_annotated$ensembl_gene_id = DO_rtg_a3_genes; row.names(DO_rtg_a3_toptable_annotated) = DO_rtg_a3_genes
+```
+
+### Output
+
+Saving the annotated toptables.
+
+```{r}
+saveRDS(DO_rtg_a1_toptable_annotated,"./data/DO_rtg_a1_toptable_annotated.RDS")
+saveRDS(DO_rtg_a2_toptable_annotated,"./data/DO_rtg_a2_toptable_annotated.RDS")
+saveRDS(DO_rtg_a3_toptable_annotated,"./data/DO_rtg_a3_toptable_annotated.RDS")
+```
+
+Saving the histograms.
+
+```{r}
+save(list = ls(pattern = "hist$"), file = "./data/DO_pvalue_histograms.RData")
+```
+
+The output data are saved in `./data/`.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

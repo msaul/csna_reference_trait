@@ -1,0 +1,320 @@
+---
+title: "DO Drug-Na&iuml;ve eQTL Summarization"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to summarize eQTL data. Each gene is summarized and an overall dataset threshold is derived from 1,000 permutations each on 100 different genes.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("tidyr")
+library("qtl2")
+library("ggplot2")
+library("dplyr")
+library("biomaRt")
+```
+
+### Importing data
+
+#### Importing eQTL data
+
+```{r}
+load("./data/DO_str_2016_eQTL.RData")
+DO_pheno = DO_str_2016_cross$pheno
+DO_covar = DO_str_2016_cross$covar
+```
+
+#### Importing metadata
+
+```{r}
+info_path = "./data/info/"
+info_rds = list.files(path = info_path, pattern = "RDS$")
+for (i in info_rds) {
+  info_file_i = readRDS(paste0(info_path,i))
+  if (exists("DO_eQTL_metadata")) {
+    DO_eQTL_metadata = rbind(DO_eQTL_metadata,
+                             info_file_i)
+  } else {
+    DO_eQTL_metadata = info_file_i
+  }
+}
+rm(list = c("i","info_file_i","info_rds","info_path"))
+```
+
+#### Summarizing permutation tests
+
+```{r}
+perms_path = "./data/perms/"
+perms_100_files = list.files(path = perms_path, pattern = "RDS$")
+for (i in perms_100_files) {
+  perm_i = readRDS(paste0(perms_path,i))
+  perm_i$gene = rep(colnames(perm_i)[1], times = nrow(perm_i))
+  colnames(perm_i)[1] = "lod"
+  if (exists("perms_100")) {
+    perms_100 = rbind(perms_100, perm_i)
+  } else {
+    perms_100 = perm_i
+  }
+}
+rm(list = c("i", "perm_i","perms_path"))
+perms_100$lod = as.numeric(perms_100$lod)
+perms_100 = perms_100[which(!is.na(perms_100$lod)),]
+perms_genes = unique(perms_100$gene)
+
+perms_mat_100 = matrix(nrow = length(perms_genes),
+                       ncol = length(perms_genes))
+row.names(perms_mat_100) = perms_genes
+colnames(perms_mat_100) = perms_genes
+```
+
+Plotting Wilcoxon rank-sum tests comparing distribution of each gene's permutations.
+
+```{r}
+for (i in perms_genes) {
+  for (j in perms_genes) {
+    perms_mat_100[i,j] = wilcox.test(perms_100[which(perms_100$gene == i),"lod"],
+                                     perms_100[which(perms_100$gene == j),"lod"])$p.value
+  }
+}
+perms_ind_100 = which(upper.tri(perms_mat_100), arr.ind = TRUE)
+perms_df_100 = as.data.frame(perms_ind_100)
+perms_df_100$perms = perms_mat_100[perms_ind_100]
+
+perms_pval_hist = ggplot(data = perms_df_100, aes(x = perms)) +
+  geom_histogram(fill = "#66CC66", bins = 50) +
+  theme_classic() +
+  xlab("P-Value") +
+  ylab("Count")
+
+perms_pval_hist
+```
+
+Getting thresholds for permutations.
+
+```{r}
+perms_1_thresh = quantile(perms_100$lod, probs = 1 - c(0, 0.05, 0.10, 0.63, 1))
+p0p05 = perms_1_thresh["95%"]
+p0p10 = perms_1_thresh["90%"]
+p0p63 = perms_1_thresh["37%"]
+```
+
+Getting LOD peaks.
+
+```{r}
+cis_path = "./data/cis/"
+LOD_files = list.files(path = cis_path, pattern = "^DO_lod_scores_cis_arrayid_\\d+.RDS$")
+for (i in LOD_files) {
+  LOD_scores_i = readRDS(paste0(cis_path,i))
+  assign(gsub("\\.RDS","",i), LOD_scores_i)
+  peaks_i = find_peaks(LOD_scores_i,
+                       map = DO_str_2016_cross$pmap,
+                       threshold = p0p63)
+    if (exists("peaks_lod")) {
+      peaks_lod = rbind(peaks_lod, peaks_i)
+    } else {
+      peaks_lod = peaks_i
+    }
+    rm(list = c("LOD_scores_i","peaks_i"))
+}
+rm(list = c("i"))
+```
+
+Getting genes and LOD thresholds.
+
+```{r}
+peaks_lod_2 = peaks_lod
+
+genes_lod = unique(peaks_lod$lodcolumn)
+peaks_lod$is_cis = rep(FALSE, times = nrow(peaks_lod))
+peaks_lod$threshold = rep("suggestive", times = nrow(peaks_lod))
+peaks_lod$threshold = ifelse(peaks_lod$lod > p0p10,
+                             "ten_percent", peaks_lod$threshold)
+peaks_lod$threshold = ifelse(peaks_lod$lod > p0p05,
+                             "five_percent", peaks_lod$threshold)
+peaks_lod$gene_chr = rep("none", times = nrow(peaks_lod))
+peaks_lod$gene_pos = rep(-1000, times = nrow(peaks_lod))
+
+for (i in genes_lod) {
+  gene_i_chr = DO_eQTL_metadata[i,"chromosome_name"]
+  gene_i_start = (DO_eQTL_metadata[i,"start_position"]) / 1e6
+  gene_i_end = (DO_eQTL_metadata[i,"end_position"]) / 1e6
+  gene_i_strand = DO_eQTL_metadata[i,"strand"]
+  gene_i_position = ifelse(gene_i_strand == 1, gene_i_start, gene_i_end)
+  gene_i_rows = which(peaks_lod$lodcolumn == i)
+  peaks_lod[gene_i_rows,"gene_chr"] = gene_i_chr
+  peaks_lod[gene_i_rows,"gene_pos"] = gene_i_position
+  peaks_lod[gene_i_rows,"is_cis"] = ifelse((peaks_lod[gene_i_rows,"chr"] == gene_i_chr &
+                                              peaks_lod[gene_i_rows,"pos"] > (gene_i_start - 5) &
+                                              peaks_lod[gene_i_rows,"pos"] < (gene_i_end + 5)),
+                                           TRUE, FALSE)
+}
+peaks_lod_canonical = peaks_lod[which(peaks_lod$gene_chr %in% c(1:19,"X")),]
+peaks_lod_canonical$gene_chr = factor(peaks_lod_canonical$gene_chr, levels = c(1:19,"X"), ordered = TRUE)
+peaks_lod_canonical$chr = factor(peaks_lod_canonical$chr, levels = c(1:19,"X"), ordered = TRUE)
+
+lod_max = as.data.frame(peaks_lod_canonical %>% group_by(chr) %>% summarize(max_pos = max(pos)))
+row.names(lod_max) = lod_max$chr
+lod_max$add = rep(-1000, times = nrow(lod_max))
+lod_max$med = rep(-1000, times = nrow(lod_max))
+gene_max = as.data.frame(peaks_lod_canonical %>% group_by(gene_chr) %>% summarize(max_pos = max(gene_pos)))
+row.names(gene_max) = gene_max$gene_chr
+gene_max$add = rep(-1000, times = nrow(gene_max))
+gene_max$med = rep(-1000, times = nrow(gene_max))
+gap = 0
+for (i in 1:nrow(lod_max)) {
+  lod_length_i = lod_max[i,"max_pos"]
+  gene_length_i = gene_max[i,"max_pos"]
+  if (i == 1) {
+    lod_max[i,"add"] = 0
+    gene_max[i,"add"] = 0
+    lod_max[i,"med"] = lod_length_i / 2
+    gene_max[i,"med"] = gene_length_i / 2
+  } else {
+    lod_max[i,"add"] = lod_max[i-1,"add"] + lod_max[i-1,"max_pos"] + gap
+    lod_max[i,"med"] = (lod_max[i,"add"] + lod_max[i,"add"] + lod_length_i) / 2
+    gene_max[i,"add"] = gene_max[i-1,"add"] + gene_max[i-1,"max_pos"] + gap
+    gene_max[i,"med"] = (gene_max[i,"add"] + gene_max[i,"add"] + gene_length_i) / 2
+  }
+}
+```
+
+Plotting eQTLs.
+
+```{r}
+peaks_lod_canonical$pos_add = peaks_lod_canonical$pos + lod_max[peaks_lod_canonical$chr,"add"]
+peaks_lod_canonical$gene_pos_add = peaks_lod_canonical$gene_pos + gene_max[peaks_lod_canonical$gene_chr,"add"]
+
+peaks_lod_canonical$chr17_43_49_Mb = ifelse(peaks_lod_canonical$chr == "17" &
+                                           peaks_lod_canonical$pos > 43 &
+                                           peaks_lod_canonical$pos < 49,
+                                         "chr17_43_49_Mb", "not")
+peaks_lod_canonical$color = paste(peaks_lod_canonical$is_cis,
+                                  peaks_lod_canonical$chr17_43_49_Mb,
+                                  sep = "_")
+
+trans_bands = data.frame(v = c(41.557569,172.25964,103.601351,45.75523), 
+                         chr = c("1","2","9","17"),
+                         stringsAsFactors = FALSE)
+trans_bands$pos_add = trans_bands$v + lod_max[trans_bands
+                                              $chr,"add"]
+
+eQTL_plot = ggplot(data = peaks_lod_canonical[which(peaks_lod_canonical$threshold == "five_percent"),], aes(x = pos_add, y = gene_pos_add, color = is_cis)) + 
+  geom_vline(xintercept = trans_bands$pos_add, color = "#CCCCCC") +
+  geom_point(size = 0.25) + 
+  scale_color_manual(values = c("#666666","#999999")) + 
+  xlab("Peak Position") + 
+  ylab("Gene Position") +
+  scale_x_continuous(breaks = lod_max$med, 
+                     minor_breaks = c(lod_max$add, (lod_max["X","add"] + lod_max["X","max_pos"])), 
+                     labels = lod_max$chr) +
+  scale_y_continuous(breaks = gene_max$med, 
+                     minor_breaks = c(gene_max$add, (gene_max["X","add"] + gene_max["X","max_pos"])), 
+                     labels = gene_max$gene_chr) + 
+  theme_bw()+ 
+  theme(legend.position = "none", 
+        panel.grid.major = element_blank()) +
+  geom_rug(data = peaks_lod_canonical[which(peaks_lod_canonical$threshold == "five_percent" & !peaks_lod_canonical$is_cis),],
+           aes(x = pos_add, y = gene_pos_add),
+           alpha = 0.1)
+eQTL_plot
+```
+
+Plotting chr17 eQTL plot.
+
+```{r}
+chr17_plot = ggplot(data = peaks_lod_canonical[which(peaks_lod_canonical$threshold == "five_percent"),], aes(x = pos_add, y = gene_pos_add, color = color, size = chr17_43_49_Mb)) + 
+  geom_vline(xintercept = trans_bands$pos_add, color = "#CCCCCC", linetype = "dashed") +
+  geom_point() + 
+  scale_color_manual(values = c("#CC3333","#666666","#FFCC33","#999999")) + 
+  xlab("Peak Position") + 
+  ylab("Gene Position") +
+  scale_x_continuous(breaks = lod_max$med, 
+                     minor_breaks = c(lod_max$add, (lod_max["X","add"] + lod_max["X","max_pos"])), 
+                     labels = lod_max$chr) +
+  scale_y_continuous(breaks = gene_max$med, 
+                     minor_breaks = c(gene_max$add, (gene_max["X","add"] + gene_max["X","max_pos"])), 
+                     labels = gene_max$gene_chr) + 
+  theme_bw()+ 
+  theme(legend.position = "none", 
+        panel.grid.major = element_blank()) +
+  scale_size_manual(values = c(2,0.25)) +
+  geom_rug(data = peaks_lod_canonical[which(peaks_lod_canonical$threshold == "five_percent" & !peaks_lod_canonical$is_cis),],
+           aes(x = pos_add, y = gene_pos_add),
+           color = "black", size = 0.25, alpha = 0.1)
+chr17_plot
+```
+
+Plotting chr9 plot.
+
+```{r}
+peaks_lod_canonical$chr9_100_106_Mb = ifelse(as.character(peaks_lod_canonical$chr) == "9" & peaks_lod_canonical$pos >= 100 & peaks_lod_canonical$pos <= 106,
+                                             "not", "IS")
+peaks_lod_canonical$color_chr9 = paste(peaks_lod_canonical$is_cis, peaks_lod_canonical$chr9_100_106_Mb, sep = "_")
+
+chr9_plot = ggplot(data = peaks_lod_canonical[which(peaks_lod_canonical$threshold == "five_percent"),], aes(x = pos_add, y = gene_pos_add, color = color_chr9, size = chr9_100_106_Mb)) + 
+  geom_vline(xintercept = trans_bands[which(trans_bands$chr == "9"),"pos_add"], color = "#CCCCCC", linetype = "dashed") +
+  geom_point() + 
+  scale_color_manual(values = c("#666666","#CC3333","#999999","#FFCC33")) + 
+  xlab("Peak Position") + 
+  ylab("Gene Position") +
+  scale_x_continuous(breaks = lod_max$med, 
+                     minor_breaks = c(lod_max$add, (lod_max["X","add"] + lod_max["X","max_pos"])), 
+                     labels = lod_max$chr) +
+  scale_y_continuous(breaks = gene_max$med, 
+                     minor_breaks = c(gene_max$add, (gene_max["X","add"] + gene_max["X","max_pos"])), 
+                     labels = gene_max$gene_chr) + 
+  theme_bw()+ 
+  theme(legend.position = "none", 
+        panel.grid.major = element_blank()) +
+  scale_size_manual(values = c(0.25,2)) +
+  geom_rug(data = peaks_lod_canonical[which(peaks_lod_canonical$threshold == "five_percent" & !peaks_lod_canonical$is_cis),],
+           aes(x = pos_add, y = gene_pos_add),
+           color = "black", size = 0.25, alpha = 0.1)
+chr9_plot
+```
+
+Getting annotation for genes
+
+```{r}
+genes = unique(peaks_lod_canonical$lodcolumn)
+maRt = useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+               host = "https://jan2019.archive.ensembl.org",
+               dataset = "mmusculus_gene_ensembl")
+maRt_filter = "ensembl_gene_id"
+maRt_attributes = c("mgi_symbol","mgi_description","mgi_id","chromosome_name","start_position",
+                    "end_position","strand","ensembl_gene_id")
+Mm_maRt = getBM(maRt_attributes, maRt_filter, genes, maRt)
+row.names(Mm_maRt) = Mm_maRt$ensembl_gene_id
+annotated_peaks = cbind(Mm_maRt[peaks_lod_canonical$lodcolumn,],
+                        peaks_lod_canonical) 
+row.names(annotated_peaks) = 1:nrow(annotated_peaks)
+```
+
+Saving annotated peaks and plots.
+
+```{r}
+save(list = ls(pattern = "plot$"), file = "./data/eQTL_plots.RData")
+saveRDS(annotated_peaks, "./data/eQTL_annotated_peaks.RDS")
+```
+
+### Output
+
+The output data are saved in `./data/`.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.

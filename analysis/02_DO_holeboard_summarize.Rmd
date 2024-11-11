@@ -1,0 +1,462 @@
+---
+title: "DO Drug-Na&iuml;ve Hole Board Behavior Summarization"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This analysis is to import raw hole board summary files from early data, filter them, and summarize them as data frame.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r libraries}
+library("readxl")
+library("ggplot2")
+library("lubridate")
+library("MASS")
+```
+
+# Data Import
+
+## Importing data
+
+### Importing basic mouse demographic data
+
+Importing basic demographic data.
+
+The md5 checksum of the input file (`DO_demographic_data_df.RDS`) is: ``r tools::md5sum("./data/DO_demographic_data_df.RDS")``.
+
+```{r demodata_import}
+# Reading demographic data
+DO_demodata = readRDS("./data/DO_demographic_data_df.RDS")
+```
+
+These are the measures used, and they are already summarized as a data frame.
+
+Measure Name    | Measure Description
+----------------|-----------------------------------------------------
+`Strain`        | Mouse strain used in in study
+`DOB`           | Mouse date of birth
+`Sex`           | Sex of mouse
+
+### Importing hole board data
+
+Importing and cleaning up DO hole board data.
+
+```{r holeboarddata_import}
+# Hole board data have non-uniquely mappable data. Excluding those data.
+DO_holeboard_files = list.files(path = "./data/raw/HB_DATA", pattern = "Summary$")
+
+lengths = c()
+
+for (i in 1:length(DO_holeboard_files)) {
+  file_i = DO_holeboard_files[i]
+  lines_i = readLines(paste("./data/raw/HB_DATA/",file_i,sep=""))
+  lengths = c(lengths, length(lines_i))
+}
+names(lengths) = DO_holeboard_files
+table(lengths)
+```
+
+There are various lengths of the hole board data. Looking at files of particular lengths to get an idea. 92 seems to be the most frequent length. Looking at a 92 length sample.
+
+```{r}
+readLines(paste("./data/raw/HB_DATA/",names(lengths[which(lengths == 92)][1]),sep=""))
+```
+
+The 92 line files appear to have everything in them. Looking at the 195 line file.
+
+```{r}
+readLines(paste("./data/raw/HB_DATA/",names(lengths[which(lengths == 195)][1]),sep=""))
+```
+
+The 195 line file has two trials in it, one of which isn't full length. Looking at a 66 line file.
+
+```{r}
+readLines(paste("./data/raw/HB_DATA/",names(lengths[which(lengths == 66)][1]),sep=""))
+```
+
+Again, the file appears to be an incomplete trial. Trials appear to be distinguished by a line that is prefixed by the word `Printed :` and then the date and time of printing. Each trial ends with the `Reference Memory Ratio:` line. From speaking with Leona, Troy, and Tyler, I have found out that there were often aborted trials and that the only trials that matter were a full 20 minutes long.
+
+The full trials can therefore be pulled out of the data by using the `Actual Run Time             :` line and finding which ones are 20 minutes long. Using this information to extract a line for each trial. Variables to extract include the following:
+
+Getting a list of the variables in a 92 line file by extracting what comes before colons.
+
+```{r}
+linelength_92_file = readLines(paste("./data/raw/HB_DATA/",names(lengths[which(lengths == 92)][1]),sep=""))
+linelength_92_file[grep("^.*:", linelength_92_file)]
+```
+
+Adding in variables for each of these into a data frame.
+
+```{r}
+field_grep = c("^Printed :",
+"^Experiment Title            :",
+"^Experiment Comment          :",
+"^Resolution \\(ms\\)             :",
+"^Box Size                    :",
+"^Resting Delay \\(ms\\)          :",
+"^Ambulatory Trigger          :",
+"^Session Type                :",
+"^Session Time \\(min\\)          :",
+"^Actual Run Time             :",
+"^Data Save Interval \\(sec\\)    :",
+"^Start on Animal Entry       :",
+"^Raw Filename                :",
+"^Chamber Number              :",
+"^Chamber Type                :",
+"^Units                       :",
+"^Hole Board Installed        :",
+"^Terminate on Task Completion:",
+"^Hole Board Strips Installed :",
+"^Task Holes                  :",
+"^Session Comment             :",
+"^Subject ID                  :",
+"^Experiment ID               :",
+"^Group ID                    :",
+"^Session No                  :",
+"^Data Filename               :",
+"^Start Date                  :",
+"^Start Time                  :",
+"^Detail Reporting Mode       :",
+"^Distance Traveled   :",
+"^Time Ambulatory     :",
+"^Ambulatory Count    :",
+"^Time Stereotypic    :",
+"^Stereotypic Count   :",
+"^Time Resting        :",
+"^Vertical Count      :",
+"^Time Vertical       :",
+"^Jump Count          :",
+"^Time Jumping        :",
+"^Average Velocity    :",
+"^Ambulatory Episodes :",
+"^Total Session Time    :",
+"^Task Complete Time    :",
+"^Latency To First Hole :",
+"^Novel Task Entries    :",
+"^Novel NonTask Entries :",
+"^Novel Entries         :",
+"^Repeat Task Entries   :",
+"^Repeat NonTask Entries:",
+"^Repeat Entries        :",
+"^Total Entries         :",
+"^Avg\\. Novel Task IRT   :",
+"^Avg\\. Novel NonTask IRT:",
+"^Avg\\. Novel Total IRT  :",
+"^Working Memory Ratio  :",
+"^Reference Memory Ratio:")
+field_id = c("Printed",
+"Experiment_Title",
+"Experiment_Comment",
+"Resolution_ms",
+"Box_Size",
+"Resting_Delay_ms",
+"Ambulatory_Trigger",
+"Session_Type",
+"Session_Time_min",
+"Actual_Run_Time",
+"Data_Save_Interval_sec",
+"Start_on_Animal_Entry",
+"Raw_Filename",
+"Chamber_Number",
+"Chamber_Type",
+"Units",
+"Hole_Board_Installed",
+"Terminate_on_Task_Completion",
+"Hole_Board_Strips_Installed",
+"Task_Holes",
+"Session_Comment",
+"Subject_ID",
+"Experiment_ID",
+"Group_ID",
+"Session_No",
+"Data_Filename",
+"Start_Date",
+"Start_Time",
+"Detail_Reporting_Mode",
+"Distance_Traveled",
+"Time_Ambulatory",
+"Ambulatory_Count",
+"Time_Stereotypic",
+"Stereotypic_Count",
+"Time_Resting",
+"Vertical_Count",
+"Time_Vertical",
+"Jump_Count",
+"Time_Jumping",
+"Average_Velocity",
+"Ambulatory_Episodes",
+"Total_Session_Time",
+"Task_Complete_Time",
+"Latency_To_First_Hole",
+"Novel_Task_Entries",
+"Novel_NonTask_Entries",
+"Novel_Entries",
+"Repeat_Task_Entries",
+"Repeat_NonTask_Entries",
+"Repeat_Entries",
+"Total_Entries",
+"Avg_Novel_Task_IRT",
+"Avg_Novel_NonTask_IRT",
+"Avg_Novel_Total_IRT",
+"Working_Memory_Ratio",
+"Reference_Memory_Ratio")
+field_type = c("mdy_hms",
+"character",
+"character",
+"integer",
+"integer",
+"integer",
+"integer",
+"character",
+"integer",
+"hhh:mm:ss:ff",
+"integer",
+"character_to_boolean",
+"character",
+"integer",
+"character",
+"character",
+"character_to_boolean",
+"character_to_boolean",
+"character_to_boolean",
+"character",
+"character",
+"character",
+"character",
+"character",
+"integer",
+"character",
+"character",
+"character",
+"character",
+"float",
+"hhh:mm:ss:ff",
+"integer",
+"hhh:mm:ss:ff",
+"integer",
+"hhh:mm:ss:ff",
+"integer",
+"hhh:mm:ss:ff",
+"integer",
+"hhh:mm:ss:ff",
+"float",
+"integer",
+"hhh:mm:ss:ff",
+"hhh:mm:ss:ff",
+"hhh:mm:ss:ff",
+"integer",
+"integer",
+"integer",
+"integer",
+"integer",
+"integer",
+"integer",
+"float",
+"float",
+"float",
+"float",
+"float")
+holeboard_fields = data.frame(FieldID = field_id, FieldGREP = field_grep, FieldType = field_type, stringsAsFactors = FALSE)
+```
+
+Parsing files.
+
+```{r}
+holeboard_trials = as.data.frame(matrix(nrow = 0, ncol = nrow(holeboard_fields)), stringsAsFactors = FALSE)
+colnames(holeboard_trials) = holeboard_fields$FieldID
+file_trial = as.data.frame(matrix(nrow = 0, ncol = 2), stringsAsFactors = FALSE)
+colnames(file_trial) = c("file_name","trial_id")
+holeboard_trials = cbind(file_trial, holeboard_trials)
+holeboard_trial_blank = holeboard_trials
+holeboard_trial_blank[1,] = rep("", times = ncol(holeboard_trial_blank))
+for (i in 1:length(DO_holeboard_files)) {
+  file_i = DO_holeboard_files[i]
+  lines_i = readLines(paste("./data/raw/HB_DATA/",file_i,sep=""))
+  trial_starts_i = grep("^Printed :", lines_i)
+  trial_stops_i = grep("^Reference Memory Ratio:", lines_i)
+  for (j in 1:length(trial_starts_i)) {
+    holeboard_trial_j = holeboard_trial_blank
+    holeboard_trial_j[1,"file_name"] = file_i
+    holeboard_trial_j[1,"trial_id"] = j
+    lines_j = lines_i[seq(from = trial_starts_i[j], to = trial_stops_i[j], by = 1)]
+    for (k in 1:nrow(holeboard_fields)) {
+      field_k = holeboard_fields[k,"FieldID"]
+      grep_k = holeboard_fields[k,"FieldGREP"]
+      line_k = lines_j[grep(grep_k, lines_j)]
+      line_k = ifelse(length(line_k) != 0, gsub(grep_k,"",line_k), NA)
+      line_k = ifelse(!(is.na(line_k)), trimws(line_k), NA)
+      holeboard_trial_j[1,field_k] = line_k
+    }
+    holeboard_trials = rbind(holeboard_trials, holeboard_trial_j)
+  }
+}
+saveRDS(holeboard_trials,"./data/raw/HB_DATA/holeboard_trials_raw.RDS",compress="xz")
+```
+
+The md5 checksum of the output file (`holeboard_trials_raw.RDS`) is: ``r tools::md5sum("./data/raw/holeboard_trials_raw.RDS")``.
+
+Filtering by the complete trials and beginning re-typing fields to proper types.
+
+```{r}
+holeboard_complete = holeboard_trials[which(holeboard_trials$Total_Session_Time == "000:20:00.00"),]
+holeboard_complete$trial_id = as.integer(holeboard_complete$trial_id)
+for (i in 1:nrow(holeboard_fields)) {
+  field_i = holeboard_fields[i,"FieldID"]
+  type_i = holeboard_fields[i,"FieldType"]
+  column_i = which(colnames(holeboard_complete) == field_i)
+  if (type_i == "integer") {
+    holeboard_complete[,column_i] = as.integer(holeboard_complete[,column_i])
+  } else if (type_i == "float") {
+    holeboard_complete[,column_i] = as.numeric(holeboard_complete[,column_i])
+  } else if (type_i == "hhh:mm:ss:ff") {
+    hours_i = as.numeric(gsub("^(\\d{3}):(\\d{2}):(\\d{2})\\.(\\d{+})$","\\1",holeboard_complete[,column_i]))
+    minutes_i = as.numeric(gsub("^(\\d{3}):(\\d{2}):(\\d{2})\\.(\\d{+})$","\\2",holeboard_complete[,column_i]))
+    seconds_i = as.numeric(gsub("^(\\d{3}):(\\d{2}):(\\d{2})\\.(\\d{+})$","\\3",holeboard_complete[,column_i]))
+    milliseconds_i = as.numeric(paste("0.",gsub("^(\\d{3}):(\\d{2}):(\\d{2})\\.(\\d{+})$","\\4",holeboard_complete[,column_i]),sep=""))
+    holeboard_complete[,column_i] = (hours_i * 3600) + (minutes_i * 60) + seconds_i + milliseconds_i
+  } else if (type_i == "character_to_boolean") {
+    holeboard_complete[,column_i] = holeboard_complete[,column_i] == "Yes"
+  } else if (type_i == "mdy_hms") {
+    holeboard_complete[,column_i] = mdy_hms(holeboard_complete[,column_i], tz = "America/New_York")
+  } else if (type_i == "mdy") {
+    holeboard_complete[,column_i] = mdy(holeboard_complete[,column_i])
+  } else {
+    holeboard_complete[,column_i] = as.character(holeboard_complete[,column_i])
+  }
+}
+fields_seconds = holeboard_fields[which(holeboard_fields$FieldType == "hhh:mm:ss:ff"),"FieldID"]
+fields_seconds = which(colnames(holeboard_complete) %in% fields_seconds)
+colnames(holeboard_complete)[fields_seconds] = paste(colnames(holeboard_complete)[fields_seconds],"_sec",sep="")
+```
+
+Re-typing `Start_Time` to a date and dropping `Start_Date`
+
+```{r}
+holeboard_complete$Start_Time = mdy_hms(paste(holeboard_complete$Start_Date, holeboard_complete$Start_Time, sep = ""), tz = "America/New_York")
+holeboard_complete = holeboard_complete[,(-1 * which(colnames(holeboard_complete) == "Start_Date"))]
+```
+
+Changing `NA` values of `Task_Complete_Time_sec` and `Latency_To_First_Hole_sec` to the maximum possible time of 20 minutes (1200.0 seconds) to keep them continuous variables
+
+```{r}
+holeboard_complete[which(is.na(holeboard_complete$Task_Complete_Time_sec)),"Task_Complete_Time_sec"] = 1200.0
+holeboard_complete[which(is.na(holeboard_complete$Latency_To_First_Hole_sec)),"Latency_To_First_Hole_sec"] = 1200.0
+```
+
+It should be noted that `Task_Complete_Time_sec` and all task-related columns appear to be meaningless at the moment. The task appears to be related to whether holes were baited or not (see column `Task_Holes`).
+
+Identifying duplicated subject ID data and attempting to resolve duplicates.
+
+```{r}
+holeboard_complete_duplicate_subject_IDs = holeboard_complete[duplicated(holeboard_complete$Subject_ID),"Subject_ID"]
+holeboard_complete_duplicate_subjects = holeboard_complete[which(holeboard_complete$Subject_ID %in% holeboard_complete_duplicate_subject_IDs),]
+holeboard_complete_duplicate_subjects[order(holeboard_complete_duplicate_subjects$Subject_ID),]
+```
+
+Some of these subjects appear to have duplicated holeboard sessions on the same day. Others appear to have file names with subject IDs (and file IDs reported in the file too) mismatching the subject ID in the trial. These are potentially problematic. Looking at how many mismatches between file name subject IDs and summary subject IDs there are.
+
+```{r}
+paste("There are ", length(which(gsub("^Subject_(\\d+)_.*$","\\1",holeboard_complete$file_name) != holeboard_complete$Subject_ID)), " subjects with file IDs mismatching their holeboard subject IDs", sep = "")
+```
+
+This is not a major problem. Looking at these IDs.
+
+```{r}
+mismatch_IDs = unique(holeboard_complete[which(gsub("^Subject_(\\d+)_.*$","\\1",holeboard_complete$file_name) != holeboard_complete$Subject_ID),"Subject_ID"])
+holeboard_complete[which(holeboard_complete$Subject_ID %in% mismatch_IDs),]
+```
+
+8597 is most likely a miskey given the proximety to 8627. The others appear to be similar miskeys. For these mismatch IDs, can gsub in the subject ID from the file name.
+
+```{r}
+mismatch_rows = which(holeboard_complete$Subject_ID %in% mismatch_IDs)
+holeboard_complete[mismatch_rows,"Subject_ID"] = gsub("^Subject_(\\d+)_.*$","\\1",holeboard_complete[mismatch_rows,"file_name"])
+length(which(duplicated(holeboard_complete$Subject_ID)))
+```
+
+This resolved two duplicates and all mismatches.
+
+Looking for obvious miskeys in subject IDs relative to date tested.
+
+```{r}
+holeboard_complete_continuous_id = holeboard_complete
+holeboard_complete_continuous_id$Subject_ID = as.numeric(holeboard_complete_continuous_id$Subject_ID)
+holeboard_complete_continuous_id = holeboard_complete_continuous_id[which(holeboard_complete_continuous_id$Subject_ID > 1000),]
+ggplot(data = holeboard_complete_continuous_id, aes(x = Printed, y = Subject_ID)) +
+  geom_point() +
+  theme_bw()
+```
+
+The January 2017 datapoints are very obviously outside of the cloud of animals tested in the G23. Since these are mostly duplicates, can resolve these by filtering the January 2017 datapoints.
+
+```{r}
+exclude_files = holeboard_complete[which(holeboard_complete$Printed > ymd("2017-01-01")),"file_name"]
+exclude_rows = which(holeboard_complete$file_name %in% exclude_files)
+holeboard_complete = holeboard_complete[(-1 * exclude_rows),]
+```
+
+We have additional problems in January of 2016 and ~May of 2016 that have highly different subject IDs to their cohort. These should be resolved too. This can be done with studentized residuals.
+
+```{r}
+holeboard_subject_id_lm = lm(Subject_ID ~ Printed, data = holeboard_complete_continuous_id)
+holeboard_subject_id_studres = studres(holeboard_subject_id_lm)
+sig_subject_ids = which(2 * pnorm(abs(holeboard_subject_id_studres), lower.tail = FALSE) < 0.01)
+holeboard_complete_continuous_id[sig_subject_ids,c("Printed","Subject_ID")]
+```
+
+Most likely, these are a 9 transposed where an 8 should be. Changing these IDs to 8000s.
+
+```{r}
+holeboard_complete_9000_rows = which(as.numeric(holeboard_complete$Subject_ID) > 9000)
+holeboard_complete[holeboard_complete_9000_rows,"Subject_ID"] = as.character(as.numeric(holeboard_complete[holeboard_complete_9000_rows,"Subject_ID"]) - 1000)
+holeboard_complete_continuous_id = holeboard_complete
+holeboard_complete_continuous_id$Subject_ID = as.numeric(holeboard_complete_continuous_id$Subject_ID)
+holeboard_complete_continuous_id = holeboard_complete_continuous_id[which(holeboard_complete_continuous_id$Subject_ID > 1000),]
+ggplot(data = holeboard_complete_continuous_id, aes(x = Printed, y = Subject_ID)) +
+  geom_point() +
+  theme_bw()
+```
+
+This looks much cleaner. Looking for duplicated subject IDs.
+
+```{r}
+final_dup_ids = holeboard_complete[which(duplicated(holeboard_complete$Subject_ID)),"Subject_ID"]
+holeboard_complete[which(holeboard_complete$Subject_ID %in% final_dup_ids),]
+```
+
+These IDs cannot be resolved and should be excluded.
+
+```{r}
+holeboard_complete = holeboard_complete[(-1 * which(holeboard_complete$Subject_ID %in% final_dup_ids)),]
+nrow(holeboard_complete) == length(unique(holeboard_complete$Subject_ID))
+```
+
+### Summarizing hole board data as data frame for future use
+
+This phenotype data is as clean as possible for the hole board data. Saving the complete and unique hole board dataset for downstream use.
+
+```{r}
+row.names(holeboard_complete) = holeboard_complete$Subject_ID
+saveRDS(holeboard_complete, file = "./data/DO_holeboard_summarized.RDS", compress = "xz")
+```
+
+The md5 checksum of the output file (`DO_holeboard_summarized.RDS`) is: ``r tools::md5sum("./data/DO_holeboard_summarized.RDS")``.
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio and imported into workflowr on 2020-05-01.
+
+(file was formerly saved as [DO_holeboard_summarize.html](DO_holeboard_summarize.html))

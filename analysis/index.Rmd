@@ -1,0 +1,100 @@
+---
+title: "DO IVSA and Novelty Behavior: Reference Trait Analysis"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: false
+editor_options:
+  chunk_output_type: console
+---
+
+## Project Overview
+
+This project applies the reference trait analysis method as laid out by Skelly et al.[^1].
+
+This method uses multivariate statistical techniques to predict a low-dimensional projection of high-dimensional data using an intermediate dataset. The technique is useful for accessing data that cannot be measured within the Diversity Outbred mouse population. In this case, we wish to make statements about the gene expression correlates in drug-na&iuml;ve animals that predict "hidden" cocaine-taking phenotypes.
+
+## Personnel
+
+The following people have been involved in generating these analyses:
+
+* Michael C. Saul
+* Hao He
+* Vivek M. Philip
+* Robyn Ball
+* Jason Bubier
+* Lisa Tarantino
+
+## Analyses
+
+There are multiple analyses supporting this work. They are broken down below:
+
+### 1. Summarizing the drug-na&iuml;ve mouse behavioral data
+
+*Note that some of these data predate the CSNA and are thus not saved in the same format as CSNA data.*
+
+* [Summarize basic demographic data for drug-na&iuml;ve Diversity Outbred mice](01_DO_demographic_data_summarize.html)
+* [Summarize drug-na&iuml;ve Diversity Outbred hole board data](02_DO_holeboard_summarize.html)
+* [Summarize drug-na&iuml;ve Diversity Outbred novelty response data](03_DO_drug_naive_behavior_data_summarize.html)
+
+### 2. Summarizing the drug-na&iuml;ve mouse gene expression data
+
+* [Shell script for cluster work: alignment and read EM using STAR and RSEM (GRCm38 on Ensembl v94 annotation)](04_DO_align_sh.html)
+* [Summarize gene expression data for drug-na&iuml;ve Diversity Outbred mice](05_DO_expression_prep_STAR_RSEM.html)
+
+### 3. Calculate genotype-based ploidy for drug-na&iuml;ve mice
+
+* [Follow up on sex chromosome aneuploidies implied in drug-na&iuml;ve Diversity Outbred striatum expression](06_DO_ploidy_followup_to_expression.html)
+
+### 4. Calculate eQTL for drug-na&iuml;ve mice
+
+* [Summarize genotype data for drug-na&iuml;ve Diversity Outbred mice](07_DO_eQTL_genotype_prep.html)
+* [Calculate LOD scores and permutations for drug-na&iuml;ve Diversity Outbred mice](08_DO_eQTL_sh.html)
+* [Summarize eQTL data for drug-na&iuml;ve Diversity Outbred mice](09_DO_eQTL_summarize.html)
+
+### 5. Preprocess intravenous self-administration and associated novelty response data
+
+* [Preprocess intravenous self-administration data for Diversity Outbred mice](10_DO_IVSA_summarize.html)
+* [Preprocess novelty response data for Diversity Outbred mice](11_DO_novelty_response_summarize.html)
+
+### 6. Run canonical correlation analysis between Diversity Outbred IVSA and novelty response
+
+* [Run IVSA-to-novelty-response canonical correlation and project to drug-na&iuml;ve Diversity Outbred mice](12_DO_IVSA_novelty_cancor.html)
+* [Run cocaine and saline sensitization-to-novelty-response canonical correlation and project to all Diversity Outbred mice](22_DO_RTA_saline_cocaine.html)
+
+
+### 7. Correlate RTG predictions with drug-na&iuml;ve gene expression
+
+* [Correlate RTG predictions with drug-na&iuml;ve gene expression](13_DO_expression_correlation.html)
+* [Interpret RTG correlations with drug-na&iuml;ve gene expression](14_DO_expression_interpretation.html)
+
+### 8. Project RTG to All DO Animals for Mapping
+
+* [Project RTG to all DO animals for QTL mapping](15_DO_RTG_QTL_project.html)
+* Mapping work for RTG traits is performed by Hao He's scripts, which are not presently encapsulated here.
+* [Interpret  mapping results and attemt to identify genes](17_mapping_interpretation.html)
+
+### 9. Coexpression Analysis of RTG Expression Data
+
+* [Perform WGCNA and paraclique analysis on drug-na&iuml;ve gene expression](18_DO_coexpression_analysis.html)
+* [Map WGCNA and paraclique modules (mQTL)](19_DO_mQTL_mapping.html)
+
+## Publication Output
+
+### Figures
+
+* [Trait correlation figures for IVSA and sensitization](40_DO_traitcor_figures.html)
+* [RTG schematic figure](41_RTG_schematic_figure.html)
+* [Mapping figures](42_RTG_mapping.html)
+
+### Tables
+
+## General Comment on Timeline
+
+While the work contained in this workflow has been ongoing, the formalization of the RMarkdown documents into a `workflowr` document began on 2020-05-01. This `workflowr` document was transitioned to the Sumner cluster at JAX on 2021-12-06.
+
+The `workflowr` repository was reviewed by Michael C. Saul for accuracy starting on 2024-03-25. Modifications were made in response to comments from Lisa Tarantino, who requested that the analyses for cocaine and saline locomotor sensitization be made more consistent with the analyses for IVSA. This primarily entailed modifying the IVSA analysis so that it selects starting variables using a Pearson correlation coefficient. The modification apparently did not make any changes that altered conclusions made.
+
+*NOTE: This repository was moved from a different location and not all scripts were committed with* `workflowr` *at that time. Some of the commits will have messages like, "Running this script in this repository." This means that they haven't previously ran in the most recent copy of the repository.*
+
+[^1]: Skelly DA, Raghupathy N, Robledo RF, Graber JH, Chesler EJ. 2019. [Reference Trait Analysis Reveals Correlations Between Gene Expression and Quantitative Traits in Disjoint Samples.](https://www.genetics.org/content/212/3/919) *Genetics* 212:919–929. [doi:10.1534/genetics.118.301865](https://doi.org/10.1534/genetics.118.301865)

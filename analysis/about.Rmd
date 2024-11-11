@@ -1,0 +1,115 @@
+---
+title: "About"
+output:
+  workflowr::wflow_html:
+    toc: false
+editor_options:
+  chunk_output_type: console
+---
+
+This project utilizes a container from the [Rocker project](https://www.rocker-project.org/). Upon publication, this Singularity container will be published on the [JAX Singularity Registry](https://jaxreg.jax.org/collections).
+
+The container used here was compiled from the following definition file:
+
+```{bash eval=FALSE}
+bootstrap: docker
+from: rocker/rstudio:4.1.2
+
+%environment
+
+%post
+
+apt-get -y update
+apt-get -y install curl
+apt-get -y install openssl
+ln -snf /usr/share/zoneinfo/$(curl https://ipapi.co/timezone) /etc/localtime
+apt-get -y install git
+apt-get -y install libgit2-dev
+apt-get -y install build-essential
+apt-get -y install libxml2-dev
+apt-get -y install libpng-dev # Necessary for WGCNA
+
+# Installing R packages hosted from CRAN
+R --slave -e 'install.packages("tidyverse", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("ggplot2", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("ggrepel", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("ggpubr", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("grid", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("gridExtra", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("gplots", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("cowplot", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("ggplotify", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("data.table", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("readxl", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("GGally", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("ggbeeswarm", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("RColorBrewer", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("corrplot", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("statmod", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("dplyr", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("glmnet", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("git2r", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("workflowr", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("qtl2", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("qtl2convert", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("qtl2pleio", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("broman", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("fst", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("glmnet", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("nlme", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("DiagrammeR", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("knitr", repos="http://cran.rstudio.com")'
+R --slave -e 'install.packages("https://cran.rstudio.com/src/contrib/Rcpp_1.0.7.tar.gz", repos=NULL, type = "source")'
+
+# Installing Bioconductor packages
+R --slave -e 'install.packages("BiocManager", repos="http://cran.rstudio.com")'
+R --slave -e 'BiocManager::install("biomaRt")'
+R --slave -e 'BiocManager::install("GenomicRanges")'
+R --slave -e 'BiocManager::install("Gviz")'
+R --slave -e 'BiocManager::install("tximport")'
+R --slave -e 'BiocManager::install("limma")'
+R --slave -e 'BiocManager::install("edgeR")'
+R --slave -e 'BiocManager::install("qvalue")'
+R --slave -e 'BiocManager::install("preprocessCore")'
+R --slave -e 'BiocManager::install("impute")'
+R --slave -e 'BiocManager::install("GO.db")'
+R --slave -e 'BiocManager::install("AnnotationDbi")'
+
+# Installing WGCNA, which has multiple dependencies from Bioconductor
+R --slave -e 'install.packages("WGCNA", repos="http://cran.rstudio.com")'
+
+# Installing devtools packages
+R --slave -e 'install.packages("roxygen2", repos="http://cran.rstudio.com", type="source")'
+R --slave -e 'install.packages("rversions", repos="http://cran.rstudio.com", type="source")'
+R --slave -e 'install.packages("devtools", repos="http://cran.rstudio.com")'
+R --slave -e 'devtools::install_github("jtliso/cliqueR")'
+R --slave -e 'devtools::install_github("msaul/msaul")'
+R --slave -e 'devtools::install_github("andrewparkermorgan/argyle")'
+
+%labels
+    Author Michael C. Saul, michael.saul [at] jax.org
+    Version v2022-01-31
+    MyLabel Reference Trait Analysis Singularity Container
+
+%help
+    RStudio Singularity Container for Reference Trait Analysis
+    2021-12-09
+    Singularity Container Complied By: Michael C. Saul
+    Docker Repository: rocker/rstudio:4.1.2
+
+    This container derives from the RStudio Rocker container for R v4.1.2 as it existed on 2022-01-31.
+
+    This container was compiled on 2022-01-31 by Michael C. Saul.
+```
+
+A list of the installed packages is below.
+
+```{r}
+# From user hc_haha
+# https://stackoverflow.com/questions/38481980/get-the-list-of-installed-packages-by-user-in-r
+pkg = tibble::tibble(
+  Package = names(installed.packages()[,3]),
+  Version = unname(installed.packages()[,3])
+)
+pkg
+```

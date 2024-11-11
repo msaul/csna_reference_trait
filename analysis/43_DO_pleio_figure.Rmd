@@ -1,0 +1,85 @@
+---
+title: "DO IVSA and Cocaine Sensitization Pleiotropy Figures"
+author: "Michael C. Saul (michael.saul [at] jax.org)"
+output: workflowr::wflow_html
+---
+
+# Background
+
+## Motivation
+
+### Purpose of analysis
+
+This script is used to plot pleiotropy data for chr7 between all-traits IVSA and cocaine sensitization RTAs.
+
+# Analysis
+
+## Setup
+
+### R libraries
+
+Calling R libraries necessary for this analysis.
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+library("cowplot")
+```
+
+### Importing data
+
+```{r}
+DO_chr7_pleio_lods = readRDS("./data/DO_IVSA_SENS_pleio_lods.RDS")
+pleio_tib_lods = readRDS("./data/DO_SENS_SALINE_pleio_lods.RDS")
+pleio_ivsa_saline = readRDS("./data/DO_IVSA_SALINE_pleio_lods.RDS")
+pleio_tib_lods$comparison = "Cocaine Sensitization vs Sham Locomotion"
+DO_chr7_pleio_lods$comparison = "IVSA vs Cocaine Sensitization"
+pleio_ivsa_saline$comparison = "IVSA vs Sham Locomotion"
+pleio_df = rbind(pleio_tib_lods, DO_chr7_pleio_lods, pleio_ivsa_saline) |>
+  mutate(trait =  gsub("RTG_a3","IVSA",trait),
+         trait =  gsub("cocaine_novelty_cancor","Cocaine Sensitization",trait),
+         trait =  gsub("saline_novelty_cancor","Sham Locomotion",trait),
+         trait = factor(trait, 
+                        levels = c("IVSA","Cocaine Sensitization","Sham Locomotion","Pleiotropy"),
+                        ordered = TRUE),
+         comparison = factor(comparison,
+                             levels = c("IVSA vs Cocaine Sensitization",
+                                        "IVSA vs Sham Locomotion",
+                                        "Cocaine Sensitization vs Sham Locomotion"),
+                             ordered = TRUE))
+colnames(pleio_df)[grep("^trait$",colnames(pleio_df))] = "Trait"
+```
+
+### Making pleiotropy plot
+
+```{r}
+plot_pleio = ggplot(data = pleio_df, aes(x = marker_position,
+                                         y = profile_lod,
+                                         color = Trait,
+                                         linewidth = Trait)) +
+  geom_line() +
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        panel.grid = element_line(color = "#FFFFFF")) +
+  scale_color_manual(values = c("#66CC66","#3399CC","#CC3333","#000000")) +
+  scale_linewidth_manual(values = c(0.5,0.5,0.5,0.8)) +
+  facet_wrap(. ~ comparison, ncol = 1) +
+  xlab("chr7 Position (Mb)") +
+  ylab("LOD") +
+  ggtitle("chr7 Pleiotropy Results")
+plot_pleio
+```
+
+
+### Saving output
+
+```{r}
+ggsave("./data/figures/DO_plot_pleio_figure.pdf", 
+       plot_pleio, width = 6, height = 8, units = "in")
+saveRDS(plot_pleio,"./data/figures/DO_plot_pleio.RDS")
+saveRDS(pleio_df, "./data/pleio_df.RDS")
+```
+
+### Document Control
+
+This document was prepared using RMarkdown in RStudio.
